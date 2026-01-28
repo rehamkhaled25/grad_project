@@ -53,7 +53,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             ],
           ),
 
-          const Spacer(flex: 3), // Pushes Continue button to bottom
+          const Spacer(flex: 3),
 
           // Continue Button
           Padding(
@@ -71,6 +71,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
+                  disabledBackgroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(27),
                   ),

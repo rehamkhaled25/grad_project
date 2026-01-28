@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/screens/onboarding_gender.dart';
+import 'package:graduation_project/screens/trialsubscriptionpage.dart';
+import 'package:graduation_project/screens/onboarding/onboarding_gender.dart';
+import 'package:graduation_project/screens/onboarding_goal.dart';
+import 'package:graduation_project/screens/splash.dart';
 // import 'package:firebase_core/firebase_core.dart';
 
 
@@ -20,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         
         title: 'Cal Ai',
-        home: OnboardingGender(),
+        home: OnboardingGoal(),
         debugShowCheckedModeBanner: false,
       
       );

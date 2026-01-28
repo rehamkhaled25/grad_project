@@ -57,12 +57,9 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   uses-material-design: true  # CRITICAL: Enables MaterialIcons
-  # assets:
-  #   - assets/Goodies Happy Flame.png
-  #   - assets/Frame.png
-  #   - assets/happy retro robot.png
-  #   - assets/apple.png
-  #   - assets/facebook.png
+  assets:
+    - assets/images/
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
