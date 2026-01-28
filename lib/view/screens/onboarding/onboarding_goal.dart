@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/view/custom _widget/continue_button.dart';
-import 'package:graduation_project/screens/custom%20items/custom_appBar.dart';
+import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+
 
 class OnboardingGoal extends StatefulWidget {
   const OnboardingGoal({super.key});
@@ -22,7 +23,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              const CustomAppbar(),
+               CustomAppbar(),
 
               // CONTENT
               Expanded(
