@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/screens/custom%20items/continue_button.dart';
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
 import 'package:graduation_project/screens/custom%20items/custom_appBar.dart';
 
 class OnboardingGoal extends StatefulWidget {

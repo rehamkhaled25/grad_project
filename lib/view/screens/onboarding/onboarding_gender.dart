@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/screens/custom%20items/custom_appBar.dart';
-
+import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 
 class OnboardingGender extends StatefulWidget {
   const OnboardingGender({super.key});
@@ -10,7 +9,7 @@ class OnboardingGender extends StatefulWidget {
 }
 
 class _OnboardingGenderState extends State<OnboardingGender> {
-  String? selectedGender; 
+  String? selectedGender;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +17,8 @@ class _OnboardingGenderState extends State<OnboardingGender> {
       body: Column(
         children: [
           CustomAppbar(),
-          const SizedBox(height: 40), 
+
+          const SizedBox(height: 40),
           const Text(
             'Choose your Gender',
             style: TextStyle(
@@ -27,35 +27,32 @@ class _OnboardingGenderState extends State<OnboardingGender> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const Spacer(flex: 2), 
 
-          // Male and Female buttons row
+          const Spacer(flex: 2),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-             
               genderButton(
                 icon: Icons.male,
                 label: "Male",
                 gender: "male",
-                borderColor: Color(0xff5F68E8),
-                iconColor: Color(0xff5F68E8),
+                borderColor: const Color(0xff5F68E8),
+                iconColor: const Color(0xff5F68E8),
               ),
-              const SizedBox(width: 30), // Space between buttons
-              // Female Button
+              const SizedBox(width: 30),
               genderButton(
                 icon: Icons.female,
                 label: "Female",
                 gender: "female",
-                borderColor: Color(0xffFF5878),
-                iconColor: Color(0xffFF5878),
+                borderColor: const Color(0xffFF5878),
+                iconColor: const Color(0xffFF5878),
               ),
             ],
           ),
 
           const Spacer(flex: 3),
 
-          // Continue Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: SizedBox(
@@ -63,15 +60,19 @@ class _OnboardingGenderState extends State<OnboardingGender> {
               height: 54,
               child: ElevatedButton(
                 onPressed: selectedGender == null
-                    ? null // Disable if nothing selected
+                    ? null
                     : () {
-                        // Handle continue - you can navigate or save gender here
-                        print("Selected gender: $selectedGender");
-                        // Example: Navigator.push(...);
+                        // Save gender if needed
+                        print("Selected Gender: $selectedGender");
+
+                        // Navigation to Home
+                        // context.go('/home');
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
+
                   disabledBackgroundColor: Colors.black,
+
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(27),
                   ),
@@ -88,13 +89,12 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             ),
           ),
 
-          const SizedBox(height: 40), // Bottom padding
+          const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  // Reusable gender selection button
   Widget genderButton({
     required IconData icon,
     required String label,
@@ -106,9 +106,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedGender = gender;
-        });
+        setState(() => selectedGender = gender);
       },
       child: Container(
         width: 170,
@@ -116,18 +114,12 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         decoration: BoxDecoration(
           color: const Color(0xffDDDDDD),
           borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(color: borderColor, width: 4)
-              : null, // Only show border when selected
+          border: isSelected ? Border.all(color: borderColor, width: 3) : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 69,
-              color: isSelected ? iconColor : Colors.black, // Change icon color when selected
-            ),
+            Icon(icon, size: 69, color: isSelected ? iconColor : Colors.black),
             const SizedBox(height: 20),
             Text(
               label,
