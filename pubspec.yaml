@@ -39,6 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   modal_progress_hud_nsn: ^0.5.1
   flutter_xlider: ^3.5.0
+  percent_indicator: ^4.2.3
   
 
 dev_dependencies:

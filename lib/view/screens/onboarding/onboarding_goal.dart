@@ -74,7 +74,9 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
               ),
 
               
-              ContinueButton(
+              ContinueButton( onPressed: (){
+                //hena navigation ya bibo
+              },
 
               ),
 

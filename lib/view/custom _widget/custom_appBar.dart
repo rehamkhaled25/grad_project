@@ -39,11 +39,7 @@ class CustomAppbar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                    },
-                    icon: const Icon(Icons.language, color: Colors.black),
-                  ),
+
                 ],
               );
   }

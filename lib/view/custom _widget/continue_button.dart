@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
 
 class ContinueButton extends StatelessWidget {
-  const ContinueButton({super.key});
+  final VoidCallback onPressed; // Function parameter
 
-
+const ContinueButton({
+    super.key,
+    required this.onPressed, // Must be provided
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 56,
       width: double.infinity,
+
       child: ElevatedButton(
-        onPressed: (){},
+        onPressed: onPressed, // Use the passed function
+
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
         ),
+
         child: const Text(
           "Continue",
           style: TextStyle(
