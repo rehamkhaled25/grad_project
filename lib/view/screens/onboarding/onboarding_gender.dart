@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 
 class OnboardingGender extends StatefulWidget {
@@ -16,7 +17,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
     return Scaffold(
       body: Column(
         children: [
-          CustomAppbar(),
+          CustomAppbar(currentStep: 1, totalSteps: 7, showBackButton: false),
 
           const SizedBox(height: 40),
           const Text(
@@ -64,6 +65,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
                     : () {
                         // Save gender if needed
                         print("Selected Gender: $selectedGender");
+                        context.push('/onboardingBirthdate');
 
                         // Navigation to Home
                         // context.go('/home');

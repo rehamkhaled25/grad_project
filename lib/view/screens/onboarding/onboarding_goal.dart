@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom _widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-
 
 class OnboardingGoal extends StatefulWidget {
   const OnboardingGoal({super.key});
@@ -23,7 +23,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-               CustomAppbar(),
+              CustomAppbar(currentStep: 5, totalSteps: 7),
 
               // CONTENT
               Expanded(
@@ -33,7 +33,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                     SizedBox(height: screenHeight * 0.04),
 
                     Padding(
-                      padding: const EdgeInsets.only(left:8.0),
+                      padding: const EdgeInsets.only(left: 8.0),
                       child: const Text(
                         "What is your goal?",
                         style: TextStyle(
@@ -73,11 +73,12 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                 ),
               ),
 
-              
-              ContinueButton( onPressed: (){
-                //hena navigation ya bibo
-              },
-
+              ContinueButton(
+                onPressed: () {
+                  //hena navigation ya bibo
+                  //alb bibo
+                  context.push('/onboardingNotification');
+                },
               ),
 
               const SizedBox(height: 20),
@@ -88,6 +89,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
     );
   }
 }
+
 class GoalWidget extends StatelessWidget {
   final String image;
   final String name;
@@ -116,12 +118,7 @@ class GoalWidget extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Image.asset(
-              image,
-              width: 28,
-              height: 28,
-              
-            ),
+            Image.asset(image, width: 28, height: 28),
             const SizedBox(width: 12),
             Text(
               name,
@@ -137,6 +134,3 @@ class GoalWidget extends StatelessWidget {
     );
   }
 }
-
-
-

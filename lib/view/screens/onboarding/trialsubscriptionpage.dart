@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:graduation_project/core/app_router.dart';
 
 class TrialSubscriptionPage extends StatefulWidget {
   const TrialSubscriptionPage({super.key});
@@ -28,10 +30,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                 child: Text(
                   "How your trial 7-day free\ntrial works",
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                 ),
               ),
 
@@ -40,7 +39,6 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
               // =======================
               // Timeline
               // =======================
-
               Column(
                 children: const [
                   TimelineStep(
@@ -116,7 +114,6 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
               // =======================
               // Continue Button
               // =======================
-
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -133,6 +130,9 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                     } else {
                       debugPrint("Selected: 12 Month Plan");
                     }
+                    // Set logged in after subscription
+                    AuthState.isLoggedIn = true;
+                    context.go('/home');
                   },
                   child: const Text(
                     "Continue",
@@ -190,12 +190,13 @@ class TimelineStep extends StatelessWidget {
     final Color iconColor = (isDone || isActive)
         ? Colors.white
         : isFutureStep
-            ? const Color(0xff403D3D) // different color for last two
-            : Colors.white;
+        ? const Color(0xff403D3D) // different color for last two
+        : Colors.white;
 
     // Line color
-    final Color lineColor =
-        isDone || isActive ? Colors.black : Colors.grey.shade300;
+    final Color lineColor = isDone || isActive
+        ? Colors.black
+        : Colors.grey.shade300;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,24 +206,10 @@ class TimelineStep extends StatelessWidget {
             Container(
               width: 28,
               height: 28,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(
-                  iconData,
-                  size: 16,
-                  color: iconColor,
-                ),
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Center(child: Icon(iconData, size: 16, color: iconColor)),
             ),
-            if (!isLast)
-              Container(
-                width: 4,
-                height: 40,
-                color: lineColor,
-              ),
+            if (!isLast) Container(width: 4, height: 40, color: lineColor),
           ],
         ),
         const SizedBox(width: 16),
@@ -230,11 +217,13 @@ class TimelineStep extends StatelessWidget {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             title,
-            style:  TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600, // always bold
-              color: Colors.black,    
-              decoration: isDone ? TextDecoration.lineThrough : TextDecoration.none
+              color: Colors.black,
+              decoration: isDone
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none,
             ),
           ),
         ),
@@ -242,7 +231,6 @@ class TimelineStep extends StatelessWidget {
     );
   }
 }
-
 
 class PlanCard extends StatelessWidget {
   final String title;
@@ -303,9 +291,9 @@ class PlanCard extends StatelessWidget {
                               oldPrice!,
                               style: const TextStyle(
                                 decoration: TextDecoration.lineThrough,
-                                color: Colors.black,          
+                                color: Colors.black,
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600, 
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -341,8 +329,10 @@ class PlanCard extends StatelessWidget {
               top: -12,
               left: 16,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.red : Colors.black,
                   borderRadius: BorderRadius.circular(20),

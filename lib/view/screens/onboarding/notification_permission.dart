@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
@@ -13,11 +14,9 @@ class NotificationPermissionPage extends StatefulWidget {
 
 class _NotificationPermissionPageState
     extends State<NotificationPermissionPage> {
-
   @override
   void initState() {
     super.initState();
-
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showPermissionDialog();
@@ -28,7 +27,7 @@ class _NotificationPermissionPageState
     showDialog(
       context: context,
       barrierColor: Colors.black54,
-      barrierDismissible: false, 
+      barrierDismissible: false,
 
       builder: (context) {
         return AlertDialog(
@@ -48,13 +47,12 @@ class _NotificationPermissionPageState
           ),
 
           actions: [
-
-          
             TextButton(
               style: _dialogButtonStyle(),
 
               onPressed: () {
                 Navigator.pop(context);
+                context.push('/onboardingAllset');
 
                 debugPrint("Denied");
               },
@@ -62,16 +60,16 @@ class _NotificationPermissionPageState
               child: const Text("Don’t Allow"),
             ),
 
-          
             TextButton(
               style: _dialogButtonStyle(),
 
               onPressed: () {
                 Navigator.pop(context);
-              //navigate to the next page ya bibo
-                debugPrint("Allowed");
+                context.push('/onboardingAllset');
 
-               
+                //navigate to the next page ya bibo
+                //alb bibo walahi
+                debugPrint("Allowed");
               },
 
               child: const Text("Allow"),
@@ -84,23 +82,19 @@ class _NotificationPermissionPageState
 
   ButtonStyle _dialogButtonStyle() {
     return ButtonStyle(
-      backgroundColor: MaterialStateProperty.resolveWith(
-        (states) {
-          if (states.contains(MaterialState.pressed)) {
-            return Colors.black;
-          }
-          return Colors.transparent;
-        },
-      ),
-
-      foregroundColor: MaterialStateProperty.resolveWith(
-        (states) {
-          if (states.contains(MaterialState.pressed)) {
-            return Colors.white;
-          }
+      backgroundColor: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.pressed)) {
           return Colors.black;
-        },
-      ),
+        }
+        return Colors.transparent;
+      }),
+
+      foregroundColor: MaterialStateProperty.resolveWith((states) {
+        if (states.contains(MaterialState.pressed)) {
+          return Colors.white;
+        }
+        return Colors.black;
+      }),
     );
   }
 
@@ -112,19 +106,17 @@ class _NotificationPermissionPageState
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-
-          const CustomAppbar(),
+          const CustomAppbar(currentStep: 6, totalSteps: 7),
 
           const SizedBox(),
 
-          
           Padding(
             padding: const EdgeInsets.all(20),
 
             child: ContinueButton(
               onPressed: () {
                 // Navigate to next page
-
+                context.push('/onboardingAllset');
               },
             ),
           ),

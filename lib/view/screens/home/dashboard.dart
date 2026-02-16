@@ -20,19 +20,16 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                 children: [
-
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
 
                     children: [
-
                       Text(
-                        "Hello, Mohanad",
+                        "Hello, Habiba",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -68,25 +65,26 @@ class HomeScreen extends StatelessWidget {
                   itemCount: 8,
 
                   itemBuilder: (context, index) {
-
                     final days = [
-                      "Sat", "Sun", "Mon", "Tue",
-                      "Wed", "Thu", "Fri", "Sat"
+                      "Sat",
+                      "Sun",
+                      "Mon",
+                      "Tue",
+                      "Wed",
+                      "Thu",
+                      "Fri",
+                      "Sat",
                     ];
 
-                    final dates = [
-                      11, 12, 13, 14, 15, 16, 17, 18
-                    ];
+                    final dates = [11, 12, 13, 14, 15, 16, 17, 18];
 
-                    bool active =
-                        index == 2 || index == 3 || index == 4;
+                    bool active = index == 2 || index == 3 || index == 4;
 
                     return Container(
                       margin: const EdgeInsets.only(right: 12),
 
                       child: Column(
                         children: [
-
                           CircleAvatar(
                             radius: 22,
 
@@ -98,9 +96,7 @@ class HomeScreen extends StatelessWidget {
                               dates[index].toString(),
 
                               style: TextStyle(
-                                color: active
-                                    ? Colors.white
-                                    : Colors.black,
+                                color: active ? Colors.white : Colors.black,
                               ),
                             ),
                           ),
@@ -137,12 +133,10 @@ class HomeScreen extends StatelessWidget {
 
                 child: Column(
                   children: [
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                       children: const [
-
                         Text(
                           "Today's Progress",
                           style: TextStyle(
@@ -172,21 +166,16 @@ class HomeScreen extends StatelessWidget {
 
                       animation: true,
 
-                      circularStrokeCap:
-                          CircularStrokeCap.round,
+                      circularStrokeCap: CircularStrokeCap.round,
 
-                      progressColor:
-                          const Color(0xffD90C0C),
+                      progressColor: const Color(0xffD90C0C),
 
-                      backgroundColor:
-                          Colors.grey.shade300,
+                      backgroundColor: Colors.grey.shade300,
 
                       center: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
 
                         children: const [
-
                           Text(
                             "1600",
                             style: TextStyle(
@@ -203,11 +192,9 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
 
                       children: const [
-
                         ProgressItem(
                           img: 'assets/images/bultorone fireee.png',
                           label: "400\nBurned",
@@ -231,10 +218,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 30),
               const Text(
                 "Recently Logged",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 15),
@@ -259,12 +243,12 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
 class FoodCard extends StatelessWidget {
   const FoodCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: 240,
 
@@ -276,10 +260,7 @@ class FoodCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
 
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
 
@@ -287,11 +268,8 @@ class FoodCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
-
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
 
             child: Image.network(
               "https://images.unsplash.com/photo-1512621776951-a57141f2eefd",
@@ -308,17 +286,12 @@ class FoodCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
 
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-
                 const Text(
                   "Power Breakfast Bowl",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
 
                 const SizedBox(height: 4),
@@ -327,13 +300,9 @@ class FoodCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
 
                   children: const [
-
                     Text(
                       "8:00 AM",
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
                     ),
 
                     Text(
@@ -348,25 +317,15 @@ class FoodCard extends StatelessWidget {
 
                 Row(
                   children: [
-
-                    const _MacroCircle(
-                      color: Colors.red,
-                      percent: 0.7,
-                    ),
+                    const _MacroCircle(color: Colors.red, percent: 0.7),
 
                     const SizedBox(width: 3),
 
-                    const _MacroCircle(
-                      color: Colors.grey,
-                      percent: 0.5,
-                    ),
+                    const _MacroCircle(color: Colors.grey, percent: 0.5),
 
                     const SizedBox(width: 3),
 
-                    const _MacroCircle(
-                      color: Colors.black,
-                      percent: 0.6,
-                    ),
+                    const _MacroCircle(color: Colors.black, percent: 0.6),
 
                     const SizedBox(width: 20),
 
@@ -392,17 +351,34 @@ class FoodCard extends StatelessWidget {
 
                 Row(
                   children: const [
-
                     MicroDot(color: Colors.red),
-                    Text(" Protein 30g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                    Text(
+                      " Protein 30g ",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
 
                     MicroDot(color: Colors.blue),
-                    Text(" Carbs 10g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                    Text(
+                      " Carbs 10g ",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
 
                     MicroDot(color: Colors.orange),
-                    Text(" Fats 30g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                    Text(
+                      " Fats 30g ",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -411,22 +387,17 @@ class FoodCard extends StatelessWidget {
     );
   }
 }
-class _MacroCircle extends StatelessWidget {
 
+class _MacroCircle extends StatelessWidget {
   final Color color;
   final double percent;
 
-  const _MacroCircle({
-    required this.color,
-    required this.percent,
-  });
+  const _MacroCircle({required this.color, required this.percent});
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
       children: [
-
         CircularPercentIndicator(
           radius: 10,
 
@@ -436,13 +407,11 @@ class _MacroCircle extends StatelessWidget {
 
           animation: true,
 
-          circularStrokeCap:
-              CircularStrokeCap.round,
+          circularStrokeCap: CircularStrokeCap.round,
 
           progressColor: color,
 
-          backgroundColor:
-              color.withOpacity(0.2),
+          backgroundColor: color.withOpacity(0.2),
         ),
 
         const SizedBox(height: 4),
@@ -452,46 +421,27 @@ class _MacroCircle extends StatelessWidget {
 }
 
 class MicroDot extends StatelessWidget {
-
   final Color color;
 
-  const MicroDot({
-    super.key,
-    required this.color,
-  });
+  const MicroDot({super.key, required this.color});
 
   @override
   Widget build(BuildContext context) {
-
-    return CircleAvatar(
-      radius: 5,
-      backgroundColor: color,
-    );
+    return CircleAvatar(radius: 5, backgroundColor: color);
   }
 }
 
 class ProgressItem extends StatelessWidget {
-
   final String img;
   final String label;
 
-  const ProgressItem({
-    super.key,
-    required this.img,
-    required this.label,
-  });
+  const ProgressItem({super.key, required this.img, required this.label});
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
       children: [
-
-        Image.asset(
-          img,
-          width: 28,
-          height: 28,
-        ),
+        Image.asset(img, width: 28, height: 28),
 
         const SizedBox(height: 6),
 

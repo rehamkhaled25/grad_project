@@ -133,10 +133,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: screenWidth > 400 ? 400 : double.infinity,
                 height: 54,
                 child: ElevatedButton(
+                  // In your RegisterScreen, after successful registration:
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      isRegistered = true;
-                      context.go('/onboard'); // navigate to onboarding
+                      // Set registration state
+                      AuthState.isRegistered = true;
+                      AuthState.finishedOnboarding = false;
+
+                      // Navigate to onboarding gender
+                      context.go('/onboardingGender');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Registering...')),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
