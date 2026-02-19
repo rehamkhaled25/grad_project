@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "333921750379",
+    "project_id": "gpt1-d3b0d",
+    "storage_bucket": "gpt1-d3b0d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:333921750379:android:dffbc9bcabf5e1831a102e",
+        "android_client_info": {
+          "package_name": "com.example.graduation_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAChJZ1Hs1Tt14kAqxlTiJQjL2dyl6BX6A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
