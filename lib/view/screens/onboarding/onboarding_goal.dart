@@ -77,7 +77,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
               ContinueButton( onPressed: (){
                 //hena navigation ya bibo
               },
-
+txt: "Continue",
               ),
 
               const SizedBox(height: 20),

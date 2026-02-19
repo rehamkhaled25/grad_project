@@ -3,13 +3,14 @@ import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+   HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       bottomNavigationBar: const BottomNavBar(),
 
       body: SafeArea(
@@ -43,7 +44,7 @@ class HomeScreen extends StatelessWidget {
 
                       Text(
                         "Remember why you started..",
-                        style: TextStyle(color: Colors.black54),
+                        style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -224,6 +225,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+     // two dots here as ui that are sliders that make me go to another page 
                   ],
                 ),
               ),
@@ -293,15 +295,7 @@ class FoodCard extends StatelessWidget {
               top: Radius.circular(20),
             ),
 
-            child: Image.network(
-              "https://images.unsplash.com/photo-1512621776951-a57141f2eefd",
-
-              height: 120,
-
-              width: double.infinity,
-
-              fit: BoxFit.cover,
-            ),
+            child: Image(image: AssetImage('assets/images/food log.png'))
           ),
 
           Padding(
@@ -313,95 +307,112 @@ class FoodCard extends StatelessWidget {
 
               children: [
 
-                const Text(
-                  "Power Breakfast Bowl",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
-                  children: const [
-
-                    Text(
-                      "8:00 AM",
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
-                    ),
-
-                    Text(
-                      "520 cal",
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    const Text(
+                      "Power Breakfast Bowl",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
+                     Column(
+                       children: [
+                         Text(
+                          "520 ",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          ),
+                          Text("Calories",style: TextStyle(fontSize: 8,fontWeight: FontWeight.bold),)
+                       ],
+                     ),
                   ],
                 ),
 
-                Row(
-                  children: [
-
-                    const _MacroCircle(
-                      color: Colors.red,
-                      percent: 0.7,
-                    ),
-
-                    const SizedBox(width: 3),
-
-                    const _MacroCircle(
-                      color: Colors.grey,
-                      percent: 0.5,
-                    ),
-
-                    const SizedBox(width: 3),
-
-                    const _MacroCircle(
-                      color: Colors.black,
-                      percent: 0.6,
-                    ),
-
-                    const SizedBox(width: 20),
-
-                    SizedBox(
-                      width: 80,
-                      height: 19,
-
-                      child: ElevatedButton(
-                        onPressed: () {},
-
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                        ),
-
-                        child: const Text(
-                          "View Details",
-                          style: TextStyle(color: Colors.white),
+                Padding(
+                  padding: const EdgeInsets.only(left : 11.0),
+                  child: Text(
+                        "8:00 AM",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold
                         ),
                       ),
-                    ),
-                  ],
+                ),
+                SizedBox(
+                  height:10 ,
                 ),
 
-                Row(
-                  children: const [
-
-                    MicroDot(color: Colors.red),
-                    Text(" Protein 30g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-
-                    MicroDot(color: Colors.blue),
-                    Text(" Carbs 10g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-
-                    MicroDot(color: Colors.orange),
-                    Text(" Fats 30g ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-                  ],
+               Padding(
+                 padding: const EdgeInsets.only(left :11.0),
+                 child: Row(
+                    children: [
+                 
+                      const _MacroCircle(
+                        color: Colors.red,
+                        percent: 0.7,
+                      ),
+                 
+                      const SizedBox(width: 3),
+                 
+                      const _MacroCircle(
+                        color: Colors.grey,
+                        percent: 0.5,
+                      ),
+                 
+                      const SizedBox(width: 3),
+                 
+                      const _MacroCircle(
+                        color: Colors.black,
+                        percent: 0.6,
+                      ),
+                 
+                      const SizedBox(width: 50),
+                 
+                     
+                            SizedBox(
+                              width: 80,
+                              height: 19,
+                            
+                              child: ElevatedButton(
+                                onPressed: () {},
+                            
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                ),
+                            
+                                child: const Text(
+                                  "View",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ),
+                 
+                    ],
+                  ),
+               ),
+             SizedBox(
+              height: 6,
+             ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 11),
+                  child: Row(
+                    children: const [
+                  
+                      MicroDot(color: Colors.red),
+                      Text(" Protein 30g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                  
+                      MicroDot(color: Colors.blue),
+                      Text(" Carbs 10g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                  
+                      MicroDot(color: Colors.orange),
+                      Text(" Fats 30g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
+                    ],
+                  ),
                 )
               ],
             ),

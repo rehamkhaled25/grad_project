@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 class ContinueButton extends StatelessWidget {
-  final VoidCallback onPressed; // Function parameter
-
+  final VoidCallback onPressed;
+  final String txt;
 const ContinueButton({
     super.key,
-    required this.onPressed, // Must be provided
+    required this.onPressed, 
+    required this.txt
   });
 
   @override
@@ -15,7 +16,7 @@ const ContinueButton({
       width: double.infinity,
 
       child: ElevatedButton(
-        onPressed: onPressed, // Use the passed function
+        onPressed: onPressed, 
 
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.black,
@@ -24,8 +25,8 @@ const ContinueButton({
           ),
         ),
 
-        child: const Text(
-          "Continue",
+        child: Text(
+          txt,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

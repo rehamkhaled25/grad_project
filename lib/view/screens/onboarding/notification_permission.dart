@@ -125,7 +125,7 @@ class _NotificationPermissionPageState
               onPressed: () {
                 // Navigate to next page
 
-              },
+              },txt: "Continue",
             ),
           ),
         ],

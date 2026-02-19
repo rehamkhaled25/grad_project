@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/onboarding/allset.dart';
 import 'package:graduation_project/view/screens/onboarding/notification_permission.dart';
+import 'package:graduation_project/view/screens/onboarding/onboarding_gender.dart';
 import 'package:graduation_project/view/screens/onboarding/onboarding_goal.dart';
 import 'package:graduation_project/view/screens/onboarding/splash.dart';
+import 'package:graduation_project/view/screens/payment/creditcardinfo.dart';
+import 'package:graduation_project/view/screens/payment/payment_application.dart';
 
 
 
@@ -22,7 +25,7 @@ class GraduationProjectApp extends StatelessWidget {
     return MaterialApp(
         
         title: 'Cal Ai',
-        home: HomeScreen(),
+        home: Creditcardinfo(),
         debugShowCheckedModeBanner: false,
       
       );
