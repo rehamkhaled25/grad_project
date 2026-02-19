@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/view/custom _widget/continue_button.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+import 'package:go_router/go_router.dart';
+import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 
 
 class OnboardingGoal extends StatefulWidget {
@@ -18,23 +18,24 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-               CustomAppbar(),
+              const CustomAppbar(currentStep: 5, totalSteps: 7),
 
-              // CONTENT
+              // Main content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: screenHeight * 0.04),
 
-                    Padding(
-                      padding: const EdgeInsets.only(left:8.0),
-                      child: const Text(
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8.0),
+                      child: Text(
                         "What is your goal?",
                         style: TextStyle(
                           fontSize: 28,
@@ -52,7 +53,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                       onTap: () => setState(() => selectedIndex = 0),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
 
                     GoalWidget(
                       image: "assets/images/chocolate-bar.png",
@@ -61,7 +62,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                       onTap: () => setState(() => selectedIndex = 1),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
 
                     GoalWidget(
                       image: "assets/images/trophy.png",
@@ -73,12 +74,15 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                 ),
               ),
 
-              
-              ContinueButton( onPressed: (){
-                //hena navigation ya bibo
-              },
-txt: "Continue",
-              ),
+             ContinueButton(
+  txt: "Continue",
+  onPressed: selectedIndex == -1
+      ? () {}   // ← empty function → button looks disabled
+      : () {
+          print("Selected goal index: $selectedIndex");
+          context.push('/onboardingNotification');
+        },
+),
 
               const SizedBox(height: 20),
             ],
@@ -88,6 +92,7 @@ txt: "Continue",
     );
   }
 }
+
 class GoalWidget extends StatelessWidget {
   final String image;
   final String name;
@@ -113,21 +118,17 @@ class GoalWidget extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: isSelected ? Colors.black : const Color(0xffEEEEEE),
+          border: isSelected ? Border.all(color: Colors.black, width: 1.5) : null,
         ),
         child: Row(
           children: [
-            Image.asset(
-              image,
-              width: 28,
-              height: 28,
-              
-            ),
-            const SizedBox(width: 12),
+            Image.asset(image, width: 32, height: 32),
+            const SizedBox(width: 16),
             Text(
               name,
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
                 color: isSelected ? Colors.white : const Color(0xff605A5A),
               ),
             ),
@@ -137,6 +138,3 @@ class GoalWidget extends StatelessWidget {
     );
   }
 }
-
-
-

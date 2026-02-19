@@ -114,7 +114,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      isLoggedIn = true; // user is now logged in
+                      AuthState.isLoggedIn = true; // user is now logged in
                       context.go('/home'); // navigate with go_router
 
                       // Add your sign-in logic here (API/Firebase)

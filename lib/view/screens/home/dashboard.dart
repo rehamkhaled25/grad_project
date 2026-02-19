@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
+
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
 class HomeScreen extends StatelessWidget {
-   HomeScreen({super.key});
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,102 +13,69 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: const BottomNavBar(),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
-
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                 children: [
-
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-
                     children: [
-
                       Text(
-                        "Hello, Mohanad",
+                        "Hello, Habiba",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       SizedBox(height: 4),
-
                       Text(
                         "Remember why you started..",
-                        style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-
                   const CircleAvatar(
                     radius: 22,
-
-                    backgroundImage: AssetImage(
-                      'assets/images/placeholder_profile.png',
-                    ),
+                    backgroundImage: AssetImage('assets/images/placeholder_profile.png'),
                   ),
                 ],
               ),
-
               const SizedBox(height: 25),
+
+              // Horizontal date picker
               SizedBox(
                 height: 70,
-
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-
                   itemCount: 8,
-
                   itemBuilder: (context, index) {
-
-                    final days = [
-                      "Sat", "Sun", "Mon", "Tue",
-                      "Wed", "Thu", "Fri", "Sat"
-                    ];
-
-                    final dates = [
-                      11, 12, 13, 14, 15, 16, 17, 18
-                    ];
-
-                    bool active =
-                        index == 2 || index == 3 || index == 4;
+                    final days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                    final dates = [11, 12, 13, 14, 15, 16, 17, 18];
+                    bool active = index == 2 || index == 3 || index == 4;
 
                     return Container(
                       margin: const EdgeInsets.only(right: 12),
-
                       child: Column(
                         children: [
-
                           CircleAvatar(
                             radius: 22,
-
-                            backgroundColor: active
-                                ? const Color(0xffD90C0C)
-                                : const Color(0xffDEDEDE),
-
+                            backgroundColor: active ? const Color(0xffD90C0C) : const Color(0xffDEDEDE),
                             child: Text(
                               dates[index].toString(),
-
                               style: TextStyle(
-                                color: active
-                                    ? Colors.white
-                                    : Colors.black,
+                                color: active ? Colors.white : Colors.black,
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 5),
-
                           Text(days[index]),
                         ],
                       ),
@@ -118,16 +86,13 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 25),
 
+              // Today's Progress Card
               Container(
                 width: size.width,
-
                 padding: const EdgeInsets.all(20),
-
                 decoration: BoxDecoration(
                   color: Colors.white,
-
                   borderRadius: BorderRadius.circular(25),
-
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -135,23 +100,15 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-
                 child: Column(
                   children: [
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                       children: const [
-
                         Text(
                           "Today's Progress",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-
                         Text(
                           "On Track",
                           style: TextStyle(
@@ -161,71 +118,36 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
-
                     CircularPercentIndicator(
                       radius: 95,
-
                       lineWidth: 8,
-
                       percent: 1600 / 2400,
-
                       animation: true,
-
-                      circularStrokeCap:
-                          CircularStrokeCap.round,
-
-                      progressColor:
-                          const Color(0xffD90C0C),
-
-                      backgroundColor:
-                          Colors.grey.shade300,
-
-                      center: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-
-                        children: const [
-
+                      circularStrokeCap: CircularStrokeCap.round,
+                      progressColor: const Color(0xffD90C0C),
+                      backgroundColor: Colors.grey.shade300,
+                      center: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Text(
                             "1600",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                           ),
-
                           Text("of 2400"),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceAround,
-
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: const [
-
-                        ProgressItem(
-                          img: 'assets/images/bultorone fireee.png',
-                          label: "400\nBurned",
-                        ),
-
-                        ProgressItem(
-                          img: 'assets/images/target.png',
-                          label: "800\nRemaining",
-                        ),
-
-                        ProgressItem(
-                          img: 'assets/images/chart.png',
-                          label: "66.6%\nProgress",
-                        ),
+                        ProgressItem(img: 'assets/images/bultorone fireee.png', label: "400\nBurned"),
+                        ProgressItem(img: 'assets/images/target.png', label: "800\nRemaining"),
+                        ProgressItem(img: 'assets/images/chart.png', label: "66.6%\nProgress"),
                       ],
                     ),
-     // two dots here as ui that are sliders that make me go to another page 
+                    // TODO: Add your two dot sliders / page indicators here later
                   ],
                 ),
               ),
@@ -233,22 +155,15 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 30),
               const Text(
                 "Recently Logged",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-
               const SizedBox(height: 15),
 
               SizedBox(
                 height: 270,
-
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-
                   itemCount: 3,
-
                   itemBuilder: (context, index) {
                     return const FoodCard();
                   },
@@ -261,159 +176,92 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
 class FoodCard extends StatelessWidget {
   const FoodCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: 240,
-
       margin: const EdgeInsets.only(right: 15),
-
       decoration: BoxDecoration(
         color: Colors.white,
-
         borderRadius: BorderRadius.circular(20),
-
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-
         children: [
-
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
-
-            child: Image(image: AssetImage('assets/images/food log.png'))
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Image.asset('assets/images/food log.png', fit: BoxFit.cover),
           ),
-
           Padding(
             padding: const EdgeInsets.all(12),
-
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  "Power Breakfast Bowl",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
 
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    const Text(
-                      "Power Breakfast Bowl",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      "8:00 AM",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                     Column(
-                       children: [
-                         Text(
-                          "520 ",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                          ),
-                          Text("Calories",style: TextStyle(fontSize: 8,fontWeight: FontWeight.bold),)
-                       ],
-                     ),
+                    Text(
+                      "520 cal",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
                   ],
                 ),
+                const SizedBox(height: 12),
 
-                Padding(
-                  padding: const EdgeInsets.only(left : 11.0),
-                  child: Text(
-                        "8:00 AM",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold
-                        ),
-                      ),
+                Row(
+                  children: const [
+                    _MacroCircle(color: Colors.red, percent: 0.7),
+                    SizedBox(width: 4),
+                    _MacroCircle(color: Colors.grey, percent: 0.5),
+                    SizedBox(width: 4),
+                    _MacroCircle(color: Colors.black, percent: 0.6),
+                  ],
                 ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: const [
+                    MicroDot(color: Colors.red),
+                    Text(" Protein 30g  ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    MicroDot(color: Colors.blue),
+                    Text(" Carbs 10g  ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    MicroDot(color: Colors.orange),
+                    Text(" Fats 30g  ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
                 SizedBox(
-                  height:10 ,
+                  width: double.infinity,
+                  height: 36,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // TODO: Navigate to details page
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("View Details", style: TextStyle(color: Colors.white)),
+                  ),
                 ),
-
-               Padding(
-                 padding: const EdgeInsets.only(left :11.0),
-                 child: Row(
-                    children: [
-                 
-                      const _MacroCircle(
-                        color: Colors.red,
-                        percent: 0.7,
-                      ),
-                 
-                      const SizedBox(width: 3),
-                 
-                      const _MacroCircle(
-                        color: Colors.grey,
-                        percent: 0.5,
-                      ),
-                 
-                      const SizedBox(width: 3),
-                 
-                      const _MacroCircle(
-                        color: Colors.black,
-                        percent: 0.6,
-                      ),
-                 
-                      const SizedBox(width: 50),
-                 
-                     
-                            SizedBox(
-                              width: 80,
-                              height: 19,
-                            
-                              child: ElevatedButton(
-                                onPressed: () {},
-                            
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                ),
-                            
-                                child: const Text(
-                                  "View",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ),
-                 
-                    ],
-                  ),
-               ),
-             SizedBox(
-              height: 6,
-             ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 11),
-                  child: Row(
-                    children: const [
-                  
-                      MicroDot(color: Colors.red),
-                      Text(" Protein 30g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-                  
-                      MicroDot(color: Colors.blue),
-                      Text(" Carbs 10g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-                  
-                      MicroDot(color: Colors.orange),
-                      Text(" Fats 30g  ",style:TextStyle(fontSize:10,fontWeight:FontWeight.bold)),
-                    ],
-                  ),
-                )
               ],
             ),
           ),
@@ -422,95 +270,60 @@ class FoodCard extends StatelessWidget {
     );
   }
 }
-class _MacroCircle extends StatelessWidget {
 
+class _MacroCircle extends StatelessWidget {
   final Color color;
   final double percent;
 
-  const _MacroCircle({
-    required this.color,
-    required this.percent,
-  });
+  const _MacroCircle({required this.color, required this.percent, super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
       children: [
-
         CircularPercentIndicator(
           radius: 10,
-
           lineWidth: 3,
-
           percent: percent,
-
           animation: true,
-
-          circularStrokeCap:
-              CircularStrokeCap.round,
-
+          circularStrokeCap: CircularStrokeCap.round,
           progressColor: color,
-
-          backgroundColor:
-              color.withOpacity(0.2),
+          backgroundColor: color.withOpacity(0.2),
         ),
-
-        const SizedBox(height: 4),
       ],
     );
   }
 }
 
 class MicroDot extends StatelessWidget {
-
   final Color color;
 
-  const MicroDot({
-    super.key,
-    required this.color,
-  });
+  const MicroDot({super.key, required this.color});
 
   @override
   Widget build(BuildContext context) {
-
-    return CircleAvatar(
-      radius: 5,
-      backgroundColor: color,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: CircleAvatar(radius: 5, backgroundColor: color),
     );
   }
 }
 
 class ProgressItem extends StatelessWidget {
-
   final String img;
   final String label;
 
-  const ProgressItem({
-    super.key,
-    required this.img,
-    required this.label,
-  });
+  const ProgressItem({super.key, required this.img, required this.label});
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
       children: [
-
-        Image.asset(
-          img,
-          width: 28,
-          height: 28,
-        ),
-
+        Image.asset(img, width: 28, height: 28),
         const SizedBox(height: 6),
-
         Text(
           label,
-
           textAlign: TextAlign.center,
-
           style: const TextStyle(fontSize: 11),
         ),
       ],
