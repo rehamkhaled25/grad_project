@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 
 class FoodScannerScreen extends StatefulWidget {
@@ -9,541 +10,239 @@ class FoodScannerScreen extends StatefulWidget {
 }
 
 class _FoodScannerScreenState extends State<FoodScannerScreen> {
+  CameraController? _controller;
+  List<CameraDescription>? _cameras;
   String _activeMode = "Scan Food";
+  bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  Future<void> _initializeCamera() async {
+    _cameras = await availableCameras();
+    if (_cameras != null && _cameras!.isNotEmpty) {
+      _controller = CameraController(
+        _cameras![0],
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      await _controller!.initialize();
+      if (mounted) setState(() {});
+    }
+  }
 
   Future<void> _pickFromGallery() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        debugPrint('Image picked from gallery: ${image.path}');
-        _processImage(image.path);
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _activeMode = "Gallery";
+        _isAnalyzing = true;
+      });
+
+      // Simulate the same analysis delay you have for the camera
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+        _showResultsBottomSheet();
       }
-    } catch (e) {
-      debugPrint("Error picking from gallery: $e");
-      _showErrorSnackBar("Failed to pick image from gallery");
     }
   }
 
-  Future<void> _takePicture() async {
-    try {
-      _showLoadingDialog();
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
+  void _onCapture() async {
+    if (_isAnalyzing) return;
 
-      if (context.mounted) Navigator.pop(context);
+    setState(() => _isAnalyzing = true);
 
-      if (image != null) {
-        debugPrint('Image captured: ${image.path}');
-        _processImage(image.path);
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.pop(context);
-      debugPrint("Error taking picture: $e");
-      _showErrorSnackBar("Failed to take picture. Please try again.");
+    // Simulate Network/AI Analysis Delay
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
+      setState(() => _isAnalyzing = false);
+      _showResultsBottomSheet();
     }
-  }
-
-  void _processImage(String path) {
-    _showLoadingDialog(message: "Analyzing food...");
-
-    Future.delayed(const Duration(seconds: 2), () {
-      if (context.mounted) {
-        Navigator.pop(context);
-        _showResultsBottomSheet({
-          'name': 'Sample Food',
-          'calories': 250,
-          'protein': 15,
-          'carbs': 30,
-          'fat': 8,
-        });
-      }
-    });
-  }
-
-  void _showLoadingDialog({String message = "Processing..."}) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(color: Colors.green),
-              const SizedBox(height: 16),
-              Text(message, style: const TextStyle(fontSize: 16)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showResultsBottomSheet(Map<String, dynamic> nutritionData) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                'Nutrition Facts',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Text(
-              nutritionData['name'] ?? 'Unknown Food',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 2,
-                mainAxisSpacing: 15,
-                crossAxisSpacing: 15,
-                childAspectRatio: 1.5,
-                children: [
-                  _buildNutritionCard(
-                    'Calories',
-                    '${nutritionData['calories']} kcal',
-                    Colors.orange,
-                    Icons.local_fire_department,
-                  ),
-                  _buildNutritionCard(
-                    'Protein',
-                    '${nutritionData['protein']} g',
-                    Colors.blue,
-                    Icons.fitness_center,
-                  ),
-                  _buildNutritionCard(
-                    'Carbs',
-                    '${nutritionData['carbs']} g',
-                    Colors.green,
-                    Icons.grass,
-                  ),
-                  _buildNutritionCard(
-                    'Fat',
-                    '${nutritionData['fat']} g',
-                    Colors.red,
-                    Icons.opacity,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Added to daily log!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Add to Daily Log',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNutritionCard(
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 3D Camera Illustration Background
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.blueGrey.shade900,
-                  Colors.black,
-                  Colors.blueGrey.shade800,
-                ],
-              ),
+          // 1. Camera Preview
+          Positioned.fill(child: CameraPreview(_controller!)),
+
+          // 2. Translucent Overlay (The "Dimmed" effect around the frame)
+          ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.3),
+              BlendMode.srcOut,
             ),
             child: Stack(
               children: [
-                // Camera lens rings
-                Center(
-                  child: Container(
-                    width: 320,
-                    height: 320,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.1),
-                          Colors.transparent,
-                          Colors.transparent,
-                        ],
-                        stops: const [0.1, 0.3, 1.0],
-                      ),
-                    ),
-                  ),
+                Container(
+                  decoration: const BoxDecoration(color: Colors.transparent),
                 ),
-
-                // Main camera lens
-                Center(
+                Align(
+                  alignment: Alignment.center,
                   child: Container(
-                    width: 280,
+                    margin: const EdgeInsets.only(
+                      bottom: 100,
+                    ), // Center it higher
                     height: 280,
+                    width: 280,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: SweepGradient(
-                        colors: [
-                          Colors.blueGrey.shade700,
-                          Colors.blueGrey.shade500,
-                          Colors.blueGrey.shade700,
-                          Colors.blueGrey.shade900,
-                          Colors.blueGrey.shade700,
-                        ],
-                        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Inner lens
-                        Container(
-                          width: 220,
-                          height: 220,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                Colors.blueGrey.shade300,
-                                Colors.blueGrey.shade600,
-                                Colors.blueGrey.shade800,
-                              ],
-                              stops: const [0.0, 0.5, 1.0],
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 2,
-                            ),
-                          ),
-                        ),
-
-                        // Lens reflection
-                        Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.4),
-                                Colors.transparent,
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.3, 1.0],
-                            ),
-                          ),
-                        ),
-
-                        // Aperture blades
-                        ...List.generate(8, (index) {
-                          return Transform.rotate(
-                            angle: (index * 45) * 3.14159 / 180,
-                            child: Container(
-                              width: 160,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    Colors.black.withOpacity(0.3),
-                                    Colors.transparent,
-                                    Colors.black.withOpacity(0.3),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-
-                        // Center dot (reflection)
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.5),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
-
-                // Small floating elements (depth effect)
-                ...List.generate(20, (index) {
-                  final randomX = (index * 37) % 300 - 150;
-                  final randomY = (index * 73) % 300 - 150;
-                  return Positioned(
-                    left: MediaQuery.of(context).size.width / 2 + randomX,
-                    top: MediaQuery.of(context).size.height / 2 + randomY,
-                    child: Container(
-                      width: 2,
-                      height: 2,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1 + (index * 0.01)),
-                      ),
-                    ),
-                  );
-                }),
               ],
             ),
           ),
 
-          // Dark overlay to make UI elements visible
-          Container(color: Colors.black.withOpacity(0.3)),
+          // 3. White Frame Corners
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 100),
+              height: 280,
+              width: 280,
+              child: CustomPaint(painter: ScannerFramePainter()),
+            ),
+          ),
 
-          // Top UI
+          // 4. Top UI (Logo and Close)
           Positioned(
-            top: 50,
+            top: 60,
             left: 20,
             right: 20,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // CircleAvatar(
-                //   backgroundColor: Colors.black38,
-                //   child: IconButton(
-                //     icon: const Icon(Icons.close, color: Colors.white),
-                //     onPressed: () => Navigator.pop(context),
-                //   ),
-                // ),
-                Center(
-                  child: const Text(
-                    'logoipsum',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                const CircleAvatar(
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.close, color: Colors.white),
                 ),
-                const SizedBox(width: 40),
-              ],
-            ),
-          ),
-
-          // Scanning box
-          Center(
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _activeMode == "Barcode"
-                      ? Colors.yellow
-                      : Colors.white,
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: Text(
-                  _activeMode == "Barcode"
-                      ? "Scan Barcode"
-                      : "Place food in frame",
-                  style: const TextStyle(
+                const Text(
+                  "logoipsum",
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
-              ),
-            ),
-          ),
-
-          // Navigation options
-          Positioned(
-            bottom: 140,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildOptionTab(Icons.restaurant, "Scan Food"),
-                _buildOptionTab(Icons.qr_code_2, "Barcode"),
-                _buildOptionTab(Icons.photo_library, "Gallery"),
+                const SizedBox(width: 40), // Balance
               ],
             ),
           ),
 
-          // Action button
+          // 5. Bottom Controls
           Positioned(
-            bottom: 40,
+            bottom: 0,
             left: 0,
             right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: _activeMode == "Gallery"
-                    ? _pickFromGallery
-                    : _takePicture,
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                  ),
-                  child: CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      _activeMode == "Gallery"
-                          ? Icons.photo_library
-                          : Icons.camera_alt,
-                      color: Colors.black,
-                      size: 30,
+            child: Container(
+              padding: const EdgeInsets.only(bottom: 40, top: 20),
+              child: Column(
+                children: [
+                  // Mode Selector
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildModeTab(Icons.crop_free, "Scan Food"),
+                        _buildModeTab(Icons.barcode_reader, "Barcode"),
+                        _buildModeTab(Icons.image_outlined, "Gallery"),
+                        _buildModeTab(Icons.search, "Search"),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  // Capture Button
+                  GestureDetector(
+                    onTap: _onCapture,
+                    child: Container(
+                      height: 80,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: Center(
+                        child: Container(
+                          height: 65,
+                          width: 65,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+
+          if (_isAnalyzing)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildOptionTab(IconData icon, String label) {
+  Widget _buildModeTab(IconData icon, String label) {
     bool isActive = _activeMode == label;
     return GestureDetector(
       onTap: () {
-        setState(() => _activeMode = label);
+        if (label == "Gallery") {
+          _pickFromGallery(); // Trigger gallery picker
+        } else {
+          setState(() => _activeMode = label);
+        }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.white24,
-          borderRadius: BorderRadius.circular(25),
+          color: isActive ? Colors.white : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: isActive ? Colors.black : Colors.white),
-            const SizedBox(width: 8),
+            Icon(icon, color: isActive ? Colors.black : Colors.white, size: 20),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: isActive ? Colors.black : Colors.white,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -552,4 +251,246 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       ),
     );
   }
+
+  void _showResultsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _NutritionResultSheet(),
+    );
+  }
+}
+
+// Nutrition Result Sheet (Analysis Image)
+class _NutritionResultSheet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const Text("9:14 am", style: TextStyle(color: Colors.grey)),
+                const SizedBox(height: 8),
+                const Text(
+                  "Grilled Chicken, Rice, Salad, Avocado platter",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+
+                // Calories Card
+                _buildStatTile(
+                  "Calories",
+                  "600",
+                  Icons.local_fire_department,
+                  Colors.orange,
+                ),
+
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMacroTile("Protein", "50g", Colors.red),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMacroTile("Carbs", "50g", Colors.orange),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMacroTile("Fats", "50g", Colors.blue),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 25),
+                const Text(
+                  "Health score",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: 0.7,
+                    minHeight: 10,
+                    color: Colors.green,
+                    backgroundColor: Colors.grey[300],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 18,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      "Contains Avocado",
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.all(16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text("Fix results"),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.all(16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text("Done"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatTile(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.grey)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroTile(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Custom Painter for the L-shaped corners
+class ScannerFramePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke;
+    const length = 40.0;
+
+    // Top Left
+    canvas.drawLine(const Offset(0, 0), const Offset(length, 0), paint);
+    canvas.drawLine(const Offset(0, 0), const Offset(0, length), paint);
+
+    // Top Right
+    canvas.drawLine(
+      Offset(size.width, 0),
+      Offset(size.width - length, 0),
+      paint,
+    );
+    canvas.drawLine(Offset(size.width, 0), Offset(size.width, length), paint);
+
+    // Bottom Left
+    canvas.drawLine(Offset(0, size.height), Offset(length, size.height), paint);
+    canvas.drawLine(
+      Offset(0, size.height),
+      Offset(0, size.height - length),
+      paint,
+    );
+
+    // Bottom Right
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width - length, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width, size.height - length),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

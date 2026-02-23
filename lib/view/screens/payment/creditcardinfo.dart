@@ -10,17 +10,15 @@ class Creditcardinfo extends StatefulWidget {
 }
 
 class _CreditcardinfoState extends State<Creditcardinfo> {
- 
   bool isSaved = false;
 
   @override
   Widget build(BuildContext context) {
-   
     double screenHeight = MediaQuery.of(context).size.height;
     // double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      body: SingleChildScrollView( 
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
           child: Column(
@@ -31,42 +29,66 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.black,
+                      size: 24,
+                    ),
                   ),
                   const Text(
                     "Payment method",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  )
+                  ),
                 ],
               ),
               SizedBox(height: screenHeight * 0.02),
               const Text(
                 "      Name",
-                style: TextStyle(fontSize: 16, color: Color(0xff8E8E93), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xff8E8E93),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               const CustomTextField(label: "What's your name ?"),
-              
-              SizedBox(height: screenHeight * 0.05), 
+
+              SizedBox(height: screenHeight * 0.05),
               const Text(
                 "Choose Payment Method",
-                style: TextStyle(color: Color(0xff8E8E93), fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Color(0xff8E8E93),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: const [
-                  custom_image_holder(img: "assets/images/mastercard-full-svgrepo-com 1.png"),
-                  custom_image_holder(img: 'assets/images/paypal-svgrepo-com 1.png'),
-                  custom_image_holder(img: 'assets/images/google-pay-svgrepo-com 2.png'),
-                  custom_image_holder(img: 'assets/images/apple-pay-svgrepo-com 1.png'),
+                  custom_image_holder(
+                    img: "assets/images/mastercard-full-svgrepo-com 1.png",
+                  ),
+                  custom_image_holder(
+                    img: 'assets/images/paypal-svgrepo-com 1.png',
+                  ),
+                  custom_image_holder(
+                    img: 'assets/images/google-pay-svgrepo-com 2.png',
+                  ),
+                  custom_image_holder(
+                    img: 'assets/images/apple-pay-svgrepo-com 1.png',
+                  ),
                 ],
               ),
-              
-              SizedBox(height: screenHeight * 0.07), 
+
+              SizedBox(height: screenHeight * 0.07),
               const Text(
                 "Card Number",
-                style: TextStyle(fontSize: 16, color: Color(0xff8E8E93), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xff8E8E93),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               const CustomTextField(
@@ -74,16 +96,23 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 hasImage: true,
                 image: "assets/images/mastercard-full-svgrepo-com 1 (1).png",
               ),
-              
-              SizedBox(height: screenHeight * 0.06), 
+
+              SizedBox(height: screenHeight * 0.06),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded( 
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text("CVV", style: TextStyle(fontSize: 16, color: Color(0xff8E8E93), fontWeight: FontWeight.bold)),
+                        Text(
+                          "CVV",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xff8E8E93),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         CustomTextField(label: "123"),
                       ],
                     ),
@@ -93,19 +122,26 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text("Expires", style: TextStyle(fontSize: 16, color: Color(0xff8E8E93), fontWeight: FontWeight.bold)),
+                        Text(
+                          "Expires",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xff8E8E93),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         CustomTextField(label: "MM/YY"),
                       ],
                     ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
               Row(
                 children: [
                   Checkbox(
-                    value: isSaved, 
+                    value: isSaved,
                     onChanged: (bool? newValue) {
                       setState(() {
                         isSaved = newValue!;
@@ -115,12 +151,16 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                   ),
                   const Text(
                     "Save credit card information",
-                    style: TextStyle(fontSize: 14, color: Color(0xff8E8E93), fontWeight: FontWeight.bold),
-                  )
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xff8E8E93),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               SizedBox(height: screenHeight * 0.04),
-              ContinueButton(onPressed: () {}, txt: "Save")
+              ContinueButton(onPressed: () {}, txt: "Save"),
             ],
           ),
         ),
@@ -149,10 +189,10 @@ class CustomTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: hasWidth ? width : double.infinity,
-      height: 55, 
+      height: 55,
       child: TextField(
         decoration: InputDecoration(
-          hintText: label, 
+          hintText: label,
           hintStyle: const TextStyle(fontSize: 15, color: Color(0xff8E8E93)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
