@@ -16,8 +16,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   // System & services section switches
   bool _appUpdates = true;
   bool _billReminder = true;
-
-  // Promotion section switches
+  bool _promotion = false;
   bool _discountAvailable = false;
   bool _paymentRequest = true;
 
@@ -35,199 +34,177 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Common',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
+          // Common Section
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SwitchListTile(
-                  title: const Text('General Notification'),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Common',
+                    style: TextStyle(
+                      fontSize: 16, // Slightly larger
+                      fontWeight: FontWeight.bold, // Bold
+                      color: Colors.black87, // Darker color
+                      letterSpacing: 0.5, // Optional: adds slight spacing
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildSwitchTile(
+                  title: 'General Notification',
                   value: _generalNotification,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _generalNotification = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.notifications_none,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
                 ),
-                const Divider(height: 0, indent: 56),
-                SwitchListTile(
-                  title: const Text('Sound'),
+                _buildSwitchTile(
+                  title: 'Sound',
                   value: _sound,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _sound = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.volume_up, color: Colors.green.shade700),
-                  ),
                 ),
-                const Divider(height: 0, indent: 56),
-                SwitchListTile(
-                  title: const Text('Vibrate'),
+                _buildSwitchTile(
+                  title: 'Vibrate',
                   value: _vibrate,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _vibrate = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.vibration, color: Colors.purple.shade700),
-                  ),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 24),
-          const Text(
-            'System & services update',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200),
+
+          // System & Services Section
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SwitchListTile(
-                  title: const Text('App updates'),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'System & Services',
+                    style: TextStyle(
+                      fontSize: 16, // Slightly larger
+                      fontWeight: FontWeight.bold, // Bold
+                      color: Colors.black87, // Darker color
+                      letterSpacing: 0.5, // Optional: adds slight spacing
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _buildSwitchTile(
+                  title: 'App Updates',
                   value: _appUpdates,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _appUpdates = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.system_update,
-                      color: Colors.orange.shade700,
-                    ),
-                  ),
                 ),
-                const Divider(height: 0, indent: 56),
-                SwitchListTile(
-                  title: const Text('Bill Reminder'),
+                _buildSwitchTile(
+                  title: 'Bill Reminder',
                   value: _billReminder,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _billReminder = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.receipt, color: Colors.red.shade700),
-                  ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Promotion',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200),
-            ),
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Discount Available'),
+                _buildSwitchTile(
+                  title: 'Promotion',
+                  value: _promotion,
+                  onChanged: (value) {
+                    setState(() {
+                      _promotion = value;
+                    });
+                  },
+                ),
+                _buildSwitchTile(
+                  title: 'Discount Available',
                   value: _discountAvailable,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _discountAvailable = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.discount, color: Colors.teal.shade700),
-                  ),
                 ),
-                const Divider(height: 0, indent: 56),
-                SwitchListTile(
-                  title: const Text('Payment Request'),
+                _buildSwitchTile(
+                  title: 'Payment Request',
                   value: _paymentRequest,
-                  onChanged: (bool value) {
+                  onChanged: (value) {
                     setState(() {
                       _paymentRequest = value;
                     });
                   },
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.payment, color: Colors.indigo.shade700),
-                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.normal, // Normal weight
+          color: Colors.black, // Lighter color than header
+        ),
+      ),
+      value: value,
+      onChanged: onChanged,
+      activeColor: Colors.white,
+      activeTrackColor: Colors.black,
+      inactiveThumbColor: Colors.white,
+      inactiveTrackColor: Colors.grey.shade200,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
 }
