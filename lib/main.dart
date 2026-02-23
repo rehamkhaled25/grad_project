@@ -3,6 +3,8 @@ import 'package:graduation_project/core/app_router.dart';
 
 
 
+
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const GraduationProjectApp());
@@ -18,6 +20,7 @@ class GraduationProjectApp extends StatelessWidget {
    return MaterialApp.router(
       title: 'Cal Ai',
       routerConfig: AppRouter.router,
+    // home: HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
 

@@ -65,7 +65,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
     onPressed: selectedGender == null
         ? () {}                             // ← empty function = disabled look
         : () {
-            print("Selected Gender: $selectedGender");
+            // print("Selected Gender: $selectedGender");
             context.push('/onboardingBirthdate');
           },
   ),

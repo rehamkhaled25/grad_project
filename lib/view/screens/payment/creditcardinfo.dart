@@ -17,7 +17,7 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
   Widget build(BuildContext context) {
    
     double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
+    // double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       body: SingleChildScrollView( 
@@ -47,7 +47,7 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
               const SizedBox(height: 6),
               const CustomTextField(label: "What's your name ?"),
               
-              SizedBox(height: screenHeight * 0.05), // Dynamic 50
+              SizedBox(height: screenHeight * 0.05), 
               const Text(
                 "Choose Payment Method",
                 style: TextStyle(color: Color(0xff8E8E93), fontSize: 16, fontWeight: FontWeight.bold),

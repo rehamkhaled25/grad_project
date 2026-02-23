@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_input_field.dart';
 import 'package:graduation_project/view/custom%20_widget/social_image_button.dart';
-import 'sign_in_screen.dart'; // your sign in screen
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

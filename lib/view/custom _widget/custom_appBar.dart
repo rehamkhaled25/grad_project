@@ -98,10 +98,10 @@ class CustomAppbar extends StatelessWidget {
             ),
           ),
 
-          IconButton(
-            icon: const Icon(Icons.language, color: Colors.black, size: 24),
-            onPressed: () {}, // Add language selection logic
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.language, color: Colors.black, size: 24),
+          //   onPressed: () {}, // Add language selection logic
+          // ),
         ],
       ),
     );
