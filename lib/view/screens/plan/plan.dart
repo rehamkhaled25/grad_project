@@ -208,10 +208,7 @@ class CustomItem extends StatelessWidget {
               backgroundColor: const Color.fromARGB(255, 208, 205, 205),
               center: Text(text2, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             ),
-            const Align(
-              alignment: Alignment.bottomRight,
-              child: Icon(Icons.edit, size: 14),
-            )
+           
           ],
         ),
       ),

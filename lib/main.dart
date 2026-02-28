@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/core/app_router.dart';
+import 'package:graduation_project/view/screens/home/dashboard.dart';
+import 'package:graduation_project/view/screens/home/log_food.dart';
+import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
 
 
 
@@ -17,11 +20,14 @@ class GraduationProjectApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
 
-   return MaterialApp.router(
+   return MaterialApp(
       title: 'Cal Ai',
-      routerConfig: AppRouter.router,
-    // home: HomeScreen(),
+      // routerConfig: AppRouter.router,
+    home: LogFood(),
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'Figtree'
+      ),
     );
 
   }
