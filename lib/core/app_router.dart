@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
+import 'package:graduation_project/view/screens/home/documents_screen.dart';
+import 'package:graduation_project/view/screens/home/notifications_screen.dart';
+import 'package:graduation_project/view/screens/home/profile_screen.dart';
+import 'package:graduation_project/view/screens/home/settings_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/allset.dart';
 import 'package:graduation_project/view/screens/onboarding/birthdate_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/notification_permission.dart';
@@ -12,6 +17,7 @@ import 'package:graduation_project/view/screens/onboarding/screen_height.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_weight.dart';
 import 'package:graduation_project/view/screens/splash/splash.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
+import 'package:graduation_project/view/screens/home/scanner.dart';
 
 // Simulated auth & onboarding state (replace with actual state management)
 class AuthState {
@@ -23,6 +29,18 @@ class AuthState {
 
 final GlobalKey<NavigatorState> globalNavigatorKey =
     GlobalKey<NavigatorState>();
+
+// Create a scaffold with bottom nav bar
+class ScaffoldWithBottomNavBar extends StatelessWidget {
+  final Widget child;
+
+  const ScaffoldWithBottomNavBar({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: child, bottomNavigationBar: const BottomNavBar());
+  }
+}
 
 abstract class AppRouter {
   static GoRouter router = GoRouter(
@@ -42,23 +60,12 @@ abstract class AppRouter {
         // If logged in and trying to access auth/onboarding pages, redirect to home
         if (location == '/login' ||
             location == '/register' ||
-            location.startsWith('/onboarding') || // Changed from '/onboarding/'
+            location.startsWith('/onboarding') ||
             location == '/subscription') {
           return '/home';
         }
         return null;
       }
-
-      // Not logged in - check registration flow
-      // if (AuthState.isRegistered && !AuthState.finishedOnboarding) {
-      //   // If registered but onboarding not finished, only allow onboarding pages
-      //   // Check if location starts with any onboarding route
-      //   if (!location.startsWith('/onboarding')) {
-      //     // Changed from '/onboarding/'
-      //     return '/onboardingGender';
-      //   }
-      //   return null;
-      // }
 
       // Not registered - only allow auth pages
       if (!AuthState.isRegistered) {
@@ -72,14 +79,12 @@ abstract class AppRouter {
       return null;
     },
     routes: [
-      // Splash route
+      // Public routes (no bottom nav)
       GoRoute(
         path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
       ),
-
-      // Auth routes
       GoRoute(
         path: '/login',
         name: 'login',
@@ -127,19 +132,55 @@ abstract class AppRouter {
         name: 'onboarding_allset',
         builder: (context, state) => const AllSet(),
       ),
-
-      // Subscription route
       GoRoute(
         path: '/subscription',
         name: 'subscription',
         builder: (context, state) => const TrialSubscriptionPage(),
       ),
-
-      // Home route
       GoRoute(
-        path: '/home',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
+
+      // Protected routes with bottom navigation bar
+      ShellRoute(
+        builder: (context, state, child) {
+          return ScaffoldWithBottomNavBar(child: child);
+        },
+        routes: [
+          GoRoute(
+            path: '/home',
+            name: 'home',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: HomeScreen(), // Make sure HomeScreen is your dashboard
+            ),
+          ),
+          GoRoute(
+            path: '/documents',
+            name: 'documents',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DocumentsScreen()),
+          ),
+          GoRoute(
+            path: '/foodScanner',
+            name: 'food_scanner',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: FoodScannerScreen()),
+          ),
+          GoRoute(
+            path: '/notifications',
+            name: 'notifications',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: NotificationsScreen()),
+          ),
+          GoRoute(
+            path: '/settings',
+            name: 'settings',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SettingsScreen()),
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) =>
@@ -147,7 +188,7 @@ abstract class AppRouter {
   );
 }
 
-// Add these helper methods to your AppRouter class
+// Navigation helpers
 extension NavigationHelpers on BuildContext {
   void goToLogin() => go('/login');
   void goToRegister() => go('/register');
@@ -160,6 +201,11 @@ extension NavigationHelpers on BuildContext {
   void goToOnboardingNotification() => go('/onboardingNotification');
   void goToOnboardingAllSet() => go('/onboardingAllset');
   void goToSubscription() => go('/subscription');
+  void goToFoodScanner() => go('/foodScanner');
+  void goToDocuments() => go('/documents');
+  void goToNotifications() => go('/notifications');
+  void goToSettings() => go('/settings');
+  void goToProfile() => go('/profile');
 
   void logout() {
     AuthState.isLoggedIn = false;

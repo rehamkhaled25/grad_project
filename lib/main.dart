@@ -20,10 +20,10 @@ class GraduationProjectApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
 
-   return MaterialApp(
+   return MaterialApp.router(
       title: 'Cal Ai',
-      // routerConfig: AppRouter.router,
-    home: LogFood(),
+      routerConfig: AppRouter.router,
+    // home: LogFood(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Figtree'
