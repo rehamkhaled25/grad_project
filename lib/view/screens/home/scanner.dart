@@ -1,6 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:graduation_project/models/food_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+
+
 
 class FoodScannerScreen extends StatefulWidget {
   const FoodScannerScreen({super.key});
@@ -15,6 +22,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   String _activeMode = "Scan Food";
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -22,35 +30,112 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   Future<void> _initializeCamera() async {
-    _cameras = await availableCameras();
-    if (_cameras != null && _cameras!.isNotEmpty) {
-      _controller = CameraController(
-        _cameras![0],
-        ResolutionPreset.high,
-        enableAudio: false,
+    try {
+      _cameras = await availableCameras();
+      if (_cameras != null && _cameras!.isNotEmpty) {
+        _controller = CameraController(
+          _cameras![0],
+          ResolutionPreset.high,
+          enableAudio: false,
+          imageFormatGroup: ImageFormatGroup.jpeg,
+        );
+        await _controller!.initialize();
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      debugPrint("Camera Init Error: $e");
+    }
+  }
+
+  
+  Future<void> _processImageForAI(XFile imageFile) async {
+    if (_isAnalyzing) return;
+    setState(() => _isAnalyzing = true);
+
+    try {
+      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? "";
+      if (apiKey.isEmpty) throw "API Key is missing from .env";
+
+     
+      final model = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: apiKey,
+        generationConfig: GenerationConfig(
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        ),
       );
-      await _controller!.initialize();
-      if (mounted) setState(() {});
+
+      final imageBytes = await imageFile.readAsBytes();
+
+      final prompt = [
+        Content.multi([
+          TextPart("""Analyze this food image and return a JSON object:
+          {
+            "meal_name": "name of food",
+            "total_calories": integer,
+            "total_protein": number,
+            "total_carbs": number,
+            "total_fat": number,
+            "health_score": integer (1-10),
+            "health_tip": "brief advice"
+          }
+          IMPORTANT: Return ONLY the JSON. No markdown blocks."""),
+          DataPart('image/jpeg', imageBytes),
+        ])
+      ];
+
+      final response = await model.generateContent(prompt);
+
+      if (response.text == null || response.text!.isEmpty) {
+        throw "AI returned an empty string.";
+      }
+
+      String cleanJson = response.text!.trim();
+      if (cleanJson.startsWith("```")) {
+        cleanJson = cleanJson.replaceAll(RegExp(r'```json|```'), '').trim();
+      }
+
+      final Map<String, dynamic> data = jsonDecode(cleanJson);
+      final report = NutritionReport.fromJson(data);
+
+      if (mounted) {
+        _showResultsBottomSheet(report);
+      }
+    } catch (e) {
+      debugPrint("AI_FAILURE_LOG: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Analysis Failed: $e"), backgroundColor: Colors.redAccent),
+      );
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+  }
+
+  void _onCapture() async {
+    if (_controller == null || !_controller!.value.isInitialized || _isAnalyzing) return;
+    try {
+      final image = await _controller!.takePicture();
+      _processImageForAI(image);
+    } catch (e) {
+      debugPrint("Capture Error: $e");
     }
   }
 
   Future<void> _pickFromGallery() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
     if (image != null) {
-      setState(() {
-        _activeMode = "Gallery";
-        _isAnalyzing = true;
-      });
-
-      // Simulate the same analysis delay you have for the camera
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        setState(() => _isAnalyzing = false);
-        _showResultsBottomSheet();
-      }
+      _processImageForAI(image);
     }
+  }
+
+  void _showResultsBottomSheet(NutritionReport report) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _NutritionResultSheet(report: report),
+    );
   }
 
   @override
@@ -59,26 +144,12 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     super.dispose();
   }
 
-  void _onCapture() async {
-    if (_isAnalyzing) return;
-
-    setState(() => _isAnalyzing = true);
-
-    // Simulate Network/AI Analysis Delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() => _isAnalyzing = false);
-      _showResultsBottomSheet();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_controller == null || !_controller!.value.isInitialized) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
 
@@ -86,10 +157,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. Camera Preview
+        
           Positioned.fill(child: CameraPreview(_controller!)),
 
-          // 2. Translucent Overlay (The "Dimmed" effect around the frame)
+     
           ColorFiltered(
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.3),
@@ -97,15 +168,11 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
             child: Stack(
               children: [
-                Container(
-                  decoration: const BoxDecoration(color: Colors.transparent),
-                ),
+                Container(decoration: const BoxDecoration(color: Colors.transparent)),
                 Align(
                   alignment: Alignment.center,
                   child: Container(
-                    margin: const EdgeInsets.only(
-                      bottom: 100,
-                    ), // Center it higher
+                    margin: const EdgeInsets.only(bottom: 100),
                     height: 280,
                     width: 280,
                     decoration: BoxDecoration(
@@ -118,7 +185,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-          // 3. White Frame Corners
+       
           Center(
             child: Container(
               margin: const EdgeInsets.only(bottom: 100),
@@ -128,7 +195,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-          // 4. Top UI (Logo and Close)
+          
           Positioned(
             top: 60,
             left: 20,
@@ -136,9 +203,12 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const CircleAvatar(
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.close, color: Colors.white),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.close, color: Colors.white),
+                  ),
                 ),
                 const Text(
                   "logoipsum",
@@ -149,7 +219,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
-                const SizedBox(width: 40), // Balance
+                const SizedBox(width: 40),
               ],
             ),
           ),
@@ -163,7 +233,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               padding: const EdgeInsets.only(bottom: 40, top: 20),
               child: Column(
                 children: [
-                  // Mode Selector
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -177,7 +246,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  // Capture Button
                   GestureDetector(
                     onTap: _onCapture,
                     child: Container(
@@ -204,6 +272,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
+         
           if (_isAnalyzing)
             Container(
               color: Colors.black45,
@@ -221,7 +290,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     return GestureDetector(
       onTap: () {
         if (label == "Gallery") {
-          _pickFromGallery(); // Trigger gallery picker
+          _pickFromGallery();
         } else {
           setState(() => _activeMode = label);
         }
@@ -251,19 +320,13 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       ),
     );
   }
-
-  void _showResultsBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _NutritionResultSheet(),
-    );
-  }
 }
 
-// Nutrition Result Sheet (Analysis Image)
+
 class _NutritionResultSheet extends StatelessWidget {
+  final NutritionReport report;
+  const _NutritionResultSheet({required this.report});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -287,18 +350,18 @@ class _NutritionResultSheet extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const Text("9:14 am", style: TextStyle(color: Colors.grey)),
+                const Text("Just now", style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 8),
-                const Text(
-                  "Grilled Chicken, Rice, Salad, Avocado platter",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                Text(
+                  report.mealName,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
 
-                // Calories Card
+               
                 _buildStatTile(
                   "Calories",
-                  "600",
+                  "${report.totalCalories}",
                   Icons.local_fire_department,
                   Colors.orange,
                 ),
@@ -307,15 +370,15 @@ class _NutritionResultSheet extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMacroTile("Protein", "50g", Colors.red),
+                      child: _buildMacroTile("Protein", "${report.totalProtein}g", Colors.red),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMacroTile("Carbs", "50g", Colors.orange),
+                      child: _buildMacroTile("Carbs", "${report.totalCarbs}g", Colors.orange),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMacroTile("Fats", "50g", Colors.blue),
+                      child: _buildMacroTile("Fats", "${report.totalFat}g", Colors.blue),
                     ),
                   ],
                 ),
@@ -329,43 +392,51 @@ class _NutritionResultSheet extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
-                    value: 0.7,
+                    value: report.healthScore / 10,
                     minHeight: 10,
-                    color: Colors.green,
+                    color: report.healthScore > 6 ? Colors.green : Colors.orange,
                     backgroundColor: Colors.grey[300],
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Row(
+                Row(
                   children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.orange,
+                    const Icon(
+                      Icons.auto_awesome,
+                      color: Colors.green,
                       size: 18,
                     ),
-                    SizedBox(width: 5),
-                    Text(
-                      "Contains Avocado",
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        report.healthTip,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 40),
+                
+               
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                        
+                          Navigator.pop(context);
+                        },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(16),
+                          side: const BorderSide(color: Colors.black12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        child: const Text("Fix results"),
+                        child: const Text("Fix results", style: TextStyle(color: Colors.black)),
                       ),
                     ),
                     const SizedBox(width: 15),
@@ -393,12 +464,7 @@ class _NutritionResultSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildStatTile(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildStatTile(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -448,7 +514,6 @@ class _NutritionResultSheet extends StatelessWidget {
   }
 }
 
-// Custom Painter for the L-shaped corners
 class ScannerFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -458,37 +523,14 @@ class ScannerFramePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     const length = 40.0;
 
-    // Top Left
     canvas.drawLine(const Offset(0, 0), const Offset(length, 0), paint);
     canvas.drawLine(const Offset(0, 0), const Offset(0, length), paint);
-
-    // Top Right
-    canvas.drawLine(
-      Offset(size.width, 0),
-      Offset(size.width - length, 0),
-      paint,
-    );
+    canvas.drawLine(Offset(size.width, 0), Offset(size.width - length, 0), paint);
     canvas.drawLine(Offset(size.width, 0), Offset(size.width, length), paint);
-
-    // Bottom Left
     canvas.drawLine(Offset(0, size.height), Offset(length, size.height), paint);
-    canvas.drawLine(
-      Offset(0, size.height),
-      Offset(0, size.height - length),
-      paint,
-    );
-
-    // Bottom Right
-    canvas.drawLine(
-      Offset(size.width, size.height),
-      Offset(size.width - length, size.height),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width, size.height),
-      Offset(size.width, size.height - length),
-      paint,
-    );
+    canvas.drawLine(Offset(0, size.height), Offset(0, size.height - length), paint);
+    canvas.drawLine(Offset(size.width, size.height), Offset(size.width - length, size.height), paint);
+    canvas.drawLine(Offset(size.width, size.height), Offset(size.width, size.height - length), paint);
   }
 
   @override
