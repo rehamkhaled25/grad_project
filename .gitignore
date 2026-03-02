@@ -44,7 +44,7 @@ migrate_working_dir/
 **/linux/flutter/ephemeral/
 **/windows/flutter/generated_plugins.cmake
 **/linux/flutter/generated_plugins.cmake
-
+**/flutter/generated_plugins.cmake
 
 # --- iOS/macOS Specific ---
 **/ios/Flutter/.last_build_id
