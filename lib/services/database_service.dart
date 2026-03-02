@@ -4,12 +4,28 @@
 // class DatabaseService {
 //   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-//   // FETCH: Get user profile by UID
+//   // create or overwrite user profile
+//   Future<void> saveUserData(UserModel user) async {
+//     try {
+//       // access the 'users' collection and use the user's uid as the document id
+//       await _db.collection('users').doc(user.uid).set(
+//             user.toMap(),
+//             SetOptions(merge: true), // merge prevents overwriting existing data
+//           );
+//       print("User ${user.uid} saved successfully.");
+//     } catch (e) {
+//       print("Error saving user data: $e");
+//       rethrow; 
+//     }
+//   }
+
+//   // get a one-time snapshot of user profile by UID
 //   Future<UserModel?> getUserData(String uid) async {
 //     try {
 //       DocumentSnapshot doc = await _db.collection('users').doc(uid).get();
       
-//       if (doc.exists) {
+//       if (doc.exists && doc.data() != null) {
+//         // convert the firebase map back into our dart usermodel object
 //         return UserModel.fromMap(doc.data() as Map<String, dynamic>);
 //       } else {
 //         print("No user found with UID: $uid");
@@ -21,7 +37,7 @@
 //     }
 //   }
 
-//   // STREAM: Listen to user changes in real-time (Great for Dashboards)
+//   // listen to user changes in real-time
 //   Stream<UserModel?> streamUserData(String uid) {
 //     return _db.collection('users').doc(uid).snapshots().map((doc) {
 //       if (doc.exists && doc.data() != null) {
