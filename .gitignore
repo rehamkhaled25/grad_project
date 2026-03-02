@@ -42,6 +42,7 @@ migrate_working_dir/
 **/linux/flutter/generated_plugin_registrant.*
 **/windows/flutter/ephemeral/
 **/linux/flutter/ephemeral/
+**/generated_plugins.cmake/
 
 # --- iOS/macOS Specific ---
 **/ios/Flutter/.last_build_id
@@ -60,6 +61,12 @@ android/app/outputs/
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase configuration files (Project-specific)
+lib/firebase_options.dart
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+macos/Runner/GoogleService-Info.plist
 
 # --- Build Artifacts (APKs, Bundles, Symbols) ---
 *.apk
