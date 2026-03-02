@@ -200,13 +200,7 @@ class BottomNavBar extends StatefulWidget {
 class _BottomNavBarState extends State<BottomNavBar> {
   int selectedIndex = 0;
 
-  final List<String> _routes = [
-    '/home',
-    '/documents',
-    '/foodScanner',
-    '/notifications',
-    '/settings',
-  ];
+  final List<String> _routes = ['/home', '/log', '/progress', '/settings'];
 
   @override
   void initState() {
@@ -226,14 +220,12 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
       if (location.startsWith('/home')) {
         selectedIndex = 0;
-      } else if (location.startsWith('/documents')) {
+      } else if (location.startsWith('/log')) {
         selectedIndex = 1;
-      } else if (location.startsWith('/foodScanner')) {
+      } else if (location.startsWith('/progress')) {
         selectedIndex = 2;
-      } else if (location.startsWith('/notifications')) {
-        selectedIndex = 3;
       } else if (location.startsWith('/settings')) {
-        selectedIndex = 4;
+        selectedIndex = 3;
       }
 
       if (mounted) {
@@ -285,10 +277,10 @@ class _BottomNavBarState extends State<BottomNavBar> {
           children: [
             BottomNavigationItem(
               iconWidget: Image.asset(
-                "assets/images/home.png", // Replace with your actual asset path
+                "assets/images/home_ic.png", // Replace with your actual asset path
                 width: 24,
                 height: 24,
-                color: selectedIndex == 0 ? Colors.white : Colors.black,
+                color: selectedIndex == 0 ? Colors.white : Colors.grey,
               ),
               label: 'Home',
               isSelected: selectedIndex == 0,
@@ -296,47 +288,36 @@ class _BottomNavBarState extends State<BottomNavBar> {
             ),
             BottomNavigationItem(
               iconWidget: Image.asset(
-                "assets/images/paper.png", // Replace with your actual asset path
+                "assets/images/log_ic.png", // Replace with your actual asset path
                 width: 24,
                 height: 24,
-                color: selectedIndex == 1 ? Colors.white : Colors.black,
+                color: selectedIndex == 1 ? Colors.white : Colors.grey,
               ),
-              label: 'Docs',
+              label: 'Log',
               isSelected: selectedIndex == 1,
               onTap: () => _onItemTapped(1),
             ),
             BottomNavigationItem(
               iconWidget: Image.asset(
-                "assets/images/Scan.png", // Replace with your actual asset path
+                "assets/images/prog_ic.png", // Replace with your actual asset path
                 width: 24,
                 height: 24,
-                color: selectedIndex == 2 ? Colors.white : Colors.black,
+                color: selectedIndex == 2 ? Colors.white : Colors.grey,
               ),
-              label: 'Scan',
+              label: 'Progress',
               isSelected: selectedIndex == 2,
               onTap: () => _onItemTapped(2),
             ),
+
             BottomNavigationItem(
-              iconWidget: Image.asset(
-                "assets/images/payment_icon.png", // Replace with your actual asset path
-                width: 24,
-                height: 24,
-                color: selectedIndex == 3 ? Colors.white : Colors.black,
-              ),
-              label: 'Alerts',
-              isSelected: selectedIndex == 3,
-              onTap: () => _onItemTapped(3),
-            ),
-            BottomNavigationItem(
-              iconWidget: Image.asset(
-                "assets/images/Setting.png", // Replace with your actual asset path
-                width: 24,
-                height: 24,
-                color: selectedIndex == 4 ? Colors.white : Colors.black,
+              iconWidget: Icon(
+                Icons.settings,
+                size: 24,
+                color: selectedIndex == 3 ? Colors.white : Colors.grey,
               ),
               label: 'Settings',
-              isSelected: selectedIndex == 4,
-              onTap: () => _onItemTapped(4),
+              isSelected: selectedIndex == 3,
+              onTap: () => _onItemTapped(3),
             ),
           ],
         ),
@@ -374,15 +355,15 @@ class BottomNavigationItem extends StatelessWidget {
                 : const Color(0xffF5F5F5),
             child: iconWidget,
           ),
-          // const SizedBox(height: 4),
-          // Text(
-          //   label,
-          //   style: TextStyle(
-          //     fontSize: 12,
-          //     color: isSelected ? Colors.black : Colors.grey,
-          //     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          //   ),
-          // ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.black : Colors.grey,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

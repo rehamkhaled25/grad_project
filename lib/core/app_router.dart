@@ -3,11 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
+import 'package:graduation_project/view/screens/database/database_search.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/home/documents_screen.dart';
-import 'package:graduation_project/view/screens/home/notifications_screen.dart';
+import 'package:graduation_project/view/screens/home/notifications_settings_screen.dart';
 import 'package:graduation_project/view/screens/home/profile_screen.dart';
-import 'package:graduation_project/view/screens/home/settings_screen.dart';
+import 'package:graduation_project/view/screens/notifications/notifications_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/allset.dart';
 import 'package:graduation_project/view/screens/onboarding/birthdate_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/notification_permission.dart';
@@ -15,6 +16,8 @@ import 'package:graduation_project/view/screens/onboarding/onboarding_gender.dar
 import 'package:graduation_project/view/screens/onboarding/onboarding_goal.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_height.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_weight.dart';
+import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
+import 'package:graduation_project/view/screens/settings/settings_screen.dart';
 import 'package:graduation_project/view/screens/splash/splash.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/home/scanner.dart';
@@ -142,6 +145,24 @@ abstract class AppRouter {
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationsSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/notificationsScreen',
+        name: 'notificationsScreen',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationScreen()),
+      ),
+      GoRoute(
+        path: '/foodScanner',
+        name: 'food_scanner',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: FoodScannerScreen()),
+      ),
 
       // Protected routes with bottom navigation bar
       ShellRoute(
@@ -157,23 +178,18 @@ abstract class AppRouter {
             ),
           ),
           GoRoute(
-            path: '/documents',
-            name: 'documents',
+            path: '/log',
+            name: 'log',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DocumentsScreen()),
+                const NoTransitionPage(child: DatabaseSearch()),
           ),
           GoRoute(
-            path: '/foodScanner',
-            name: 'food_scanner',
+            path: '/progress',
+            name: 'progress',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: FoodScannerScreen()),
+                const NoTransitionPage(child: WeeklyProgress()),
           ),
-          GoRoute(
-            path: '/notifications',
-            name: 'notifications',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: NotificationsScreen()),
-          ),
+
           GoRoute(
             path: '/settings',
             name: 'settings',

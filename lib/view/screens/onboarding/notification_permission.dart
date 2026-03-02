@@ -3,15 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 
-
 class NotificationPermissionPage extends StatefulWidget {
   const NotificationPermissionPage({super.key});
 
   @override
-  State<NotificationPermissionPage> createState() => _NotificationPermissionPageState();
+  State<NotificationPermissionPage> createState() =>
+      _NotificationPermissionPageState();
 }
 
-class _NotificationPermissionPageState extends State<NotificationPermissionPage> {
+class _NotificationPermissionPageState
+    extends State<NotificationPermissionPage> {
   @override
   void initState() {
     super.initState();
@@ -32,7 +33,7 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
             borderRadius: BorderRadius.circular(12),
           ),
           title: const Text(
-            '"Appname" Would Like to Send You Notifications',
+            '"Cal Ai" Would Like to Send You Notifications',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           content: const Text(
@@ -69,10 +70,14 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
   ButtonStyle _dialogButtonStyle() {
     return ButtonStyle(
       backgroundColor: MaterialStateProperty.resolveWith((states) {
-        return states.contains(MaterialState.pressed) ? Colors.black : Colors.transparent;
+        return states.contains(MaterialState.pressed)
+            ? Colors.black
+            : Colors.transparent;
       }),
       foregroundColor: MaterialStateProperty.resolveWith((states) {
-        return states.contains(MaterialState.pressed) ? Colors.white : Colors.black;
+        return states.contains(MaterialState.pressed)
+            ? Colors.white
+            : Colors.black;
       }),
       overlayColor: MaterialStateProperty.all(Colors.black12),
     );
@@ -87,7 +92,6 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
         children: [
           const CustomAppbar(currentStep: 6, totalSteps: 7),
 
-      
           const Spacer(),
 
           Padding(
