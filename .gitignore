@@ -69,3 +69,9 @@ app.*.map.json
 
 # --- Environment & Secrets ---
 .env
+
+# FVM Version Cache
+.fvm/
+
+# FVM
+.fvm/flutter_sdk
