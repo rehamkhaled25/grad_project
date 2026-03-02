@@ -40,6 +40,8 @@ migrate_working_dir/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/windows/flutter/generated_plugin_registrant.*
 **/linux/flutter/generated_plugin_registrant.*
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
 
 # --- iOS/macOS Specific ---
 **/ios/Flutter/.last_build_id
