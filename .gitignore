@@ -1,9 +1,10 @@
-# Miscellaneous
+# --- Miscellaneous & OS Generated ---
 *.class
 *.log
 *.pyc
 *.swp
 .DS_Store
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -12,35 +13,57 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# --- IDE/Editor files ---
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
+# --- Flutter/Dart/Pub related ---
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
+.packages
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+**/build/
 
-# Symbolication related
-app.*.symbols
+# --- Platform Specific Registrants (sync fix) ---
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+**/android/app/src/main/kotlin/io/flutter/plugins/GeneratedPluginRegistrant.kt
+**/lib/generated_plugin_registrant.dart
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/windows/flutter/generated_plugin_registrant.*
+**/linux/flutter/generated_plugin_registrant.*
 
-# Obfuscation related
-app.*.map.json
+# --- iOS/macOS Specific ---
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Runner.xcworkspace/
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
 
-# Android Studio will place build artifacts here
+# --- Android Specific ---
+android/.gradle/
+android/app/build/
+android/app/intermediates/
+android/app/outputs/
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# --- Build Artifacts (APKs, Bundles, Symbols) ---
+*.apk
+*.aab
+app.*.symbols
+app.*.map.json
+
+# --- Environment & Secrets ---
 .env
