@@ -65,9 +65,6 @@ android/app/outputs/
 /android/app/release
 
 # Firebase configuration files (Project-specific)
-lib/firebase_options.dart
-ios/Runner/GoogleService-Info.plist
-android/app/google-services.json
 macos/Runner/GoogleService-Info.plist
 
 # --- Build Artifacts (APKs, Bundles, Symbols) ---
