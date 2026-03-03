@@ -83,15 +83,3 @@ class AuthService {
     }
   }
 }
-
-// v7.x came and killed (me) the gsi package
-// todo: migrate from v6.x to v7.x code..
-
-// https://www.geeksforgeeks.org/firebase/flutter-google-sign-in-ui-and-authentication/
-// even geeksforgeeks have erroneous code
-
-// https://stackoverflow.com/questions/79706789/the-class-googlesignin-doesnt-have-an-unnamed-constructor
-// thank god for stackoverflow
-
-// check https://github.com/flutter/packages/blob/main/packages/google_sign_in/google_sign_in/MIGRATION.md
-// very funny google.. very funny
