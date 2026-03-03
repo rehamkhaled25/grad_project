@@ -12,7 +12,20 @@
           "package_name": "com.example.graduation_project"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1065830735486-e1958m6uhh2n2g72r77e4gfhh7o5ga30.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.graduation_project",
+            "certificate_hash": "6e09fca4bd872aa402adfc7a63ce300f291f12db"
+          }
+        },
+        {
+          "client_id": "1065830735486-ksh4c0isjr4dn5bb3oesgef0u812vq47.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "FIREBASE_ANDROID_API_KEY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1065830735486-ksh4c0isjr4dn5bb3oesgef0u812vq47.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1065830735486-ia8i6bbkh4nmg0c2kmp3ibh82vro81in.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.graduationProject"
+              }
+            }
+          ]
         }
       }
     }
