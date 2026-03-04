@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/models/user_model.dart';
 
 class WeightScreen extends StatefulWidget {
   const WeightScreen({super.key});
@@ -10,8 +13,11 @@ class WeightScreen extends StatefulWidget {
 }
 
 class _WeightScreenState extends State<WeightScreen> {
+  final DatabaseService _dbService = DatabaseService();
   double weightKg = 70;
   bool isKg = true;
+  bool _isSaving = false;
+  bool _isLoadingData = true; 
 
   final ScrollController _scrollController = ScrollController();
 
@@ -20,32 +26,94 @@ class _WeightScreenState extends State<WeightScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize scroll to match initial weight
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.jumpTo((weightKg - 50) * 40); // 40 px per kg
-    });
+    _checkExistingData(); 
+  }
+
+ 
+  Future<void> _checkExistingData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        UserModel? userData = await _dbService.getUserData(user.uid);
+        
+       
+        if (userData != null && userData.weight != null && userData.weight! > 0) {
+          if (mounted) {
+            context.go('/onboardingGoal'); 
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking existing data: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo((weightKg - 50) * 40);
+          }
+        });
+      }
+    }
   }
 
   void onScroll() {
+    if (!_scrollController.hasClients) return;
     double offset = _scrollController.offset;
     setState(() {
-      weightKg = (50 + offset / 40).clamp(50, 95); // convert offset → kg
+      weightKg = (50 + offset / 40).clamp(50, 95);
     });
+  }
+
+
+  Future<void> _saveWeightAndContinue() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _dbService.saveUserData(UserModel(
+          uid: user.uid,
+          weight: weightKg, 
+          email: user.email ?? "",
+        ));
+
+        if (mounted) {
+          context.push('/onboardingGoal');
+        }
+      } else {
+        throw Exception("No user logged in");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error saving weight: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
+  
+    if (_isLoadingData) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.black)),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Custom AppBar
           const CustomAppbar(currentStep: 4, totalSteps: 7),
           const SizedBox(height: 20),
-
-          // Title
           const Text(
             "What's your current weight?",
             textAlign: TextAlign.center,
@@ -55,10 +123,7 @@ class _WeightScreenState extends State<WeightScreen> {
               color: Colors.black,
             ),
           ),
-
           const Spacer(),
-
-          // Weight display
           Center(
             child: RichText(
               text: TextSpan(
@@ -100,9 +165,7 @@ class _WeightScreenState extends State<WeightScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
           GestureDetector(
             onTap: () => setState(() => isKg = !isKg),
             child: Text(
@@ -110,10 +173,7 @@ class _WeightScreenState extends State<WeightScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ),
-
           const SizedBox(height: 30),
-
-          // Scrollable ruler
           SizedBox(
             height: 100,
             width: screenWidth,
@@ -154,14 +214,10 @@ class _WeightScreenState extends State<WeightScreen> {
               ),
             ),
           ),
-
           const Spacer(flex: 2),
-
-          // Continue button
+          
           InkWell(
-            onTap: () {
-              context.push('/onboardingGoal');
-            },
+            onTap: _isSaving ? null : _saveWeightAndContinue,
             child: Container(
               height: 55,
               width: 360,
@@ -170,15 +226,21 @@ class _WeightScreenState extends State<WeightScreen> {
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(30),
               ),
-              child: const Center(
-                child: Text(
-                  "Continue",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              child: Center(
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        "Continue",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ),

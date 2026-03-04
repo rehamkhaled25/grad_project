@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-
+import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/models/user_model.dart';
 
 class OnboardingGoal extends StatefulWidget {
   const OnboardingGoal({super.key});
@@ -12,7 +14,53 @@ class OnboardingGoal extends StatefulWidget {
 }
 
 class _OnboardingGoalState extends State<OnboardingGoal> {
+  final DatabaseService _dbService = DatabaseService();
   int selectedIndex = -1;
+  bool _isSaving = false;
+
+  // List of goals to map index to a string for Firebase
+  final List<String> goals = [
+    "Lose Weight",
+    "Gain Weight",
+    "Maintain Weight",
+  ];
+
+  /// NEW: Logic to save goal to Firebase
+  Future<void> _saveGoalAndContinue() async {
+    if (selectedIndex == -1) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+       
+        await _dbService.saveUserData(UserModel(
+          uid: user.uid,
+          goal: goals[selectedIndex], 
+          email: user.email ?? "",
+        ));
+
+        if (mounted) {
+       
+          context.push('/onboardingNotification');
+        }
+      } else {
+        throw Exception("No user authenticated");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save goal: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +75,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
             children: [
               const CustomAppbar(currentStep: 5, totalSteps: 7),
 
-              // Main content
+             
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,15 +123,15 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                 ),
               ),
 
-             ContinueButton(
-  txt: "Continue",
-  onPressed: selectedIndex == -1
-      ? () {}   // ← empty function → button looks disabled
-      : () {
-          print("Selected goal index: $selectedIndex");
-          context.push('/onboardingNotification');
-        },
-),
+          
+              _isSaving
+                  ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                  : ContinueButton(
+                      txt: "Continue",
+                      onPressed: selectedIndex == -1 
+                          ? () {} 
+                          : _saveGoalAndContinue,
+                    ),
 
               const SizedBox(height: 20),
             ],
@@ -123,6 +171,7 @@ class GoalWidget extends StatelessWidget {
         ),
         child: Row(
           children: [
+            
             Image.asset(image, width: 32, height: 32),
             const SizedBox(width: 16),
             Text(

@@ -67,7 +67,7 @@ class _WeeklyProgressState extends State<WeeklyProgress> {
                 child: Row(
                   children: [
                   
-                  Image.asset('assets/images/7alazona yama el 7alazona.png',color: Colors.black,),
+                  Image.asset('assets/images/spiral.png',color: Colors.black,),
                     const SizedBox(width: 10),
                     const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

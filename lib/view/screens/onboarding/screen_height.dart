@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-
+import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/models/user_model.dart';
 
 class HeightScreen extends StatefulWidget {
   const HeightScreen({super.key});
@@ -11,13 +13,45 @@ class HeightScreen extends StatefulWidget {
 }
 
 class _HeightScreenState extends State<HeightScreen> {
+  final DatabaseService _dbService = DatabaseService();
   double heightCm = 170;
   bool isCm = true;
-
+  bool _isSaving = false;
+  bool _isLoadingData = true; 
   double rulerHeight = 0;
   double rulerTop = 0;
 
-  /// Convert cm to ft/in
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingData();
+  }
+
+
+  Future<void> _checkExistingData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        UserModel? userData = await _dbService.getUserData(user.uid);
+        
+        
+        if (userData != null && userData.height != null && userData.height! > 0) {
+          if (mounted) {
+            context.go('/onboardingWeight');
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking height data: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
+    }
+  }
+
+ 
   String getFeetInches() {
     final inches = heightCm / 2.54;
     final feet = inches ~/ 12;
@@ -25,10 +59,10 @@ class _HeightScreenState extends State<HeightScreen> {
     return "$feet $inch";
   }
 
-  /// Arrow position
+ 
   double getArrowY() => rulerTop + ((220 - heightCm) / 120) * rulerHeight;
 
-  /// Update height from dragging
+  
   void updateHeightFromArrow(double posY) {
     double newHeight = 220 - ((posY - rulerTop) / rulerHeight) * 120;
     setState(() {
@@ -36,10 +70,51 @@ class _HeightScreenState extends State<HeightScreen> {
     });
   }
 
+
+  Future<void> _saveHeightAndContinue() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _dbService.saveUserData(UserModel(
+          uid: user.uid,
+          height: heightCm, 
+          email: user.email ?? "",
+        ));
+
+        if (mounted) {
+          context.push('/onboardingWeight');
+        }
+      } else {
+        throw Exception("No user authenticated");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save height: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+   
     rulerHeight = MediaQuery.of(context).size.height * 0.6;
     rulerTop = MediaQuery.of(context).size.height * 0.25;
+
+   
+    if (_isLoadingData) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.black)),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -49,7 +124,7 @@ class _HeightScreenState extends State<HeightScreen> {
             /// Top progress bar
             const CustomAppbar(currentStep: 3, totalSteps: 7),
 
-            /// Title under appbar
+            /// Title
             const Positioned(
               left: 24,
               top: 80,
@@ -81,14 +156,14 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            /// Red arrow
+            /// Selection Arrow
             Positioned(
               right: 80,
               top: getArrowY(),
               child: const Icon(Icons.play_arrow, color: Colors.red, size: 26),
             ),
 
-            /// Number + unit centered to ruler
+            /// Display Value
             Positioned(
               right: 120,
               top: rulerTop + rulerHeight / 2 - 40,
@@ -111,7 +186,6 @@ class _HeightScreenState extends State<HeightScreen> {
                                 style: TextStyle(
                                   fontSize: 24,
                                   color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.normal,
                                 ),
                               ),
                             ]
@@ -168,9 +242,7 @@ class _HeightScreenState extends State<HeightScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: GestureDetector(
-                onTap: () {
-                  context.go('/onboardingWeight');
-                },
+                onTap: _isSaving ? null : _saveHeightAndContinue,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 40),
                   height: 54,
@@ -179,15 +251,21 @@ class _HeightScreenState extends State<HeightScreen> {
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: const Center(
-                    child: Text(
-                      "Continue",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  child: Center(
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            "Continue",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ),
