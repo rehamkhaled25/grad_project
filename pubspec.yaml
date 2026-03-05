@@ -69,6 +69,10 @@ flutter:
         - asset: assets/fonts/Roboto-Bold.ttf
           weight: 700
 
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+      
     - family: Figtree
       fonts:
         - asset: assets/fonts/Figtree-Regular.ttf
