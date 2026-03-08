@@ -17,7 +17,7 @@ class _WeightScreenState extends State<WeightScreen> {
   double weightKg = 70;
   bool isKg = true;
   bool _isSaving = false;
-  bool _isLoadingData = true; 
+  bool _isLoadingData = true;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -26,30 +26,51 @@ class _WeightScreenState extends State<WeightScreen> {
   @override
   void initState() {
     super.initState();
-    _checkExistingData(); 
+    _checkExistingData();
   }
 
- 
   Future<void> _checkExistingData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         UserModel? userData = await _dbService.getUserData(user.uid);
-        
-       
-        if (userData != null && userData.weight != null && userData.weight! > 0) {
-          if (mounted) {
-            context.go('/onboardingGoal'); 
-            return;
+
+        if (userData != null) {
+     
+          bool isComplete = userData.gender != null &&
+              userData.birthdate != null &&
+              userData.height != null &&
+              userData.weight != null &&
+              userData.goal != null;
+
+          if (isComplete) {
+            if (mounted) {
+              context.go('/home');
+              return;
+            }
+          }
+
+         
+          if (userData.weight != null && userData.weight! > 0) {
+            if (mounted) {
+              _navigateToNextMissingStep(userData);
+              return;
+            }
+          }
+          
+          
+          if (userData.weight != null) {
+            weightKg = userData.weight!;
           }
         }
       }
     } catch (e) {
-      debugPrint("Error checking existing data: $e");
+      debugPrint("Error checking existing weight data: $e");
     } finally {
       if (mounted) {
         setState(() => _isLoadingData = false);
-      
+
+       
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.jumpTo((weightKg - 50) * 40);
@@ -59,14 +80,22 @@ class _WeightScreenState extends State<WeightScreen> {
     }
   }
 
+  void _navigateToNextMissingStep(UserModel data) {
+    if (data.goal == null) {
+      context.go('/onboardingGoal');
+    } else {
+      context.go('/home');
+    }
+  }
+
   void onScroll() {
     if (!_scrollController.hasClients) return;
     double offset = _scrollController.offset;
     setState(() {
+    
       weightKg = (50 + offset / 40).clamp(50, 95);
     });
   }
-
 
   Future<void> _saveWeightAndContinue() async {
     setState(() => _isSaving = true);
@@ -76,12 +105,12 @@ class _WeightScreenState extends State<WeightScreen> {
       if (user != null) {
         await _dbService.saveUserData(UserModel(
           uid: user.uid,
-          weight: weightKg, 
+          weight: weightKg,
           email: user.email ?? "",
         ));
 
         if (mounted) {
-          context.push('/onboardingGoal');
+          context.go('/onboardingGoal');
         }
       } else {
         throw Exception("No user logged in");
@@ -89,7 +118,9 @@ class _WeightScreenState extends State<WeightScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error saving weight: $e"), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text("Error saving weight: $e"),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -101,9 +132,9 @@ class _WeightScreenState extends State<WeightScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-  
     if (_isLoadingData) {
       return const Scaffold(
+        backgroundColor: Colors.white,
         body: Center(child: CircularProgressIndicator(color: Colors.black)),
       );
     }
@@ -174,6 +205,7 @@ class _WeightScreenState extends State<WeightScreen> {
             ),
           ),
           const SizedBox(height: 30),
+        
           SizedBox(
             height: 100,
             width: screenWidth,
@@ -185,6 +217,9 @@ class _WeightScreenState extends State<WeightScreen> {
               child: ListView.builder(
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                
+                padding: EdgeInsets.symmetric(horizontal: screenWidth / 2 - 20),
                 itemCount: 46,
                 itemBuilder: (context, index) {
                   int kgValue = 50 + index;
@@ -215,7 +250,6 @@ class _WeightScreenState extends State<WeightScreen> {
             ),
           ),
           const Spacer(flex: 2),
-          
           InkWell(
             onTap: _isSaving ? null : _saveWeightAndContinue,
             child: Container(
@@ -231,7 +265,8 @@ class _WeightScreenState extends State<WeightScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
                       )
                     : const Text(
                         "Continue",

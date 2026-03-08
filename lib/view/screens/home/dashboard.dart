@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graduation_project/models/user_model.dart';
+import 'package:graduation_project/services/database_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +15,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  // Initialize Services
+  final DatabaseService _dbService = DatabaseService();
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -46,25 +53,35 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Hello, Mohanad",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "Remember why you started..",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xff464646),
-                                ),
-                              ),
-                            ],
+                        Expanded(
+                          child: StreamBuilder<UserModel?>(
+                            stream: _currentUser != null 
+                                ? _dbService.streamUserData(_currentUser!.uid)
+                                : null,
+                            builder: (context, snapshot) {
+                              // FIX: Use the null-aware operator '??' to handle String? to String conversion
+                              final String displayName = snapshot.data?.fullName ?? "Guest";
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Hello, $displayName",
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Text(
+                                    "Remember why you started..",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xff464646),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -76,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       IconButton(
                         onPressed: () {
-                          // go to notifications screen
                           context.go('/notificationsScreen');
                         },
                         icon: const Icon(
@@ -119,10 +135,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPageChanged: (index) =>
                       setState(() => _currentPage = index),
                   children: [
-                    // Page 1: Daily Progress
                     DailyProgressCard(size: size),
 
-                    // Page 2: Calories Breakdown (Maintained from your version)
                     Container(
                       margin: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -230,7 +244,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 10),
-              // Swiping Dots
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
@@ -292,7 +305,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// --- CUSTOM WIDGET 1: Days of Week Bar ---
 class DaysOfWeekBar extends StatelessWidget {
   const DaysOfWeekBar({super.key});
 
@@ -345,7 +357,6 @@ class DaysOfWeekBar extends StatelessWidget {
   }
 }
 
-// --- CUSTOM WIDGET 2: Daily Progress Card ---
 class DailyProgressCard extends StatelessWidget {
   final Size size;
   const DailyProgressCard({super.key, required this.size});
@@ -521,25 +532,20 @@ class FoodCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     _macroCircle(0.6, Colors.grey),
                     const Spacer(),
-                    GestureDetector(
-                      onTap: () {
-                        // context.push('/food-details');
-                      },
-                      child: Container(
-                        width: 95,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            "View Details",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    Container(
+                      width: 95,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "View Details",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),

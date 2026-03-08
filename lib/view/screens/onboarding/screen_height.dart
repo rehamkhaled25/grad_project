@@ -17,7 +17,7 @@ class _HeightScreenState extends State<HeightScreen> {
   double heightCm = 170;
   bool isCm = true;
   bool _isSaving = false;
-  bool _isLoadingData = true; 
+  bool _isLoadingData = true;
   double rulerHeight = 0;
   double rulerTop = 0;
 
@@ -26,19 +26,31 @@ class _HeightScreenState extends State<HeightScreen> {
     super.initState();
     _checkExistingData();
   }
-
-
   Future<void> _checkExistingData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         UserModel? userData = await _dbService.getUserData(user.uid);
-        
-        
-        if (userData != null && userData.height != null && userData.height! > 0) {
-          if (mounted) {
-            context.go('/onboardingWeight');
-            return;
+
+        if (userData != null) {
+       
+          bool isComplete = userData.gender != null &&
+              userData.birthdate != null &&
+              userData.height != null &&
+              userData.weight != null &&
+              userData.goal != null;
+
+          if (isComplete) {
+            if (mounted) {
+              context.go('/home');
+              return;
+            }
+          }
+          if (userData.height != null && userData.height! > 0) {
+            if (mounted) {
+              _navigateToNextMissingStep(userData);
+              return;
+            }
           }
         }
       }
@@ -51,7 +63,16 @@ class _HeightScreenState extends State<HeightScreen> {
     }
   }
 
- 
+  void _navigateToNextMissingStep(UserModel data) {
+    if (data.weight == null) {
+      context.go('/onboardingWeight');
+    } else if (data.goal == null) {
+      context.go('/onboardingGoal');
+    } else {
+      context.go('/home');
+    }
+  }
+
   String getFeetInches() {
     final inches = heightCm / 2.54;
     final feet = inches ~/ 12;
@@ -59,17 +80,14 @@ class _HeightScreenState extends State<HeightScreen> {
     return "$feet $inch";
   }
 
- 
   double getArrowY() => rulerTop + ((220 - heightCm) / 120) * rulerHeight;
 
-  
   void updateHeightFromArrow(double posY) {
     double newHeight = 220 - ((posY - rulerTop) / rulerHeight) * 120;
     setState(() {
       heightCm = newHeight.clamp(100, 220);
     });
   }
-
 
   Future<void> _saveHeightAndContinue() async {
     setState(() => _isSaving = true);
@@ -79,12 +97,13 @@ class _HeightScreenState extends State<HeightScreen> {
       if (user != null) {
         await _dbService.saveUserData(UserModel(
           uid: user.uid,
-          height: heightCm, 
+          height: heightCm,
           email: user.email ?? "",
         ));
 
         if (mounted) {
-          context.push('/onboardingWeight');
+          
+          context.go('/onboardingWeight');
         }
       } else {
         throw Exception("No user authenticated");
@@ -105,13 +124,12 @@ class _HeightScreenState extends State<HeightScreen> {
 
   @override
   Widget build(BuildContext context) {
-   
     rulerHeight = MediaQuery.of(context).size.height * 0.6;
     rulerTop = MediaQuery.of(context).size.height * 0.25;
 
-   
     if (_isLoadingData) {
       return const Scaffold(
+        backgroundColor: Colors.white,
         body: Center(child: CircularProgressIndicator(color: Colors.black)),
       );
     }
@@ -121,10 +139,10 @@ class _HeightScreenState extends State<HeightScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            /// Top progress bar
+          
             const CustomAppbar(currentStep: 3, totalSteps: 7),
 
-            /// Title
+            
             const Positioned(
               left: 24,
               top: 80,
@@ -138,7 +156,7 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            /// Vertical Ruler
+           
             Positioned(
               right: 0,
               top: rulerTop,
@@ -156,7 +174,7 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            /// Selection Arrow
+       
             Positioned(
               right: 80,
               top: getArrowY(),
@@ -256,7 +274,8 @@ class _HeightScreenState extends State<HeightScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2),
                           )
                         : const Text(
                             "Continue",
@@ -277,7 +296,6 @@ class _HeightScreenState extends State<HeightScreen> {
   }
 }
 
-/// Vertical ruler painter
 class _VerticalRulerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

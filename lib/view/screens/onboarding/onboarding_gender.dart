@@ -17,7 +17,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
   final DatabaseService _dbService = DatabaseService();
   String? selectedGender;
   bool _isSaving = false;
-  bool _isLoadingData = true; 
+  bool _isLoadingData = true;
 
   @override
   void initState() {
@@ -30,21 +30,53 @@ class _OnboardingGenderState extends State<OnboardingGender> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         UserModel? userData = await _dbService.getUserData(user.uid);
-        
-       
-        if (userData != null && userData.gender != null && userData.gender!.isNotEmpty) {
-          if (mounted) {
-            context.go('/onboardingBirthdate'); 
+
+        if (userData != null) {
+          // 1. If everything is filled, go to Home (Profile)
+          bool isComplete = userData.gender != null &&
+              userData.birthdate != null &&
+              userData.height != null &&
+              userData.weight != null &&
+              userData.goal != null;
+
+          if (isComplete) {
+            if (mounted) context.go('/home');
             return;
+          }
+
+          // 2. Resume Logic: Check fields in order of the flow
+          if (userData.gender != null && userData.gender!.isNotEmpty) {
+            if (mounted) {
+              // Gender is done, check next step or navigate to it
+              // This logic should be repeated in each onboarding screen's initState
+              _navigateToNextMissingStep(userData);
+              return;
+            }
           }
         }
       }
     } catch (e) {
-      debugPrint("Error checking gender data: $e");
+      debugPrint("Error checking onboarding progress: $e");
     } finally {
       if (mounted) {
         setState(() => _isLoadingData = false);
       }
+    }
+  }
+
+  void _navigateToNextMissingStep(UserModel data) {
+    if (data.gender == null) {
+      
+    } else if (data.birthdate == null) {
+      context.go('/onboardingBirthdate');
+    } else if (data.height == null) {
+      context.go('/onboardingHeight');
+    } else if (data.weight == null) {
+      context.go('/onboardingWeight');
+    } else if (data.goal == null) {
+      context.go('/onboardingGoal');
+    } else {
+      context.go('/home');
     }
   }
 
@@ -56,6 +88,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+     
         await _dbService.saveUserData(UserModel(
           uid: user.uid,
           gender: selectedGender,
@@ -63,7 +96,8 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         ));
 
         if (mounted) {
-          context.push('/onboardingBirthdate');
+          
+          context.go('/onboardingBirthdate');
         }
       } else {
         throw Exception("No user authenticated");
@@ -84,7 +118,6 @@ class _OnboardingGenderState extends State<OnboardingGender> {
 
   @override
   Widget build(BuildContext context) {
-   
     if (_isLoadingData) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -101,9 +134,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             totalSteps: 7,
             showBackButton: false,
           ),
-
           const SizedBox(height: 40),
-
           const Text(
             'Choose your Gender',
             style: TextStyle(
@@ -112,9 +143,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
               fontWeight: FontWeight.w800,
             ),
           ),
-
           const Spacer(flex: 2),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -138,19 +167,18 @@ class _OnboardingGenderState extends State<OnboardingGender> {
               ],
             ),
           ),
-
           const Spacer(flex: 3),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _isSaving
-                ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.black))
                 : ContinueButton(
                     txt: "Continue",
-                    onPressed: selectedGender == null ? () {} : _saveGenderAndContinue,
+                    onPressed:
+                        selectedGender == null ? () {} : _saveGenderAndContinue,
                   ),
           ),
-
           const SizedBox(height: 40),
         ],
       ),
@@ -175,9 +203,8 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         decoration: BoxDecoration(
           color: const Color.fromARGB(255, 243, 239, 239),
           borderRadius: BorderRadius.circular(12),
-          
-          border: isSelected 
-              ? Border.all(color: const Color(0xffF20D0D), width: 2) 
+          border: isSelected
+              ? Border.all(color: const Color(0xffF20D0D), width: 2)
               : null,
         ),
         child: Column(

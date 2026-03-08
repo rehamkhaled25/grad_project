@@ -18,7 +18,7 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
   final DatabaseService _dbService = DatabaseService();
   DateTime selectedDate = DateTime(1995, 6, 15);
   bool _isSaving = false;
-  bool _isLoadingData = true; // NEW: To handle initial Firebase check
+  bool _isLoadingData = true;
 
   @override
   void initState() {
@@ -26,18 +26,32 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
     _checkExistingData();
   }
 
-  /// RESUME LOGIC: Skip if birthdate is already in Firebase
   Future<void> _checkExistingData() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         UserModel? userData = await _dbService.getUserData(user.uid);
-        
-        // Check if birthdate exists in the database
-        if (userData != null && userData.birthdate != null) {
-          if (mounted) {
-            context.go('/onboardingHeight'); 
-            return;
+
+        if (userData != null) {
+      
+          bool isComplete = userData.gender != null &&
+              userData.birthdate != null &&
+              userData.height != null &&
+              userData.weight != null &&
+              userData.goal != null;
+
+          if (isComplete) {
+            if (mounted) {
+              context.go('/home'); 
+              return;
+            }
+          }
+
+          if (userData.birthdate != null) {
+            if (mounted) {
+              _navigateToNextMissingStep(userData);
+              return;
+            }
           }
         }
       }
@@ -50,7 +64,18 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
     }
   }
 
-  /// SAVE LOGIC: Saves birth date to Firebase
+  void _navigateToNextMissingStep(UserModel data) {
+    if (data.height == null) {
+      context.go('/onboardingHeight');
+    } else if (data.weight == null) {
+      context.go('/onboardingWeight');
+    } else if (data.goal == null) {
+      context.go('/onboardingGoal');
+    } else {
+      context.go('/home');
+    }
+  }
+
   Future<void> _saveBirthDateAndContinue() async {
     setState(() => _isSaving = true);
 
@@ -59,12 +84,13 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
       if (user != null) {
         await _dbService.saveUserData(UserModel(
           uid: user.uid,
-          birthdate: selectedDate, 
+          birthdate: selectedDate,
           email: user.email ?? "",
         ));
 
         if (mounted) {
-          context.push('/onboardingHeight');
+          
+          context.go('/onboardingHeight');
         }
       } else {
         throw Exception("No user authenticated");
@@ -85,7 +111,6 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show loading spinner while checking for existing data
     if (_isLoadingData) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -102,10 +127,7 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
               currentStep: 2,
               totalSteps: 7,
             ),
-
             const SizedBox(height: 40),
-
-            // Title
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -113,10 +135,7 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
               ),
             ),
-
             const SizedBox(height: 40),
-
-            // Date Picker
             Expanded(
               child: Center(
                 child: Container(
@@ -138,8 +157,6 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
                 ),
               ),
             ),
-
-            // Continue Button
             Padding(
               padding: const EdgeInsets.all(20),
               child: _isSaving
