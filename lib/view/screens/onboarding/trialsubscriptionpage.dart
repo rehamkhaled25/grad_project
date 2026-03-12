@@ -7,8 +7,7 @@ class TrialSubscriptionPage extends StatefulWidget {
   const TrialSubscriptionPage({super.key});
 
   @override
-  State<TrialSubscriptionPage> createState() =>
-      _TrialSubscriptionPageState();
+  State<TrialSubscriptionPage> createState() => _TrialSubscriptionPageState();
 }
 
 class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
@@ -20,15 +19,12 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -41,8 +37,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             textAlign: TextAlign.end,
                             style: TextStyle(
                               fontSize: 14,
-                              decoration:
-                                  TextDecoration.underline,
+                              decoration: TextDecoration.underline,
                               fontWeight: FontWeight.w300,
                               color: Colors.black,
                             ),
@@ -53,8 +48,9 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             "How your trial 7-day free\ntrial works",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600),
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 40),
@@ -69,8 +65,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             ),
                             TimelineStep(
                               stepIndex: 1,
-                              title:
-                                  "Today: Get instant Access",
+                              title: "Today: Get instant Access",
                               isDone: false,
                               iconData: Icons.lock,
                               isLast: false,
@@ -78,8 +73,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             ),
                             TimelineStep(
                               stepIndex: 2,
-                              title:
-                                  "Day 5: Get Trial Reminder",
+                              title: "Day 5: Get Trial Reminder",
                               isDone: false,
                               iconData: Icons.notifications,
                               isLast: false,
@@ -98,8 +92,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                           title: "1 Month",
                           price: "\$8.00 / MO",
                           isPopular: false,
-                          isSelected:
-                              selectedPlanIndex == 0,
+                          isSelected: selectedPlanIndex == 0,
                           onTap: () {
                             setState(() {
                               selectedPlanIndex = 0;
@@ -113,8 +106,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                           oldPrice: "\$95.88",
                           newPrice: "\$59.99",
                           isPopular: true,
-                          isSelected:
-                              selectedPlanIndex == 1,
+                          isSelected: selectedPlanIndex == 1,
                           onTap: () {
                             setState(() {
                               selectedPlanIndex = 1;
@@ -124,6 +116,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                         const Spacer(),
                         ContinueButton(
                           onPressed: () {
+                            AuthState.finishedOnboarding = true;
                             AuthState.isLoggedIn = true;
                             context.go('/home');
                           },
@@ -164,59 +157,42 @@ class TimelineStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isFutureStep = stepIndex >= 2;
 
-    final Color iconBg =
-        (isDone || isActive)
-            ? Colors.black
-            : const Color(0xffB9B7C0);
+    final Color iconBg = (isDone || isActive)
+        ? Colors.black
+        : const Color(0xffB9B7C0);
 
-    final Color iconColor =
-        (isDone || isActive)
-            ? Colors.white
-            : isFutureStep
-                ? const Color(0xff403D3D)
-                : Colors.white;
+    final Color iconColor = (isDone || isActive)
+        ? Colors.white
+        : isFutureStep
+        ? const Color(0xff403D3D)
+        : Colors.white;
 
-    final Color lineColor =
-        isDone || isActive
-            ? Colors.black
-            : Colors.grey.shade300;
+    final Color lineColor = isDone || isActive
+        ? Colors.black
+        : Colors.grey.shade300;
 
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Column(
           children: [
             Container(
               width: 28,
               height: 28,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(iconData,
-                    size: 16, color: iconColor),
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Center(child: Icon(iconData, size: 16, color: iconColor)),
             ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 40,
-                color: lineColor,
-              ),
+            if (!isLast) Container(width: 2, height: 40, color: lineColor),
           ],
         ),
         const SizedBox(width: 16),
         Padding(
-          padding:
-              const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 4),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 16,
-              fontWeight:
-                  FontWeight.w600,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
               decoration: isDone
                   ? TextDecoration.lineThrough
@@ -251,10 +227,7 @@ class PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor =
-        isSelected
-            ? Colors.red
-            : Colors.grey.shade300;
+    final Color borderColor = isSelected ? Colors.red : Colors.grey.shade300;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
@@ -265,74 +238,45 @@ class PlanCard extends StatelessWidget {
             onTap: onTap,
             child: Container(
               width: double.infinity,
-              constraints:
-                  const BoxConstraints(
-                      minHeight: 95),
-              padding:
-                  const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 20),
+              constraints: const BoxConstraints(minHeight: 95),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
-                border: Border.all(
-                    color: borderColor,
-                    width: 1.5),
-                borderRadius:
-                    BorderRadius.circular(16),
+                border: Border.all(color: borderColor, width: 1.5),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment
-                        .spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment
-                            .center,
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style:
-                            const TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
-                          fontWeight:
-                              FontWeight
-                                  .w600,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (oldPrice != null &&
-                          newPrice != null)
+                      if (oldPrice != null && newPrice != null)
                         Row(
                           children: [
                             Text(
                               oldPrice!,
-                              style:
-                                  const TextStyle(
-                                decoration:
-                                    TextDecoration
-                                        .lineThrough,
-                                color:
-                                    Colors.black,
+                              style: const TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: Colors.black,
                                 fontSize: 12,
-                                fontWeight:
-                                    FontWeight
-                                        .w600,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(
-                                width: 8),
+                            const SizedBox(width: 8),
                             Text(
                               newPrice!,
-                              style:
-                                  const TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
-                                fontWeight:
-                                    FontWeight
-                                        .w600,
-                                color:
-                                    Colors.black,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
                               ),
                             ),
                           ],
@@ -341,11 +285,9 @@ class PlanCard extends StatelessWidget {
                   ),
                   Text(
                     price,
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
-                      fontWeight:
-                          FontWeight.w600,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -357,28 +299,20 @@ class PlanCard extends StatelessWidget {
               top: -12,
               left: 16,
               child: Container(
-                padding:
-                    const EdgeInsets
-                        .symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 4,
                 ),
-                decoration:
-                    BoxDecoration(
-                  color: isSelected
-                      ? Colors.red
-                      : Colors.black,
-                  borderRadius:
-                      BorderRadius
-                          .circular(20),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.red : Colors.black,
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   "Popular",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
-                    fontWeight:
-                        FontWeight.w600,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

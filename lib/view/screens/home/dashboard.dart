@@ -55,12 +55,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: StreamBuilder<UserModel?>(
-                            stream: _currentUser != null 
+                            stream: _currentUser != null
                                 ? _dbService.streamUserData(_currentUser!.uid)
                                 : null,
                             builder: (context, snapshot) {
                               // FIX: Use the null-aware operator '??' to handle String? to String conversion
-                              final String displayName = snapshot.data?.fullName ?? "Guest";
+                              final String displayName =
+                                  snapshot.data?.fullName ?? "Guest";
 
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +107,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(right: 8),
                         child: Row(
                           children: [
-                            Image.asset('assets/images/streak.png', height: 18),
+                            InkWell(
+                              onTap: () {
+                                context.push('/streak');
+                              },
+                              child: Image.asset(
+                                'assets/images/streak.png',
+                                height: 18,
+                              ),
+                            ),
                             const Text(
                               " 48",
                               style: TextStyle(
