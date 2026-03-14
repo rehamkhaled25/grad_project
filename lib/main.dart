@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:graduation_project/view/screens/plan/premium_plan.dart';
 import 'firebase_options.dart'; 
 
 Future<void> main() async {
@@ -38,10 +39,10 @@ class GraduationProjectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return MaterialApp(
       title: 'Cal Ai',
-      routerConfig: AppRouter.router,
-      // home: Cameraaiupgrade(),
+      // routerConfig: AppRouter.router,
+      home: PremiumPlanScreen(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),
     );
