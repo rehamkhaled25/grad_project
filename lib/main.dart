@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
+import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
 import 'package:graduation_project/view/screens/plan/plan.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
@@ -41,10 +42,10 @@ class GraduationProjectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Cal Ai',
-      // routerConfig: AppRouter.router,
-      home: Cameraaiupgrade(),
+      routerConfig: AppRouter.router,
+      // home:TrialSubscriptionPage() ,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),
     );

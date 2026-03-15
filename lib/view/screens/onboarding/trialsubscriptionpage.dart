@@ -16,7 +16,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xffF4F4F4),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -48,8 +48,9 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             "How your trial 7-day free\ntrial works",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black
                             ),
                           ),
                         ),
@@ -99,7 +100,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             });
                           },
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 30),
                         PlanCard(
                           title: "12 Month",
                           price: "\$4.99 / MO",
@@ -113,7 +114,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             });
                           },
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 50),
                         ContinueButton(
                           onPressed: () {
                             AuthState.finishedOnboarding = true;
@@ -122,6 +123,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                           },
                           txt: "Continue",
                         ),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -169,7 +171,7 @@ class TimelineStep extends StatelessWidget {
 
     final Color lineColor = isDone || isActive
         ? Colors.black
-        : Colors.grey.shade300;
+        : Color(0xffB9B7C0);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +184,7 @@ class TimelineStep extends StatelessWidget {
               decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Center(child: Icon(iconData, size: 16, color: iconColor)),
             ),
-            if (!isLast) Container(width: 2, height: 40, color: lineColor),
+            if (!isLast) Container(width: 7, height: 40, color: lineColor),
           ],
         ),
         const SizedBox(width: 16),
@@ -191,8 +193,8 @@ class TimelineStep extends StatelessWidget {
           child: Text(
             title,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontSize: 15,
+             
               color: Colors.black,
               decoration: isDone
                   ? TextDecoration.lineThrough
@@ -227,7 +229,7 @@ class PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor = isSelected ? Colors.red : Colors.grey.shade300;
+    final Color borderColor = isSelected ? Color(0xffF20D0D) : Colors.grey.shade300;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
@@ -241,6 +243,7 @@ class PlanCard extends StatelessWidget {
               constraints: const BoxConstraints(minHeight: 95),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
+                color: Colors.white,
                 border: Border.all(color: borderColor, width: 1.5),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -267,7 +270,7 @@ class PlanCard extends StatelessWidget {
                                 decoration: TextDecoration.lineThrough,
                                 color: Colors.black,
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -275,7 +278,7 @@ class PlanCard extends StatelessWidget {
                               newPrice!,
                               style: const TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
                             ),
@@ -286,8 +289,8 @@ class PlanCard extends StatelessWidget {
                   Text(
                     price,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -304,7 +307,7 @@ class PlanCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.red : Colors.black,
+                  color: isSelected ? Color(0xffF20D0D) : Colors.black,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
