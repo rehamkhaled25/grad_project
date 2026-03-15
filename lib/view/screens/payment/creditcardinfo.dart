@@ -15,9 +15,9 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
-    // double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      backgroundColor: const Color(0xffF4F4F4),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -25,25 +25,28 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.black,
-                      size: 24,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 30),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.black,
+                        size: 24,
+                      ),
                     ),
-                  ),
-                  const Text(
-                    "Payment method",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ],
+                    const Text(
+                      "Payment method",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: screenHeight * 0.02),
               const Text(
-                "      Name",
+                "Name",
                 style: TextStyle(
                   fontSize: 16,
                   color: Color(0xff8E8E93),
@@ -63,23 +66,36 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 ),
               ),
               const SizedBox(height: 10),
+              
+              // RESPONSIVE ROW START
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: const [
-                  custom_image_holder(
-                    img: "assets/images/mastercard-full-svgrepo-com 1.png",
+                  Expanded(
+                    child: custom_image_holder(
+                      img: "assets/images/mastercard-full-svgrepo-com 1.png",
+                    ),
                   ),
-                  custom_image_holder(
-                    img: 'assets/images/paypal-svgrepo-com 1.png',
+                  SizedBox(width: 12), // Consistent spacing
+                  Expanded(
+                    child: custom_image_holder(
+                      img: 'assets/images/paypal-svgrepo-com 1.png',
+                    ),
                   ),
-                  custom_image_holder(
-                    img: 'assets/images/google-pay-svgrepo-com 2.png',
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: custom_image_holder(
+                      img: 'assets/images/google-pay-svgrepo-com 2.png',
+                    ),
                   ),
-                  custom_image_holder(
-                    img: 'assets/images/apple-pay-svgrepo-com 1.png',
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: custom_image_holder(
+                      img: 'assets/images/apple-pay-svgrepo-com 1.png',
+                    ),
                   ),
                 ],
               ),
+              // RESPONSIVE ROW END
 
               SizedBox(height: screenHeight * 0.07),
               const Text(

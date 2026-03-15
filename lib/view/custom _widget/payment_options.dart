@@ -13,6 +13,7 @@ class custom_image_holder extends StatelessWidget {
           onTap: (){},
           child: Container(
             decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
              color:   Colors.white,
               boxShadow: [
             BoxShadow(

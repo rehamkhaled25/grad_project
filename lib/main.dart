@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
+import 'package:graduation_project/view/screens/payment/creditcardinfo.dart';
 import 'package:graduation_project/view/screens/plan/plan.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
 import 'firebase_options.dart'; 
@@ -42,10 +43,10 @@ class GraduationProjectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return MaterialApp(
       title: 'Cal Ai',
-      routerConfig: AppRouter.router,
-      // home:TrialSubscriptionPage() ,
+      // routerConfig: AppRouter.router,
+      home:Creditcardinfo() ,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),
     );
