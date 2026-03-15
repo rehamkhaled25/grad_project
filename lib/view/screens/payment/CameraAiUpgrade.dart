@@ -25,7 +25,7 @@ class Cameraaiupgrade extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: const Color(0xFF252525),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -46,8 +46,8 @@ class Cameraaiupgrade extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE50914),
-                            borderRadius: BorderRadius.circular(8),
+                            color: const Color(0xFFD90C0C),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Image.asset(
                             'assets/images/crown.png',
@@ -101,9 +101,9 @@ class Cameraaiupgrade extends StatelessWidget {
                           // Navigate to premium page
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE50914),
+                          backgroundColor: const Color(0xFFD90C0C),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(13),
                           ),
                         ),
                         child: const Text(
@@ -133,7 +133,7 @@ class Cameraaiupgrade extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          const Icon(Icons.check, color: Color(0xFFE50914), size: 20),
+          const Icon(Icons.check, color: Color(0xFFD90C0C), size: 20),
           const SizedBox(width: 12),
           Text(
             text,

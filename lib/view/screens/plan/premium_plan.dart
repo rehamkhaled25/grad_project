@@ -60,14 +60,16 @@ class SubscriptionStatusCard extends StatelessWidget {
               Row(
                 children: [
                   Image(image: AssetImage('assets/images/tiny_avocado.png'),),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 5),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(height: 20,),
                       const Text(
                         'Premium',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,color: Colors.black),
                       ),
+                      SizedBox(height: 5,),
                       Text(
                         'SUBSCRIBED',
                         style: TextStyle(
@@ -93,9 +95,11 @@ class SubscriptionStatusCard extends StatelessWidget {
         ),
        
         Positioned(
-          top: -10,
+        
           left: 0,
+          
           child: Container(
+          
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: const BoxDecoration(
               color: Color(0xffD90C0C),

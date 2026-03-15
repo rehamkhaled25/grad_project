@@ -16,7 +16,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Initialize Services
   final DatabaseService _dbService = DatabaseService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
 
@@ -25,129 +24,123 @@ class _HomeScreenState extends State<HomeScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xffF4F4F4),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(vertical: 20), 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header Row ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Left Side: Avatar + Text
-                  Expanded(
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            context.go('/profile');
-                          },
-                          child: const CircleAvatar(
-                            radius: 22,
-                            backgroundImage: AssetImage(
-                              'assets/images/placeholder_profile.png',
+           
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => context.go('/profile'),
+                            child: const CircleAvatar(
+                              radius: 30,
+                              backgroundImage: AssetImage(
+                                'assets/images/placeholder_profile.png',
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: StreamBuilder<UserModel?>(
-                            stream: _currentUser != null
-                                ? _dbService.streamUserData(_currentUser!.uid)
-                                : null,
-                            builder: (context, snapshot) {
-                              // FIX: Use the null-aware operator '??' to handle String? to String conversion
-                              final String displayName =
-                                  snapshot.data?.fullName ?? "Guest";
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: StreamBuilder<UserModel?>(
+                              stream: _currentUser != null
+                                  ? _dbService.streamUserData(_currentUser!.uid)
+                                  : null,
+                              builder: (context, snapshot) {
+                                final String displayName =
+                                    snapshot.data?.fullName ?? "Guest";
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Hello, $displayName",
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Hello, $displayName",
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  const Text(
-                                    "Remember why you started..",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xff464646),
+                                    const Text(
+                                      "Remember why you started..",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xff464646),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            },
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          
+                          onPressed: () => context.go('/notificationsScreen'),
+                          icon: const Icon(
+                            Icons.notifications,
+                            size: 20,
+                            color: Color(0xff210701),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 15),
+                          child: Row(
+                            children: [
+                              InkWell(
+                                onTap: () => context.push('/streak'),
+                                child: Image.asset(
+                                  'assets/images/streak.png',
+                                  height: 18,
+                                ),
+                              ),
+                              const Text(
+                                " 48",
+                                style: TextStyle(
+                                  color: Color(0xffD9D9D9),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  // Right Side: Notifications + Streak
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          context.go('/notificationsScreen');
-                        },
-                        icon: const Icon(
-                          Icons.notifications,
-                          size: 20,
-                          color: Color(0xff210701),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Row(
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                context.push('/streak');
-                              },
-                              child: Image.asset(
-                                'assets/images/streak.png',
-                                height: 18,
-                              ),
-                            ),
-                            const Text(
-                              " 48",
-                              style: TextStyle(
-                                color: Color(0xffD9D9D9),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 40),
+              
               const DaysOfWeekBar(),
-              const SizedBox(height: 15),
+              const SizedBox(height: 30),
 
-              // --- PageView (Progress & Breakdown) ---
-              SizedBox(
+              
+             SizedBox(
                 height: 380,
                 child: PageView(
                   controller: _pageController,
-                  onPageChanged: (index) =>
-                      setState(() => _currentPage = index),
+                  onPageChanged: (index) => setState(() => _currentPage = index),
                   children: [
                     DailyProgressCard(size: size),
-
+                    
                     Container(
-                      margin: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(25),
@@ -160,12 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
@@ -176,71 +165,79 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 30),
-                            Center(
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 1.0,
-                                    progressColor: const Color(0xFFFF1744),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                    center: const Text(
-                                      "1600\nCalories",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.40,
-                                    progressColor: const Color(0xFFFFAB40),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.15,
-                                    progressColor: const Color(0xFF40C4FF),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 25),
+                            const Spacer(),
+                           Center(
+  child: Stack(
+    alignment: Alignment.center,
+    children: [
+     
+      CircularPercentIndicator(
+        radius: 68.5,
+        lineWidth: 15.0,
+        percent: 1.0,
+        progressColor: const Color(0xFF0000FF),
+        backgroundColor: Colors.transparent,
+        reverse: true,
+        circularStrokeCap: CircularStrokeCap.butt, 
+        center: const Text(
+          "1600\nCalories",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, height: 1.2),
+        ),
+      ),
+
+      
+      CircularPercentIndicator(
+        radius: 68.5,
+        lineWidth: 15.0,
+        percent: 0.41, 
+        progressColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        reverse: true,
+      ),
+
+     
+      CircularPercentIndicator(
+        radius: 68.5,
+        lineWidth: 15.0,
+        percent: 0.40,
+        progressColor: const Color(0xFFFF0000),    
+        backgroundColor: Colors.transparent,
+        reverse: true,
+      ),
+
+   
+      CircularPercentIndicator(
+        radius: 68.5,
+        lineWidth: 15.0,
+        percent: 0.16,
+        progressColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        reverse: true,
+      ),
+
+    
+      CircularPercentIndicator(
+        radius: 68.5,
+        lineWidth: 15.0,
+        percent: 0.15,
+        progressColor: const Color(0xFFFF9705), 
+        backgroundColor: Colors.transparent,
+        reverse: true,
+      ),
+    ],
+  ),
+),
+                            const Spacer(),
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 30,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 15),
                               child: Column(
                                 children: [
-                                  _macroBreakdownLabel(
-                                    Colors.orange,
-                                    "Fats",
-                                    "410",
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _macroBreakdownLabel(
-                                    Colors.red,
-                                    "Protein",
-                                    "142",
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _macroBreakdownLabel(
-                                    Colors.blue,
-                                    "Carbs",
-                                    "340",
-                                  ),
+                                  _macroBreakdownLabel(Colors.orange, "Fats", "410"),
+                                  const SizedBox(height: 5),
+                                  _macroBreakdownLabel(Colors.red, "Protein", "142"),
+                                  const SizedBox(height: 5),
+                                  _macroBreakdownLabel(Colors.blue, "Carbs", "340"),
                                 ],
                               ),
                             ),
@@ -264,24 +261,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 8,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: _currentPage == index
-                          ? Colors.black
-                          : Colors.grey.shade300,
+                      color: _currentPage == index ? Colors.black : Colors.grey.shade300,
                     ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 25),
-              const Text(
-                "Recently Logged",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  "Recently Logged",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               const SizedBox(height: 15),
               SizedBox(
                 height: 350,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   physics: const BouncingScrollPhysics(),
                   itemCount: 3,
                   itemBuilder: (context, index) => const FoodCard(),
@@ -300,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            CircleAvatar(radius: 5, backgroundColor: color),
+            CircleAvatar(radius: 3, backgroundColor: color),
             const SizedBox(width: 8),
             Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
@@ -322,39 +321,37 @@ class DaysOfWeekBar extends StatelessWidget {
     final days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     final dates = [11, 12, 13, 14, 15, 16, 17, 18];
     final bgColors = [
-      const Color(0xFF4CAF50),
-      const Color(0xFFD90C0C),
-      const Color(0xFFFFC107),
-      const Color(0xFFD90C0C),
-      const Color(0xFF4CAF50),
-      const Color(0xFFFFC107),
-      const Color(0xFFD90C0C),
-      const Color(0xFF4CAF50),
+      const Color(0xFF4CAF50), const Color(0xFFD90C0C),
+      const Color(0xFFFFC107), const Color(0xFFD90C0C),
+      const Color(0xFF4CAF50), const Color(0xFFFFC107),
+      const Color(0xFFD90C0C), const Color(0xFF4CAF50),
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 15), 
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, 
         children: List.generate(8, (index) {
           return Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: 19, // Slightly smaller to ensure fit on smaller screens
                 backgroundColor: bgColors[index],
                 child: Text(
                   dates[index].toString(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 8), 
               Text(
                 days[index],
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -374,8 +371,8 @@ class DailyProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: size.width,
-      margin: const EdgeInsets.all(10),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
@@ -388,6 +385,7 @@ class DailyProgressCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -406,10 +404,9 @@ class DailyProgressCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 25),
           CircularPercentIndicator(
             radius: 70,
-            lineWidth: 7,
+            lineWidth: 5,
             percent: 0.66,
             progressColor: const Color(0xffD90C0C),
             backgroundColor: Colors.grey.shade100,
@@ -417,11 +414,9 @@ class DailyProgressCard extends StatelessWidget {
             center: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                FittedBox(
-                  child: Text(
-                    "1600",
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  ),
+                Text(
+                  "1600",
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   "of 2400",
@@ -434,22 +429,12 @@ class DailyProgressCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 30),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: const [
-              ProgressItem(
-                img: 'assets/images/bultorone fireee.png',
-                label: "400\nBurned",
-              ),
-              ProgressItem(
-                img: 'assets/images/target.png',
-                label: "800\nRemaining",
-              ),
-              ProgressItem(
-                img: 'assets/images/chart.png',
-                label: "66.6%\nProgress",
-              ),
+              ProgressItem(img: 'assets/images/bultorone fireee.png', label: "400\nBurned"),
+              ProgressItem(img: 'assets/images/target.png', label: "800\nRemaining"),
+              ProgressItem(img: 'assets/images/chart.png', label: "66.6%\nProgress"),
             ],
           ),
         ],
@@ -464,8 +449,8 @@ class FoodCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
-      margin: const EdgeInsets.only(right: 20, bottom: 15, left: 10, top: 5),
+      width: 280,
+      margin: const EdgeInsets.only(right: 15, bottom: 10, left: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
@@ -484,13 +469,13 @@ class FoodCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
             child: Image.asset(
               'assets/images/food log.png',
-              height: 140,
+              height: 130,
               width: double.infinity,
               fit: BoxFit.cover,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -500,39 +485,20 @@ class FoodCard extends StatelessWidget {
                     const Expanded(
                       child: Text(
                         "Power Breakfast Bowl",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Column(
                       children: const [
-                        Text(
-                          "520",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          "Calories",
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text("520", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text("Calories", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,color: Colors.black)),
                       ],
                     ),
                   ],
                 ),
-                const Text(
-                  "8:00am",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                const SizedBox(height: 20),
+                const Text("8:00am", style: TextStyle(color: Colors.black, fontSize: 8,fontWeight: FontWeight.bold)),
+                const SizedBox(height: 15),
                 Row(
                   children: [
                     _macroCircle(0.7, Colors.red),
@@ -542,32 +508,24 @@ class FoodCard extends StatelessWidget {
                     _macroCircle(0.6, Colors.grey),
                     const Spacer(),
                     Container(
-                      width: 95,
-                      height: 28,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black,
                         borderRadius: BorderRadius.circular(30),
                       ),
-                      child: const Center(
-                        child: Text(
-                          "View Details",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      child: const Text(
+                        "View Details",
+                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 15),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _macroLabel(Colors.red, "Protein 30g"),
-                    const SizedBox(width: 12),
                     _macroLabel(Colors.black, "Carbs 10g"),
-                    const SizedBox(width: 12),
                     _macroLabel(Colors.grey, "Fats 30g"),
                   ],
                 ),
@@ -581,8 +539,8 @@ class FoodCard extends StatelessWidget {
 
   Widget _macroCircle(double percent, Color color) {
     return CircularPercentIndicator(
-      radius: 18,
-      lineWidth: 4,
+      radius: 16,
+      lineWidth: 5,
       percent: percent,
       progressColor: color,
       backgroundColor: Colors.grey.shade200,
@@ -593,15 +551,11 @@ class FoodCard extends StatelessWidget {
   Widget _macroLabel(Color color, String text) {
     return Row(
       children: [
-        CircleAvatar(radius: 4, backgroundColor: color),
-        const SizedBox(width: 5),
+        CircleAvatar(radius: 5, backgroundColor: color),
+        const SizedBox(width: 4),
         Text(
           text,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600,color: Colors.black),
         ),
       ],
     );
@@ -617,12 +571,12 @@ class ProgressItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Image.asset(img, height: 24),
-        const SizedBox(height: 6),
+        Image.asset(img, height: 22),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
         ),
       ],
     );

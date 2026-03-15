@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:graduation_project/view/screens/home/dashboard.dart';
+import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
+import 'package:graduation_project/view/screens/plan/plan.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
 import 'firebase_options.dart'; 
 
@@ -25,8 +28,7 @@ Future<void> main() async {
     storageBucket: DefaultFirebaseOptions.currentPlatform.storageBucket,
     iosBundleId: DefaultFirebaseOptions.currentPlatform.iosBundleId, // Needed if you run on iOS
   );
-
-
+  
   await Firebase.initializeApp(
     options: customizedOptions,
   );
@@ -42,9 +44,11 @@ class GraduationProjectApp extends StatelessWidget {
     return MaterialApp(
       title: 'Cal Ai',
       // routerConfig: AppRouter.router,
-      home: PremiumPlanScreen(),
+      home: Cameraaiupgrade(),
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),
     );
+
   }
+
 }
