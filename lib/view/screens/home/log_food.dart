@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 
 class LogFood extends StatelessWidget {
@@ -23,15 +24,23 @@ class LogFood extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: width * 0.05,
-                    backgroundImage: const AssetImage(
-                        'assets/images/placeholder_profile.png'),
+                  InkWell(
+                    onTap: () {
+                      context.push('/profile');
+                    },
+                    child: CircleAvatar(
+                      radius: width * 0.05,
+                      backgroundImage: const AssetImage(
+                        'assets/images/placeholder_profile.png',
+                      ),
+                    ),
                   ),
                   const Spacer(),
-                  Icon(Icons.arrow_back_ios,
-                      color: const Color(0xffD9D9D9),
-                      size: width * 0.04),
+                  Icon(
+                    Icons.arrow_back_ios,
+                    color: const Color(0xffD9D9D9),
+                    size: width * 0.04,
+                  ),
                   SizedBox(width: width * 0.02),
                   Text(
                     '14 December',
@@ -41,9 +50,11 @@ class LogFood extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: width * 0.02),
-                  Icon(Icons.arrow_forward_ios,
-                      color: const Color(0xffD9D9D9),
-                      size: width * 0.04),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: const Color(0xffD9D9D9),
+                    size: width * 0.04,
+                  ),
                   const Spacer(),
                   SizedBox(width: width * 0.1),
                 ],
@@ -82,11 +93,7 @@ class MealCard extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const MealCard({
-    super.key,
-    required this.title,
-    required this.subtitle,
-  });
+  const MealCard({super.key, required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -111,10 +118,7 @@ class MealCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Padding(
@@ -137,7 +141,11 @@ class MealCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const AddFoodButton(),
+                AddFoodButton(
+                  onTap: () {
+                    context.push('/log');
+                  },
+                ),
               ],
             ),
           ),
@@ -173,10 +181,7 @@ class SnackCard extends StatelessWidget {
         children: [
           const Text(
             "Snack",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Row(
@@ -193,7 +198,10 @@ class SnackCard extends StatelessWidget {
                       "Boba Tea",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       "1 cup",
@@ -202,7 +210,7 @@ class SnackCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8), 
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -217,12 +225,19 @@ class SnackCard extends StatelessWidget {
                       ),
                       const Text(
                         " 300",
-                        style: TextStyle(fontSize: 12, color: Color(0xffB3B3B3)),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xffB3B3B3),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const AddFoodButton(),
+                  AddFoodButton(
+                    onTap: () {
+                      context.push('/log');
+                    },
+                  ),
                 ],
               ),
             ],
@@ -234,7 +249,9 @@ class SnackCard extends StatelessWidget {
 }
 
 class AddFoodButton extends StatelessWidget {
-  const AddFoodButton({super.key});
+  final VoidCallback? onTap; // callback function
+
+  const AddFoodButton({super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -244,19 +261,18 @@ class AddFoodButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         color: const Color(0xffF2F2F2),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, 2),
-            blurRadius: 2,
-          )
+          BoxShadow(color: Colors.black12, offset: Offset(0, 2), blurRadius: 2),
         ],
       ),
-      child: const Text(
-        "Add food",
-        style: TextStyle(
-          color: Color(0xffD90C0C),
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
+      child: InkWell(
+        onTap: onTap,
+        child: const Text(
+          "Add food",
+          style: TextStyle(
+            color: Color(0xffD90C0C),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

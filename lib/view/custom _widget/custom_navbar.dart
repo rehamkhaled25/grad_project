@@ -200,7 +200,7 @@ class BottomNavBar extends StatefulWidget {
 class _BottomNavBarState extends State<BottomNavBar> {
   int selectedIndex = 0;
 
-  final List<String> _routes = ['/home', '/log', '/progress', '/settings'];
+  final List<String> _routes = ['/home', '/log_food', '/progress', '/settings'];
 
   @override
   void initState() {
@@ -220,7 +220,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
       if (location.startsWith('/home')) {
         selectedIndex = 0;
-      } else if (location.startsWith('/log')) {
+      } else if (location.startsWith('/log_food')) {
         selectedIndex = 1;
       } else if (location.startsWith('/progress')) {
         selectedIndex = 2;

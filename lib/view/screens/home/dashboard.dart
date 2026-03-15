@@ -28,11 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(vertical: 20), 
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-           
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Row(
@@ -42,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         children: [
                           GestureDetector(
-                            onTap: () => context.go('/profile'),
+                            onTap: () => context.push('/profile'),
                             child: const CircleAvatar(
                               radius: 30,
                               backgroundImage: AssetImage(
@@ -89,8 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         IconButton(
-                          
-                          onPressed: () => context.go('/notificationsScreen'),
+                          onPressed: () => context.push('/notificationsScreen'),
                           icon: const Icon(
                             Icons.notifications,
                             size: 20,
@@ -126,21 +124,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 40),
-              
+
               const DaysOfWeekBar(),
               const SizedBox(height: 30),
 
-              
-             SizedBox(
+              SizedBox(
                 height: 380,
                 child: PageView(
                   controller: _pageController,
-                  onPageChanged: (index) => setState(() => _currentPage = index),
+                  onPageChanged: (index) =>
+                      setState(() => _currentPage = index),
                   children: [
                     DailyProgressCard(size: size),
-                    
+
                     Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(25),
@@ -166,78 +167,92 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const Spacer(),
-                           Center(
-  child: Stack(
-    alignment: Alignment.center,
-    children: [
-     
-      CircularPercentIndicator(
-        radius: 68.5,
-        lineWidth: 15.0,
-        percent: 1.0,
-        progressColor: const Color(0xFF0000FF),
-        backgroundColor: Colors.transparent,
-        reverse: true,
-        circularStrokeCap: CircularStrokeCap.butt, 
-        center: const Text(
-          "1600\nCalories",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, height: 1.2),
-        ),
-      ),
+                            Center(
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CircularPercentIndicator(
+                                    radius: 68.5,
+                                    lineWidth: 15.0,
+                                    percent: 1.0,
+                                    progressColor: const Color(0xFF0000FF),
+                                    backgroundColor: Colors.transparent,
+                                    reverse: true,
+                                    circularStrokeCap: CircularStrokeCap.butt,
+                                    center: const Text(
+                                      "1600\nCalories",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                  ),
 
-      
-      CircularPercentIndicator(
-        radius: 68.5,
-        lineWidth: 15.0,
-        percent: 0.41, 
-        progressColor: Colors.white,
-        backgroundColor: Colors.transparent,
-        reverse: true,
-      ),
+                                  CircularPercentIndicator(
+                                    radius: 68.5,
+                                    lineWidth: 15.0,
+                                    percent: 0.41,
+                                    progressColor: Colors.white,
+                                    backgroundColor: Colors.transparent,
+                                    reverse: true,
+                                  ),
 
-     
-      CircularPercentIndicator(
-        radius: 68.5,
-        lineWidth: 15.0,
-        percent: 0.40,
-        progressColor: const Color(0xFFFF0000),    
-        backgroundColor: Colors.transparent,
-        reverse: true,
-      ),
+                                  CircularPercentIndicator(
+                                    radius: 68.5,
+                                    lineWidth: 15.0,
+                                    percent: 0.40,
+                                    progressColor: const Color(0xFFFF0000),
+                                    backgroundColor: Colors.transparent,
+                                    reverse: true,
+                                  ),
 
-   
-      CircularPercentIndicator(
-        radius: 68.5,
-        lineWidth: 15.0,
-        percent: 0.16,
-        progressColor: Colors.white,
-        backgroundColor: Colors.transparent,
-        reverse: true,
-      ),
+                                  CircularPercentIndicator(
+                                    radius: 68.5,
+                                    lineWidth: 15.0,
+                                    percent: 0.16,
+                                    progressColor: Colors.white,
+                                    backgroundColor: Colors.transparent,
+                                    reverse: true,
+                                  ),
 
-    
-      CircularPercentIndicator(
-        radius: 68.5,
-        lineWidth: 15.0,
-        percent: 0.15,
-        progressColor: const Color(0xFFFF9705), 
-        backgroundColor: Colors.transparent,
-        reverse: true,
-      ),
-    ],
-  ),
-),
+                                  CircularPercentIndicator(
+                                    radius: 68.5,
+                                    lineWidth: 15.0,
+                                    percent: 0.15,
+                                    progressColor: const Color(0xFFFF9705),
+                                    backgroundColor: Colors.transparent,
+                                    reverse: true,
+                                  ),
+                                ],
+                              ),
+                            ),
                             const Spacer(),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 15),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 15,
+                              ),
                               child: Column(
                                 children: [
-                                  _macroBreakdownLabel(Colors.orange, "Fats", "410"),
+                                  _macroBreakdownLabel(
+                                    Colors.orange,
+                                    "Fats",
+                                    "410",
+                                  ),
                                   const SizedBox(height: 5),
-                                  _macroBreakdownLabel(Colors.red, "Protein", "142"),
+                                  _macroBreakdownLabel(
+                                    Colors.red,
+                                    "Protein",
+                                    "142",
+                                  ),
                                   const SizedBox(height: 5),
-                                  _macroBreakdownLabel(Colors.blue, "Carbs", "340"),
+                                  _macroBreakdownLabel(
+                                    Colors.blue,
+                                    "Carbs",
+                                    "340",
+                                  ),
                                 ],
                               ),
                             ),
@@ -261,7 +276,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 8,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: _currentPage == index ? Colors.black : Colors.grey.shade300,
+                      color: _currentPage == index
+                          ? Colors.black
+                          : Colors.grey.shade300,
                     ),
                   ),
                 ),
@@ -321,16 +338,20 @@ class DaysOfWeekBar extends StatelessWidget {
     final days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     final dates = [11, 12, 13, 14, 15, 16, 17, 18];
     final bgColors = [
-      const Color(0xFF4CAF50), const Color(0xFFD90C0C),
-      const Color(0xFFFFC107), const Color(0xFFD90C0C),
-      const Color(0xFF4CAF50), const Color(0xFFFFC107),
-      const Color(0xFFD90C0C), const Color(0xFF4CAF50),
+      const Color(0xFF4CAF50),
+      const Color(0xFFD90C0C),
+      const Color(0xFFFFC107),
+      const Color(0xFFD90C0C),
+      const Color(0xFF4CAF50),
+      const Color(0xFFFFC107),
+      const Color(0xFFD90C0C),
+      const Color(0xFF4CAF50),
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15), 
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(8, (index) {
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -347,7 +368,7 @@ class DaysOfWeekBar extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8), 
+              const SizedBox(height: 8),
               Text(
                 days[index],
                 style: const TextStyle(
@@ -432,9 +453,18 @@ class DailyProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: const [
-              ProgressItem(img: 'assets/images/bultorone fireee.png', label: "400\nBurned"),
-              ProgressItem(img: 'assets/images/target.png', label: "800\nRemaining"),
-              ProgressItem(img: 'assets/images/chart.png', label: "66.6%\nProgress"),
+              ProgressItem(
+                img: 'assets/images/bultorone fireee.png',
+                label: "400\nBurned",
+              ),
+              ProgressItem(
+                img: 'assets/images/target.png',
+                label: "800\nRemaining",
+              ),
+              ProgressItem(
+                img: 'assets/images/chart.png',
+                label: "66.6%\nProgress",
+              ),
             ],
           ),
         ],
@@ -485,19 +515,42 @@ class FoodCard extends StatelessWidget {
                     const Expanded(
                       child: Text(
                         "Power Breakfast Bowl",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Column(
                       children: const [
-                        Text("520", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text("Calories", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,color: Colors.black)),
+                        Text(
+                          "520",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          "Calories",
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
-                const Text("8:00am", style: TextStyle(color: Colors.black, fontSize: 8,fontWeight: FontWeight.bold)),
+                const Text(
+                  "8:00am",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 15),
                 Row(
                   children: [
@@ -508,14 +561,21 @@ class FoodCard extends StatelessWidget {
                     _macroCircle(0.6, Colors.grey),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black,
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: const Text(
                         "View Details",
-                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -555,7 +615,11 @@ class FoodCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           text,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600,color: Colors.black),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
         ),
       ],
     );

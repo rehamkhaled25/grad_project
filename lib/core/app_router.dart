@@ -5,6 +5,7 @@ import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
 import 'package:graduation_project/view/screens/database/database_search.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
+import 'package:graduation_project/view/screens/home/log_food.dart';
 import 'package:graduation_project/view/screens/home/notifications_settings_screen.dart';
 import 'package:graduation_project/view/screens/home/profile_screen.dart';
 import 'package:graduation_project/view/screens/notifications/notifications_screen.dart';
@@ -176,6 +177,13 @@ abstract class AppRouter {
             const NoTransitionPage(child: FoodScannerScreen()),
       ),
       GoRoute(
+        path: '/log',
+        name: 'log',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: DatabaseSearch()),
+      ),
+
+      GoRoute(
         path: '/streak',
         name: 'streak',
         pageBuilder: (context, state) =>
@@ -195,11 +203,12 @@ abstract class AppRouter {
                 const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
-            path: '/log',
-            name: 'log',
+            path: '/log_food',
+            name: 'log_food',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DatabaseSearch()),
+                const NoTransitionPage(child: LogFood()),
           ),
+
           GoRoute(
             path: '/progress',
             name: 'progress',

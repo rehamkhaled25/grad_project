@@ -112,7 +112,7 @@ class SettingsScreen extends StatelessWidget {
                     isLast: true,
                     onTap: () {
                       // Navigate to notifications settings
-                      context.go('/notifications');
+                      context.push('/notifications');
                     },
                   ),
                 ],

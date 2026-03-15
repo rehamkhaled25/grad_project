@@ -23,7 +23,9 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
               children: [
                 IconButton(
                   padding: EdgeInsets.symmetric(horizontal: 25),
-                  onPressed: () {},
+                  onPressed: () {
+                    context.pop();
+                  },
                   icon: const Icon(
                     Icons.arrow_back,
                     size: 24,
