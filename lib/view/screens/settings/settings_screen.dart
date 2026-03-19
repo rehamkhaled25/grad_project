@@ -2,9 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
+import 'package:graduation_project/services/auth_service.dart'; // Add this import
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  SettingsScreen({super.key});
+
+  // Create an instance of AuthService
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +22,10 @@ class SettingsScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -34,14 +42,14 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 title: Text(
-                  'Moe_Hany',
+                  'Habiba_Hemdan',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 subtitle: Text(
-                  'Male / Maintain Weight',
+                  'Female / Maintain Weight',
                   style: TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.w500,
@@ -85,7 +93,7 @@ class SettingsScreen extends StatelessWidget {
                     'Profile Data',
                     onTap: () {
                       // Navigate to profile data screen
-                      context.go('/profile');
+                      context.push('/profile');
                     },
                   ),
                   _buildTile(
@@ -204,16 +212,58 @@ class SettingsScreen extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                // Perform logout
+              onPressed: () async {
+                // Close the dialog
                 Navigator.pop(context);
 
-                // Update auth state
-                AuthState.isLoggedIn = false;
-                AuthState.isRegistered = false;
+                // Show loading indicator
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                );
 
-                // Navigate to login
-                context.go('/login');
+                try {
+                  // Perform logout using AuthService
+                  await _authService.signOut();
+
+                  // Close loading dialog
+                  if (context.mounted) Navigator.pop(context);
+
+                  // Update auth state
+                  AuthState.isLoggedIn = false;
+                  AuthState.isRegistered = false;
+
+                  // Navigate to login screen and remove all previous routes
+                  if (context.mounted) {
+                    context.go('/login');
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Logged out successfully'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Close loading dialog if error occurs
+                  if (context.mounted) Navigator.pop(context);
+
+                  // Show error message
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error logging out: $e'),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Log Out'),

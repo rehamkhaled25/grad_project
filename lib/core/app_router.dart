@@ -219,7 +219,7 @@ abstract class AppRouter {
             path: '/settings',
             name: 'settings',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+                NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
