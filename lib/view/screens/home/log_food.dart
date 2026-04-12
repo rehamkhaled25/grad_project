@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 
-
+// Assuming your dashboard/bar import is here
+// import 'package:graduation_project/view/screens/home/dashboard.dart';
 
 class LogFood extends StatelessWidget {
   const LogFood({super.key});

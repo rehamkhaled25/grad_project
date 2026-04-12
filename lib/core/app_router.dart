@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/models/user_model.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
+import 'package:graduation_project/view/custom _widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
 import 'package:graduation_project/view/screens/database/database_search.dart';
@@ -51,7 +51,6 @@ abstract class AppRouter {
       final location = state.matchedLocation;
 
       // 1. SPLASH SAFE ZONE
-      // If we are currently on splash, stay there and don't evaluate other rules.
       if (location == '/splash') {
         return null;
       }
@@ -73,11 +72,8 @@ abstract class AppRouter {
         return null;
       }
 
-      // 3. LOGGED OUT LOGIC (FIXED)
+      // 3. LOGGED OUT LOGIC
       if (!AuthState.isLoggedIn) {
-        // If they are not logged in, they are ONLY allowed to be on 
-        // splash, login, register, or the onboarding flow.
-        // If they try to go anywhere else (like /home), send them to login.
         if (location != '/login' && 
             location != '/register' && 
             !location.startsWith('/onboarding')) {
@@ -185,6 +181,13 @@ abstract class AppRouter {
         pageBuilder: (context, state) => const NoTransitionPage(child: FoodScannerScreen()),
       ),
       GoRoute(
+        path: '/log',
+        name: 'log',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: DatabaseSearch()),
+      ),
+
+      GoRoute(
         path: '/streak',
         name: 'streak',
         pageBuilder: (context, state) => const NoTransitionPage(child: StreakScreen()),
@@ -204,6 +207,7 @@ abstract class AppRouter {
             name: 'log',
             pageBuilder: (context, state) => const NoTransitionPage(child: DatabaseSearch()),
           ),
+
           GoRoute(
             path: '/progress',
             name: 'progress',
@@ -212,7 +216,7 @@ abstract class AppRouter {
           GoRoute(
             path: '/settings',
             name: 'settings',
-            pageBuilder: (context, state) => const NoTransitionPage(child: SettingsScreen()),
+            pageBuilder: (context, state) =>  NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),

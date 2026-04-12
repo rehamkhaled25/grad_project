@@ -17,7 +17,6 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-         
           SliverToBoxAdapter(
             child: Column(
               children: [
@@ -89,7 +88,6 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
               ],
             ),
           ),
-         
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
@@ -101,7 +99,6 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
               childCount: 8,
             ),
           ),
-          
           const SliverToBoxAdapter(
             child: SizedBox(height: 20),
           ),
@@ -122,7 +119,7 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
         label,
         style: TextStyle(
           color: isSelected ? const Color(0xffFF0F3C) : Colors.black,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
       ),
