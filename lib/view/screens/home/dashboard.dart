@@ -21,14 +21,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
+    final double width = size.width;
 
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
       body: SafeArea(
+      
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(vertical: 20), 
+          padding: EdgeInsets.symmetric( horizontal: width * 0.05,
+            vertical: size.height * 0.02,
+          ), 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -44,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           GestureDetector(
                             onTap: () => context.go('/profile'),
                             child: const CircleAvatar(
-                              radius: 30,
+                              radius: 23.5,
                               backgroundImage: AssetImage(
                                 'assets/images/placeholder_profile.png',
                               ),
@@ -68,12 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: const TextStyle(
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
+                                        color: Color(0xff141414)
                                       ),
                                     ),
                                     const Text(
                                       "Remember why you started..",
                                       style: TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                        fontSize:11,
+                                        fontWeight: FontWeight.w500,
                                         color: Color(0xff464646),
                                       ),
                                     ),
@@ -328,7 +334,7 @@ class DaysOfWeekBar extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15), 
+      padding: const EdgeInsets.symmetric(horizontal: 7), 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween, 
         children: List.generate(8, (index) {
@@ -336,7 +342,7 @@ class DaysOfWeekBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 19, // Slightly smaller to ensure fit on smaller screens
+                radius: 19, 
                 backgroundColor: bgColors[index],
                 child: Text(
                   dates[index].toString(),
@@ -346,7 +352,9 @@ class DaysOfWeekBar extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
+
               ),
+              
               const SizedBox(height: 8), 
               Text(
                 days[index],
@@ -405,7 +413,7 @@ class DailyProgressCard extends StatelessWidget {
             ],
           ),
           CircularPercentIndicator(
-            radius: 70,
+            radius: 64,
             lineWidth: 5,
             percent: 0.66,
             progressColor: const Color(0xffD90C0C),
@@ -414,16 +422,24 @@ class DailyProgressCard extends StatelessWidget {
             center: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Text(
-                  "1600",
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                SizedBox(
+                child:FittedBox(
+                  fit: BoxFit.scaleDown,
+                     child: Text(
+                      "1600",
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                                       ),
+                   ),
                 ),
-                Text(
-                  "of 2400",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                FittedBox(
+                  fit:  BoxFit.scaleDown,
+                  child: Text(
+                    "of 2400",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

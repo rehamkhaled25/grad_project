@@ -207,7 +207,10 @@ class CustomTextField extends StatelessWidget {
       width: hasWidth ? width : double.infinity,
       height: 55,
       child: TextField(
+      
         decoration: InputDecoration(
+         filled: true,
+          fillColor: Colors.white,
           hintText: label,
           hintStyle: const TextStyle(fontSize: 15, color: Color(0xff8E8E93)),
           enabledBorder: OutlineInputBorder(

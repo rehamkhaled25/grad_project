@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
@@ -30,13 +31,10 @@ class AuthState {
   static bool hasSeenSplash = false;
 }
 
-final GlobalKey<NavigatorState> globalNavigatorKey =
-    GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
-// Create a scaffold with bottom nav bar
 class ScaffoldWithBottomNavBar extends StatelessWidget {
   final Widget child;
-
   const ScaffoldWithBottomNavBar({super.key, required this.child});
 
   @override
@@ -52,41 +50,37 @@ abstract class AppRouter {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      // 1. If coming from splash, let it finish first
-      if (location == '/splash' && !AuthState.hasSeenSplash) {
+      // 1. SPLASH SAFE ZONE
+      // If we are currently on splash, stay there and don't evaluate other rules.
+      if (location == '/splash') {
         return null;
       }
 
-      // 2. Handle Logic for Logged In Users
+      // 2. LOGGED IN LOGIC
       if (AuthState.isLoggedIn) {
-        // If they are logged in but HAVEN'T finished onboarding
         if (!AuthState.finishedOnboarding) {
-          // If they try to go home or go back to login/register, force them to onboarding start
-          if (location == '/home' ||
-              location == '/login' ||
-              location == '/register') {
+          if (location == '/home' || location == '/login' || location == '/register') {
             return '/onboardingGender';
           }
-          // Otherwise, let them stay on the specific onboarding page they are currently on
           return null;
         }
 
-        // If they ARE logged in AND finished onboarding, don't let them see Auth or Onboarding
-        if (location == '/login' ||
-            location == '/register' ||
-            location.startsWith('/onboarding') ||
-            location == '/subscription') {
+        if (location == '/login' || 
+            location == '/register' || 
+            location.startsWith('/onboarding')) {
           return '/home';
         }
         return null;
       }
 
-      // 3. Handle Logic for Logged Out Users
+      // 3. LOGGED OUT LOGIC (FIXED)
       if (!AuthState.isLoggedIn) {
-        // If not logged in, they can only be on splash, login, or register
-        if (location != '/login' &&
-            location != '/register' &&
-            location != '/splash') {
+        // If they are not logged in, they are ONLY allowed to be on 
+        // splash, login, register, or the onboarding flow.
+        // If they try to go anywhere else (like /home), send them to login.
+        if (location != '/login' && 
+            location != '/register' && 
+            !location.startsWith('/onboarding')) {
           return '/login';
         }
       }
@@ -94,7 +88,6 @@ abstract class AppRouter {
       return null;
     },
     routes: [
-      // Public routes (no bottom nav)
       GoRoute(
         path: '/splash',
         name: 'splash',
@@ -108,10 +101,11 @@ abstract class AppRouter {
       GoRoute(
         path: '/register',
         name: 'register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return RegisterScreen(userModel: extra);
+        },
       ),
-
-      // Onboarding routes
       GoRoute(
         path: '/onboardingGender',
         name: 'onboarding_gender',
@@ -120,32 +114,50 @@ abstract class AppRouter {
       GoRoute(
         path: '/onboardingHeight',
         name: 'onboarding_height',
-        builder: (context, state) => const HeightScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return HeightScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingBirthdate',
         name: 'onboarding_birthdate',
-        builder: (context, state) => const BirthDateScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return BirthDateScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingWeight',
         name: 'onboarding_weight',
-        builder: (context, state) => const WeightScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return WeightScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingGoal',
         name: 'onboarding_goal',
-        builder: (context, state) => const OnboardingGoal(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return OnboardingGoal(userModel: extra);
+        },
       ),
       GoRoute(
-        path: '/onboardingNotification',
-        name: 'onboarding_notification',
-        builder: (context, state) => const NotificationPermissionPage(),
+        path: '/onboardingNotifications',
+        name: 'onboarding_notifications',
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return NotificationPermissionPage(userModel: extra);
+        },
       ),
       GoRoute(
-        path: '/onboardingAllset',
+        path: '/onboardingAllSet',
         name: 'onboarding_allset',
-        builder: (context, state) => const AllSet(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return AllSet(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/subscription',
@@ -160,29 +172,23 @@ abstract class AppRouter {
       GoRoute(
         path: '/notifications',
         name: 'notifications',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: NotificationsSettingsScreen()),
+        pageBuilder: (context, state) => const NoTransitionPage(child: NotificationsSettingsScreen()),
       ),
       GoRoute(
         path: '/notificationsScreen',
         name: 'notificationsScreen',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: NotificationScreen()),
+        pageBuilder: (context, state) => const NoTransitionPage(child: NotificationScreen()),
       ),
       GoRoute(
         path: '/foodScanner',
         name: 'food_scanner',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: FoodScannerScreen()),
+        pageBuilder: (context, state) => const NoTransitionPage(child: FoodScannerScreen()),
       ),
       GoRoute(
         path: '/streak',
         name: 'streak',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: StreakScreen()),
+        pageBuilder: (context, state) => const NoTransitionPage(child: StreakScreen()),
       ),
-
-      // Protected routes with bottom navigation bar
       ShellRoute(
         builder: (context, state, child) {
           return ScaffoldWithBottomNavBar(child: child);
@@ -191,36 +197,32 @@ abstract class AppRouter {
           GoRoute(
             path: '/home',
             name: 'home',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: HomeScreen()),
+            pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
             path: '/log',
             name: 'log',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DatabaseSearch()),
+            pageBuilder: (context, state) => const NoTransitionPage(child: DatabaseSearch()),
           ),
           GoRoute(
             path: '/progress',
             name: 'progress',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: WeeklyProgress()),
+            pageBuilder: (context, state) => const NoTransitionPage(child: WeeklyProgress()),
           ),
           GoRoute(
             path: '/settings',
             name: 'settings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+            pageBuilder: (context, state) => const NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
     ],
-    errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Error: ${state.error}'))),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(child: Text('Error: ${state.error}')),
+    ),
   );
 }
 
-// Navigation helpers
 extension NavigationHelpers on BuildContext {
   void goToLogin() => go('/login');
   void goToRegister() => go('/register');
@@ -234,7 +236,6 @@ extension NavigationHelpers on BuildContext {
   void goToOnboardingAllSet() => go('/onboardingAllset');
   void goToSubscription() => go('/subscription');
   void goToFoodScanner() => go('/foodScanner');
-  void goToDocuments() => go('/documents');
   void goToNotifications() => go('/notifications');
   void goToSettings() => go('/settings');
   void goToProfile() => go('/profile');

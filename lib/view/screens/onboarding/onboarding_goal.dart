@@ -1,64 +1,42 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
+import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
 import 'package:graduation_project/models/user_model.dart';
 
 class OnboardingGoal extends StatefulWidget {
-  const OnboardingGoal({super.key});
+  // Add the userModel to the constructor to receive data from the Weight page
+  final UserModel? userModel;
+
+  const OnboardingGoal({super.key, this.userModel});
 
   @override
   State<OnboardingGoal> createState() => _OnboardingGoalState();
 }
 
 class _OnboardingGoalState extends State<OnboardingGoal> {
-  final DatabaseService _dbService = DatabaseService();
   int selectedIndex = -1;
-  bool _isSaving = false;
-
-  // List of goals to map index to a string for Firebase
+  // We don't need _isSaving anymore because we aren't talking to the internet yet
+  
   final List<String> goals = [
     "Lose Weight",
     "Gain Weight",
     "Maintain Weight",
   ];
 
-  /// NEW: Logic to save goal to Firebase
-  Future<void> _saveGoalAndContinue() async {
+  /// UPDATED: Logic to update the model and move to the next onboarding step
+  void _updateGoalAndContinue() {
     if (selectedIndex == -1) return;
 
-    setState(() => _isSaving = true);
+    // 1. Get the model from the Weight page or create a fresh one if null
+    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-       
-        await _dbService.saveUserData(UserModel(
-          uid: user.uid,
-          goal: goals[selectedIndex], 
-          email: user.email ?? "",
-        ));
+    // 2. Use copyWith to add the selected goal to our "box"
+    final updatedUser = currentBox.copyWith(goal: goals[selectedIndex]);
 
-        if (mounted) {
-       
-          context.push('/onboardingNotification');
-        }
-      } else {
-        throw Exception("No user authenticated");
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to save goal: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+    // 3. Pass the updated model to the next screen (e.g., Notifications or Sign Up)
+    if (mounted) {
+      context.push('/onboardingNotifications', extra: updatedUser);
     }
   }
 
@@ -73,9 +51,8 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              const CustomAppbar(currentStep: 5, totalSteps: 7),
+              const CustomAppbar(currentStep: 5, totalSteps: 8),
 
-             
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,17 +100,14 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                 ),
               ),
 
-          
-              _isSaving
-                  ? const Center(child: CircularProgressIndicator(color: Colors.black))
-                  : ContinueButton(
-                      txt: "Continue",
-                      onPressed: selectedIndex == -1 
-                          ? () {} 
-                          : _saveGoalAndContinue,
-                    ),
+              ContinueButton(
+                txt: "Continue",
+                onPressed: selectedIndex == -1 
+                    ? () {} 
+                    : _updateGoalAndContinue, // Using our updated function
+              ),
 
-              const SizedBox(height: 20),
+             SizedBox(height: screenHeight * 0.1),
             ],
           ),
         ),
@@ -171,7 +145,6 @@ class GoalWidget extends StatelessWidget {
         ),
         child: Row(
           children: [
-            
             Image.asset(image, width: 32, height: 32),
             const SizedBox(width: 16),
             Text(

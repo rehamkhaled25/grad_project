@@ -21,6 +21,28 @@ class UserModel {
     this.height,
   });
 
+  
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? fullName,
+    DateTime? birthdate,
+    String? gender,
+    String? goal,
+    double? weight,
+    double? height,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      birthdate: birthdate ?? this.birthdate,
+      gender: gender ?? this.gender,
+      goal: goal ?? this.goal,
+      weight: weight ?? this.weight,
+      height: height ?? this.height,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     final Map<String, dynamic> map = {
@@ -48,8 +70,8 @@ class UserModel {
           : null,
       gender: map['gender'],
       goal: map['goal'],
-      weight: map['weight'] != null ? (map['weight'] as num).toDouble() : null,
-      height: map['height'] != null ? (map['height'] as num).toDouble() : null,
+      weight: (map['weight'] as num?)?.toDouble(),
+      height: (map['height'] as num?)?.toDouble(),
     );
   }
 }

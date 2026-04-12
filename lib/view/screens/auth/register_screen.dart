@@ -6,11 +6,14 @@ import 'package:graduation_project/core/app_router.dart';
 import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/services/auth_service.dart';
 import 'package:graduation_project/services/database_service.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_input_field.dart';
-import 'package:graduation_project/view/custom%20_widget/social_image_button.dart';
+import 'package:graduation_project/view/custom _widget/custom_input_field.dart';
+import 'package:graduation_project/view/custom _widget/social_image_button.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  // Receives the model containing all onboarding data (height, weight, etc.)
+  final UserModel? userModel;
+
+  const RegisterScreen({super.key, this.userModel});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -53,40 +56,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  
+  /// UPDATED: This now merges the onboarding data with the new account details
   Future<void> _createUserProfile(User user, String name) async {
-    UserModel newUser = UserModel(
+    // 1. Start with the model passed from the onboarding screens
+    // 2. Use copyWith to fill in the final Firebase details
+    UserModel finalUser = (widget.userModel ?? UserModel(uid: '', email: '')).copyWith(
       uid: user.uid,
-      email: user.email ?? '',
-      fullName: name, 
+      email: user.email ?? emailController.text.trim(),
+      fullName: name,
     );
-    await _dbService.saveUserData(newUser);
+    
+    // 3. Save the COMPLETE profile to Firestore in one go
+    await _dbService.saveUserData(finalUser);
   }
 
- 
   void _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
       try {
-       
         final User? user = await _authService.registerUser(
           emailController.text.trim(),
           passwordController.text.trim(),
         );
 
         if (user != null) {
-       
+          // Merge and Save everything
           await _createUserProfile(user, fullNameController.text.trim());
           
           if (!mounted) return;
           _showSnackBar('Account created successfully!', Colors.green);
           
-        
           AuthState.isLoggedIn = true;
           AuthState.isRegistered = true; 
-          AuthState.finishedOnboarding = false; 
-          context.go('/onboardingGender');
+          AuthState.finishedOnboarding = true; // Set to true now that data is saved
+          
+          // Go to home or dashboard
+          context.go('/home'); 
         } else {
           _showSnackBar('Registration failed. Email might be in use.', Colors.red);
         }
@@ -98,7 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
- 
   void _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
 
@@ -106,7 +111,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final UserCredential? userCred = await _authService.signInWithGoogle();
 
       if (userCred != null && userCred.user != null) {
-       
         await _createUserProfile(
           userCred.user!, 
           userCred.user!.displayName ?? 'New User'
@@ -117,8 +121,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         
         AuthState.isLoggedIn = true;
         AuthState.isRegistered = true; 
-        AuthState.finishedOnboarding = false; 
-        context.go('/onboardingGender');
+        AuthState.finishedOnboarding = true; 
+        context.go('/home');
       }
     } catch (e) {
       if (mounted) _showSnackBar('Google Login failed.', Colors.red);

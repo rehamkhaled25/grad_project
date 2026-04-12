@@ -43,59 +43,30 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  
+  /// UPDATED: Simplified routing for returning users
   Future<void> _handleUserRouting(User user) async {
     try {
       UserModel? userData = await _dbService.getUserData(user.uid);
 
       if (!mounted) return;
 
-     
       AuthState.isLoggedIn = true;
       AuthState.isRegistered = true;
 
+      // If they somehow have an account but NO data, send to onboarding
       if (userData == null) {
-       
         AuthState.finishedOnboarding = false;
         context.go('/onboardingGender');
         return;
       }
 
-     
-      if (userData.weight != null) {
-        AuthState.finishedOnboarding = true;
-        context.go('/home');
-      } 
-    
-      // else if (userData.notificationsEnabled != null) {
-      //   context.go('/onboardingAllset');
-      // }
+      // In your new flow, if they have an account, they've finished onboarding
+      AuthState.finishedOnboarding = true;
+      context.go('/home');
       
-      else if (userData.weight != null) {
-        context.go('/onboardingGoal');
-      }
-    
-      else if (userData.birthdate != null) {
-        context.go('/onboardingWeight');
-      }
-      
-      else if (userData.height != null) {
-        context.go('/onboardingBirthdate');
-      }
-      
-      else if (userData.gender != null) {
-        context.go('/onboardingHeight');
-      } 
-     
-      else {
-        AuthState.finishedOnboarding = false;
-        context.go('/onboardingGender');
-      }
     } catch (e) {
-      
       if (mounted) {
-        AuthState.isLoggedIn = true;
-        AuthState.finishedOnboarding = false;
+        // Fallback safety
         context.go('/onboardingGender');
       }
     }
@@ -105,18 +76,20 @@ class _SignInScreenState extends State<SignInScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      final User? user = await _authService.loginUser(
-        emailController.text.trim(),
-        passwordController.text.trim(),
-      );
+      try {
+        final User? user = await _authService.loginUser(
+          emailController.text.trim(),
+          passwordController.text.trim(),
+        );
 
-      if (mounted) setState(() => _isLoading = false);
-
-      if (user != null) {
-        _showSnackBar("Login Successful!");
-        await _handleUserRouting(user);
-      } else {
-        _showSnackBar("Login failed. Check your credentials.", isError: true);
+        if (user != null) {
+          _showSnackBar("Welcome back!");
+          await _handleUserRouting(user);
+        } else {
+          _showSnackBar("Login failed. Check your credentials.", isError: true);
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -125,17 +98,15 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final UserCredential? userCred = await _authService.signInWithGoogle();
-      if (mounted) setState(() => _isLoading = false);
 
       if (userCred != null && userCred.user != null) {
         _showSnackBar("Google Sign-In Successful!");
         await _handleUserRouting(userCred.user!);
-      } else {
-        _showSnackBar("Google Sign-In cancelled.", isError: true);
       }
     } catch (e) {
+      _showSnackBar("An unexpected error occurred", isError: true);
+    } finally {
       if (mounted) setState(() => _isLoading = false);
-      _showSnackBar("An unexpected error occurred: $e", isError: true);
     }
   }
 
@@ -161,6 +132,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFDFDFD),
                         borderRadius: BorderRadius.circular(16),
+                        // Keep your custom rectangle image UI
                         image: const DecorationImage(
                           image: AssetImage('assets/images/Rectangle 285.png'),
                           fit: BoxFit.cover,
@@ -254,7 +226,8 @@ class _SignInScreenState extends State<SignInScreen> {
                               fontWeight: FontWeight.w500,
                               decoration: TextDecoration.underline,
                             ),
-                            recognizer: TapGestureRecognizer()..onTap = () => context.go('/register'),
+                            // CRITICAL: New users MUST start at onboarding, not Register screen
+                            recognizer: TapGestureRecognizer()..onTap = () => context.go('/onboardingGender'),
                           ),
                         ],
                       ),

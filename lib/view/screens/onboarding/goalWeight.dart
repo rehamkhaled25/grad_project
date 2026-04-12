@@ -45,9 +45,11 @@ class _WeightScreenState extends State<WeightScreen> {
   }
 
   void _continueToNextPage() {
-    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
-    final updatedUser = currentBox.copyWith(weight: weightKg);
-    context.go('/onboardingGoal', extra: updatedUser);
+    // needs backend to add goal weight into user database
+    // final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
+    // final updatedUser = currentBox.copyWith(weight: weightKg);
+    // fix and add app router to the next page
+    // context.go('/onboardingGoal', extra: updatedUser);
   }
 
   @override
@@ -65,7 +67,7 @@ class _WeightScreenState extends State<WeightScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              "What is your current weight?",
+              "What is your goal weight?",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 28,

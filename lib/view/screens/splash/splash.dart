@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/core/app_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,6 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double width=MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: changeBackground ? Colors.white : Colors.red,
       body: Stack(
@@ -72,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w400,
                         fontSize: 15,
-                        color: Color(0xFF000000),
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
 
@@ -84,25 +87,29 @@ class _SplashScreenState extends State<SplashScreen> {
                       height: 54,
                       child: Opacity(
                         opacity: 0.84,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            context.go('/register');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000000),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(27),
+                        child: Padding(
+                          padding:  EdgeInsets.symmetric(horizontal: width*0.05),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              AuthState.hasSeenSplash = true;
+                              context.go('/onboardingGender');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:  Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(27),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            "Get Started",
-                            style: TextStyle(
-                              fontFamily: 'Figtree',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: Colors.white,
-                              height: 1.5,
-                              letterSpacing: -1.1,
+                            child: const Text(
+                              "Get Started",
+                              style: TextStyle(
+                                fontFamily: 'Figtree',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Colors.white,
+                                height: 1.5,
+                                letterSpacing: -1.1,
+                              ),
                             ),
                           ),
                         ),

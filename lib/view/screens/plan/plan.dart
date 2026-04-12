@@ -15,10 +15,9 @@ class Plan extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: pageWidth * 0.07),
-              child: CustomAppbar(currentStep: 8, totalSteps: 8),
-            ),
+           
+            CustomAppbar(currentStep: 7, totalSteps: 8),
+            
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -28,16 +27,16 @@ class Plan extends StatelessWidget {
                     const SizedBox(height: 20),
                     const CircleAvatar(
                       backgroundColor: Color(0xff0E683E),
-                      radius: 18,
-                      child: Icon(Icons.check, color: Colors.white, size: 24),
+                      radius: 12,
+                      child: Icon(Icons.check, color: Colors.white, size: 18),
                     ),
                     const SizedBox(height: 15),
                     const Text(
                       "Congratulations,\nyour plan is ready!",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 26, 
-                        fontWeight: FontWeight.bold,
+                        fontSize: 24, 
+                        fontWeight: FontWeight.w600,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -57,8 +56,8 @@ class Plan extends StatelessWidget {
                         "Lose 10 kg by October 31",
                         style: TextStyle(
                           color: Colors.white, 
-                          fontSize: 14, 
-                          fontWeight: FontWeight.bold
+                          fontSize: 12, 
+                          fontWeight: FontWeight.w600
                         ),
                       ),
                     ),
@@ -68,8 +67,8 @@ class Plan extends StatelessWidget {
                       child: Text(
                         "Daily recommendation",
                         style: TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold, 
+                          fontSize: 15, 
+                          fontWeight: FontWeight.w600, 
                           color: Color(0xff141414)
                         ),
                       ),
@@ -96,7 +95,7 @@ class Plan extends StatelessWidget {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
-                        color: const Color(0xffE8E8E8),
+                        color: const Color(0xffE3E3E3),
                       ),
                       child: Column(
                         children: [
@@ -128,18 +127,21 @@ class Plan extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30), // Extra space for scrolling comfort
+                    const SizedBox(height: 30),
+                    Padding(
+              padding: EdgeInsets.symmetric(horizontal: pageWidth * 0.002, vertical: 20),
+              child: ContinueButton(
+                onPressed: () {
+                  //NAVIGATION
+                }, 
+                txt: "Let's get started!!",
+              ),
+            ), // Extra space for scrolling comfort
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: pageWidth * 0.07, vertical: 20),
-              child: ContinueButton(
-                onPressed: () {}, 
-                txt: "Let's get started!!",
-              ),
-            ),
+            
           ],
         ),
       ),
@@ -165,7 +167,7 @@ class CustomItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xffE8E8E8),
+        color: const Color(0xffE3E3E3),
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(16),
@@ -174,7 +176,7 @@ class CustomItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.local_fire_department, size: 18, color: Color(0xff141414)),
+              const Icon(Icons.local_fire_department, size: 14, color: Color(0xff141414)),
               const SizedBox(width: 6),
               Text(
                 text1, 
@@ -185,11 +187,11 @@ class CustomItem extends StatelessWidget {
           const Expanded(child: SizedBox()),
           Center(
             child: CircularPercentIndicator(
-              radius: 32,
-              lineWidth: 6,
+              radius: 38,
+              lineWidth: 5,
               percent: percent,
               progressColor: Color(color),
-              backgroundColor: Colors.white,
+              backgroundColor: Color(0xffC9C8C8),
               circularStrokeCap: CircularStrokeCap.round,
               center: Text(
                 text2, 

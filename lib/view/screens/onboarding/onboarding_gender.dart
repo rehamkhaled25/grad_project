@@ -1,146 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-import 'package:graduation_project/services/database_service.dart';
 import 'package:graduation_project/models/user_model.dart';
 
 class OnboardingGender extends StatefulWidget {
-  const OnboardingGender({super.key});
+  final UserModel? userModel; 
+  const OnboardingGender({super.key, this.userModel});
 
   @override
   State<OnboardingGender> createState() => _OnboardingGenderState();
 }
 
 class _OnboardingGenderState extends State<OnboardingGender> {
-  final DatabaseService _dbService = DatabaseService();
   String? selectedGender;
   bool _isSaving = false;
-  bool _isLoadingData = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkExistingData();
-  }
-
-  Future<void> _checkExistingData() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        UserModel? userData = await _dbService.getUserData(user.uid);
-
-        if (userData != null) {
-          // 1. If everything is filled, go to Home (Profile)
-          bool isComplete = userData.gender != null &&
-              userData.birthdate != null &&
-              userData.height != null &&
-              userData.weight != null &&
-              userData.goal != null;
-
-          if (isComplete) {
-            if (mounted) context.go('/home');
-            return;
-          }
-
-          // 2. Resume Logic: Check fields in order of the flow
-          if (userData.gender != null && userData.gender!.isNotEmpty) {
-            if (mounted) {
-              // Gender is done, check next step or navigate to it
-              // This logic should be repeated in each onboarding screen's initState
-              _navigateToNextMissingStep(userData);
-              return;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Error checking onboarding progress: $e");
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingData = false);
-      }
-    }
-  }
-
-  void _navigateToNextMissingStep(UserModel data) {
-    if (data.gender == null) {
-      
-    } else if (data.birthdate == null) {
-      context.go('/onboardingBirthdate');
-    } else if (data.height == null) {
-      context.go('/onboardingHeight');
-    } else if (data.weight == null) {
-      context.go('/onboardingWeight');
-    } else if (data.goal == null) {
-      context.go('/onboardingGoal');
-    } else {
-      context.go('/home');
-    }
-  }
-
-  Future<void> _saveGenderAndContinue() async {
+    void _onContinue() {
     if (selectedGender == null) return;
 
     setState(() => _isSaving = true);
+    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
+    final updatedUser = currentBox.copyWith(gender: selectedGender);
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-     
-        await _dbService.saveUserData(UserModel(
-          uid: user.uid,
-          gender: selectedGender,
-          email: user.email ?? "",
-        ));
+  
+    context.push('/onboardingBirthdate', extra: updatedUser);
 
-        if (mounted) {
-          
-          context.go('/onboardingBirthdate');
-        }
-      } else {
-        throw Exception("No user authenticated");
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to save gender: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    setState(() => _isSaving = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingData) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: Colors.black)),
-      );
-    }
-
+    double height=MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
           const CustomAppbar(
             currentStep: 1,
-            totalSteps: 7,
-            showBackButton: false,
+            totalSteps: 8,
+            showBackButton: true,
           ),
-          const SizedBox(height: 40),
+          SizedBox(height: height*0.04),
           const Text(
-            'Choose your Gender',
+            'Choose your gender',
             style: TextStyle(
               color: Colors.black,
               fontSize: 32,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const Spacer(flex: 2),
@@ -176,10 +82,10 @@ class _OnboardingGenderState extends State<OnboardingGender> {
                 : ContinueButton(
                     txt: "Continue",
                     onPressed:
-                        selectedGender == null ? () {} : _saveGenderAndContinue,
+                        selectedGender == null ? () {} : _onContinue,
                   ),
           ),
-          const SizedBox(height: 40),
+           SizedBox(height: height*0.1),
         ],
       ),
     );
@@ -203,9 +109,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         decoration: BoxDecoration(
           color: const Color.fromARGB(255, 243, 239, 239),
           borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(color: const Color(0xffF20D0D), width: 2)
-              : null,
+          
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -219,9 +123,9 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? const Color(0xffF20D0D) : Colors.black87,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color:  Colors.black87,
               ),
             ),
           ],

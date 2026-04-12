@@ -15,90 +15,95 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 40),
-            child: Row(
+      body: CustomScrollView(
+        slivers: [
+         
+          SliverToBoxAdapter(
+            child: Column(
               children: [
-                IconButton(
-                  padding: EdgeInsets.symmetric(horizontal: 25),
-                  onPressed: () {},
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    size: 24,
-                    color: Colors.black,
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        onPressed: () {},
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          size: 24,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            "Food Database",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        onPressed: () {
+                          context.push('/foodScanner');
+                        },
+                        icon: Image.asset("assets/images/scan_ic.png"),
+                      ),
+                    ],
                   ),
                 ),
-                const Expanded(
-                  child: Center(
-                    child: Text(
-                      "Food Database",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(height: 15),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: "What are you looking for?",
+                      hintStyle: const TextStyle(color: Colors.black, fontSize: 14),
+                      filled: true,
+                      fillColor: const Color(0xffEBEBEB),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
                     ),
                   ),
                 ),
-                IconButton(
-                  padding: EdgeInsets.symmetric(horizontal: 25),
-                  onPressed: () {
-                    context.push('/foodScanner');
-                  },
-                  icon: Image.asset("assets/images/scan_ic.png"),
-                  // const Icon(
-                  //   Icons.qr_code_scanner_outlined,
-                  //   size: 24,
-                  //   color: Colors.red,
-                  // ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTab("All", 0),
+                    _buildTab("My meals", 1),
+                    _buildTab("My foods", 2),
+                    _buildTab("Saved Scans", 3),
+                  ],
                 ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
-          const SizedBox(height: 15),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: "What are you looking for?",
-                hintStyle: const TextStyle(color: Colors.black, fontSize: 14),
-                filled: true,
-                fillColor: const Color(0xffEBEBEB),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildTab("All", 0),
-              _buildTab("My meals", 1),
-              _buildTab("My foods", 2),
-              _buildTab("Saved Scans", 3),
-            ],
-          ),
-          const SizedBox(height: 40),
-
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.only(bottom: 20),
-              itemCount: 8,
-              separatorBuilder: (context, index) => SizedBox(height: 40),
-              itemBuilder: (context, index) {
-                return const CustomContainer();
+         
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 40),
+                  child: CustomContainer(),
+                );
               },
+              childCount: 8,
             ),
+          ),
+          
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 20),
           ),
         ],
       ),
@@ -135,7 +140,6 @@ class CustomContainer extends StatelessWidget {
       child: Container(
         width: 334,
         height: 66,
-
         decoration: BoxDecoration(
           color: const Color(0xffEBEBEB),
           borderRadius: BorderRadius.circular(12),
@@ -146,7 +150,6 @@ class CustomContainer extends StatelessWidget {
             children: [
               Image.asset('assets/images/pancakes.png'),
               const SizedBox(width: 12),
-
               const Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -181,7 +184,6 @@ class CustomContainer extends StatelessWidget {
                   ],
                 ),
               ),
-
               const Icon(Icons.add, size: 28),
             ],
           ),
