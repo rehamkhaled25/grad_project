@@ -227,7 +227,7 @@ class ProfileScreen extends StatelessWidget {
       children: [
         // First row - overlaps the black header (negative margin)
         Transform.translate(
-          offset: Offset(0, -40 * scale), // Pull up over the header
+          offset: Offset(0, -30 * scale), // Pull up over the header
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 16 * scale),
             child: Row(
@@ -373,7 +373,7 @@ class ProfileScreen extends StatelessWidget {
           ).showSnackBar(const SnackBar(content: Text('Edit Profile tapped')));
         },
         child: Container(
-          width: double.infinity,
+          width: 238 * scale,
           height: 42 * scale,
           decoration: BoxDecoration(
             color: Colors.black,
@@ -937,11 +937,7 @@ class ProfileScreen extends StatelessWidget {
                     color: const Color(0xFFD90C0C),
                     borderRadius: BorderRadius.circular(10 * scale),
                   ),
-                  child: Icon(
-                    Icons.workspace_premium,
-                    color: Colors.white,
-                    size: 18 * scale,
-                  ),
+                  child: Image.asset("assets/images/premium_icon.png"),
                 ),
                 SizedBox(width: 8 * scale),
                 Column(
@@ -980,11 +976,7 @@ class ProfileScreen extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 8 * scale),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: const Color(0xFFD90C0C),
-                      size: 14 * scale,
-                    ),
+                    Image.asset("assets/images/right_icon.png"),
                     SizedBox(width: 8 * scale),
                     Text(
                       feature,
