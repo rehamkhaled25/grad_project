@@ -58,11 +58,11 @@ class GraduationProjectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Cal Ai',
 
-      // routerConfig: AppRouter.router,
-      home:DatabaseSearch() ,
+      routerConfig: AppRouter.router,
+      // home:DatabaseSearch() ,
 
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),

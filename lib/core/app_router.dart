@@ -31,7 +31,8 @@ class AuthState {
   static bool hasSeenSplash = false;
 }
 
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 class ScaffoldWithBottomNavBar extends StatelessWidget {
   final Widget child;
@@ -58,14 +59,16 @@ abstract class AppRouter {
       // 2. LOGGED IN LOGIC
       if (AuthState.isLoggedIn) {
         if (!AuthState.finishedOnboarding) {
-          if (location == '/home' || location == '/login' || location == '/register') {
+          if (location == '/home' ||
+              location == '/login' ||
+              location == '/register') {
             return '/onboardingGender';
           }
           return null;
         }
 
-        if (location == '/login' || 
-            location == '/register' || 
+        if (location == '/login' ||
+            location == '/register' ||
             location.startsWith('/onboarding')) {
           return '/home';
         }
@@ -74,8 +77,8 @@ abstract class AppRouter {
 
       // 3. LOGGED OUT LOGIC
       if (!AuthState.isLoggedIn) {
-        if (location != '/login' && 
-            location != '/register' && 
+        if (location != '/login' &&
+            location != '/register' &&
             !location.startsWith('/onboarding')) {
           return '/login';
         }
@@ -168,17 +171,20 @@ abstract class AppRouter {
       GoRoute(
         path: '/notifications',
         name: 'notifications',
-        pageBuilder: (context, state) => const NoTransitionPage(child: NotificationsSettingsScreen()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationsSettingsScreen()),
       ),
       GoRoute(
         path: '/notificationsScreen',
         name: 'notificationsScreen',
-        pageBuilder: (context, state) => const NoTransitionPage(child: NotificationScreen()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationScreen()),
       ),
       GoRoute(
         path: '/foodScanner',
         name: 'food_scanner',
-        pageBuilder: (context, state) => const NoTransitionPage(child: FoodScannerScreen()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: FoodScannerScreen()),
       ),
       GoRoute(
         path: '/log',
@@ -190,7 +196,8 @@ abstract class AppRouter {
       GoRoute(
         path: '/streak',
         name: 'streak',
-        pageBuilder: (context, state) => const NoTransitionPage(child: StreakScreen()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: StreakScreen()),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -200,30 +207,27 @@ abstract class AppRouter {
           GoRoute(
             path: '/home',
             name: 'home',
-            pageBuilder: (context, state) => const NoTransitionPage(child: HomeScreen()),
-          ),
-          GoRoute(
-            path: '/log',
-            name: 'log',
-            pageBuilder: (context, state) => const NoTransitionPage(child: DatabaseSearch()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: HomeScreen()),
           ),
 
           GoRoute(
             path: '/progress',
             name: 'progress',
-            pageBuilder: (context, state) => const NoTransitionPage(child: WeeklyProgress()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: WeeklyProgress()),
           ),
           GoRoute(
             path: '/settings',
             name: 'settings',
-            pageBuilder: (context, state) =>  NoTransitionPage(child: SettingsScreen()),
+            pageBuilder: (context, state) =>
+                NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(child: Text('Error: ${state.error}')),
-    ),
+    errorBuilder: (context, state) =>
+        Scaffold(body: Center(child: Text('Error: ${state.error}'))),
   );
 }
 
