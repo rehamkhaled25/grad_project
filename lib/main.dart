@@ -58,6 +58,11 @@ class GraduationProjectApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cal Ai',
+
+      // routerConfig: AppRouter.router,
+      // // home:DatabaseSearch() ,
+
+
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Figtree'),
       
@@ -71,8 +76,8 @@ class GraduationProjectApp extends StatelessWidget {
           child: child!,
         );
       },
-      
-      home: const HomeScreen(),
+    
+      home: const Allergies(),
     );
   }
 }

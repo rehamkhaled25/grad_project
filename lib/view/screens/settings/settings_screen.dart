@@ -2,12 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
-import 'package:graduation_project/services/auth_service.dart'; // Add this import
+import 'package:graduation_project/services/auth_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   SettingsScreen({super.key});
 
-  // Create an instance of AuthService
   final AuthService _authService = AuthService();
 
   @override
@@ -15,6 +14,10 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.pop(),
+        ),
         title: const Text(
           'Settings',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
@@ -22,10 +25,6 @@ class SettingsScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(),
-        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -37,19 +36,19 @@ class SettingsScreen extends StatelessWidget {
               child: ListTile(
                 leading: CircleAvatar(
                   radius: 25,
-                  backgroundImage: NetworkImage(
-                    'https://www.figma.com/design/KcSXH4dDp2s9FhLW5wigQp/Board?node-id=1660-8127&m=dev&t=oEDSrgyXE3uuGavc-1',
+                  backgroundImage: AssetImage(
+                    "assets/images/placeholder_profile.png",
                   ),
                 ),
                 title: Text(
-                  'Habiba_Hemdan',
+                  'Moe_Hany',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 subtitle: Text(
-                  'Female / Maintain Weight',
+                  'Male / Maintain Weight',
                   style: TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.w500,
@@ -59,12 +58,13 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
 
+            // Other settings title - matches first design spacing
             const Padding(
-              padding: EdgeInsets.only(top: 20, bottom: 10),
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 10),
               child: Text(
-                'Other settings',
+                'Account',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
@@ -76,87 +76,87 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(left: 25, bottom: 10),
-                    child: Text(
-                      'Account',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  _buildTile(
-                    context,
-                    Icons.person_outline,
-                    'Profile Data',
-                    onTap: () {
-                      // Navigate to profile data screen
-                      context.push('/profile');
-                    },
-                  ),
+                  // No dividers between items - exactly like first design
                   _buildTile(
                     context,
                     Icons.track_changes,
                     'My Target',
                     onTap: () {
                       // Navigate to target screen
-                      // context.go('/onboardingGoal');
                     },
                   ),
                   _buildTile(
                     context,
-                    Icons.cloud_upload_outlined,
-                    'Syncing and Backup',
-                    onTap: () {
-                      // Navigate to sync settings
-                    },
+                    Icons.energy_savings_leaf,
+                    'Your Premium',
+                    onTap: () => context.push('/profile'),
                   ),
                   _buildTile(
                     context,
                     Icons.notifications_none,
                     'Notifications',
                     isLast: true,
-                    onTap: () {
-                      // Navigate to notifications settings
-                      context.push('/notifications');
-                    },
+                    onTap: () => context.push('/notifications'),
                   ),
                 ],
               ),
             ),
 
+            // Extra spacing before subscription section
             const SizedBox(height: 20),
 
-            // Subscription & Logout Section
-            SettingsContainer(
-              child: Column(
-                children: [
-                  _buildTile(
-                    context,
-                    Icons.credit_card,
-                    'Manage subscription Plan',
-                    onTap: () {
-                      // Navigate to subscription
-                      // context.go('/subscription');
-                    },
-                  ),
-                  _buildTile(
-                    context,
-                    Icons.logout,
-                    'Log Out',
-                    iconColor: Colors.red,
-                    textColor: Colors.red,
-                    isLast: true,
-                    onTap: () {
-                      _showLogoutDialog(context);
-                    },
-                  ),
-                ],
-              ),
+            //Logout Section
+            // SettingsContainer(
+            //   child: Column(
+            //     children: [
+            //       _buildTile(
+            //         context,
+            //         Icons.logout,
+            //         'Log Out',
+            //         iconColor: Colors.red,
+            //         textColor: Colors.red,
+            //         isLast: true,
+            //         onTap: () => _showLogoutDialog(context),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+            SizedBox(
+              height:
+                  MediaQuery.of(context).size.height *
+                  0.25, // 25% of screen height
             ),
+            Center(child: _buildLogoutButton(onTap: () {})),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton({required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 190,
+        height: 48,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Center(
+          child: Text(
+            'Log Out',
+            style: const TextStyle(
+              fontFamily: 'Figtree',
+              fontStyle: FontStyle.normal,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              height: 1.5, // 150% line height
+              letterSpacing: -0.011,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
@@ -171,31 +171,17 @@ class SettingsScreen extends StatelessWidget {
     bool isLast = false,
     VoidCallback? onTap,
   }) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: iconColor ?? Colors.black),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: textColor ?? Colors.black,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap:
-              onTap ??
-              () {
-                // Default behavior if no onTap provided
-                debugPrint('Navigating to $title');
-              },
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? Colors.black),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textColor ?? Colors.black,
+          fontWeight: FontWeight.bold,
         ),
-        if (!isLast)
-          const Padding(
-            padding: EdgeInsets.only(left: 65, right: 16),
-            child: Divider(height: 1, thickness: 1, color: Colors.grey),
-          ),
-      ],
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap ?? () {},
     );
   }
 
@@ -213,10 +199,8 @@ class SettingsScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                // Close the dialog
                 Navigator.pop(context);
 
-                // Show loading indicator
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -226,21 +210,16 @@ class SettingsScreen extends StatelessWidget {
                 );
 
                 try {
-                  // Perform logout using AuthService
                   await _authService.signOut();
 
-                  // Close loading dialog
                   if (context.mounted) Navigator.pop(context);
 
-                  // Update auth state
                   AuthState.isLoggedIn = false;
                   AuthState.isRegistered = false;
 
-                  // Navigate to login screen and remove all previous routes
                   if (context.mounted) {
                     context.go('/login');
 
-                    // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Logged out successfully'),
@@ -250,10 +229,8 @@ class SettingsScreen extends StatelessWidget {
                     );
                   }
                 } catch (e) {
-                  // Close loading dialog if error occurs
                   if (context.mounted) Navigator.pop(context);
 
-                  // Show error message
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -275,7 +252,6 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// Custom Container Widget
 class SettingsContainer extends StatelessWidget {
   final Widget child;
   const SettingsContainer({super.key, required this.child});
@@ -283,7 +259,7 @@ class SettingsContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20, top: 20),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
