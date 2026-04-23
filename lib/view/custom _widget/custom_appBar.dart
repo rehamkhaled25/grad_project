@@ -19,7 +19,7 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
     
     // Define responsive constants
     // 0.04 represents 4% of the screen width for side padding
-    final double sidePadding = screenWidth * 0.045; 
+    final double sidePadding = screenWidth * 0.0015; 
     final double barHeight = 8.0; 
     final double iconSize = screenWidth * 0.07; // Scales icon based on screen size
 
