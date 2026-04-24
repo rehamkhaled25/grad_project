@@ -176,7 +176,7 @@ class _AllergiesState extends State<Allergies> {
             width: width * 0.252,
             height: height * 0.099,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color:const Color(0xffF4F4F4),
               borderRadius: BorderRadius.circular(15),
               border: Border.all(
                 color: isSelected ? const Color(0xffD90C0C) : const Color(0xffD9D9D9),
