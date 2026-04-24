@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class SocialImageButton extends StatelessWidget {
   final String imagePath;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const SocialImageButton({
     super.key,

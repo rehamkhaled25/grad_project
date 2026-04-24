@@ -1,187 +1,212 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+import 'package:graduation_project/models/user_model.dart';
+import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
 
 class WeightScreen extends StatefulWidget {
-  const WeightScreen({super.key});
+  final UserModel? userModel;
+  const WeightScreen({super.key, this.userModel});
 
   @override
   State<WeightScreen> createState() => _WeightScreenState();
 }
 
 class _WeightScreenState extends State<WeightScreen> {
-  double weightKg = 70;
+  double weightKg = 65.0;
   bool isKg = true;
-
   final ScrollController _scrollController = ScrollController();
 
-  double get weightLb => weightKg * 2.20462;
+  final double itemWidth = 10.0;
+  final int minWeightKg = 40;
+  final int maxWeightKg = 160;
+
+  double kgToLb(double kg) => kg * 2.20462;
 
   @override
   void initState() {
     super.initState();
-    // Initialize scroll to match initial weight
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.jumpTo((weightKg - 50) * 40); // 40 px per kg
+      _scrollToValue(weightKg);
     });
   }
 
-  void onScroll() {
-    double offset = _scrollController.offset;
-    setState(() {
-      weightKg = (50 + offset / 40).clamp(50, 95); // convert offset → kg
-    });
+  void _scrollToValue(double value) {
+    if (_scrollController.hasClients) {
+      double offset = (value - minWeightKg) * (itemWidth * 10);
+      _scrollController.jumpTo(offset);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _continueToNextPage() {
+    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
+    final updatedUser = currentBox.copyWith(weight: weightKg);
+    context.go('/onboardingGoal', extra: updatedUser);
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    double displayWeight = isKg ? weightKg : kgToLb(weightKg);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Custom AppBar
-          const CustomAppbar(currentStep: 4, totalSteps: 7),
-          const SizedBox(height: 20),
-
-          // Title
-          const Text(
-            "What's your current weight?",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-
-          const Spacer(),
-
-          // Weight display
-          Center(
-            child: RichText(
-              text: TextSpan(
-                children: isKg
-                    ? [
-                        TextSpan(
-                          text: "${weightKg.toInt()} ",
-                          style: const TextStyle(
-                            fontSize: 60,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        TextSpan(
-                          text: "kg",
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ]
-                    : [
-                        TextSpan(
-                          text: weightLb.toStringAsFixed(0),
-                          style: const TextStyle(
-                            fontSize: 60,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        TextSpan(
-                          text: " lb",
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          GestureDetector(
-            onTap: () => setState(() => isKg = !isKg),
+          const CustomAppbar(currentStep: 4, totalSteps: 8),
+          const SizedBox(height: 40),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              "tap to switch to ${isKg ? "lb" : "kg"}",
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          // Scrollable ruler
-          SizedBox(
-            height: 100,
-            width: screenWidth,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (scrollNotification) {
-                onScroll();
-                return true;
-              },
-              child: ListView.builder(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                itemCount: 46,
-                itemBuilder: (context, index) {
-                  int kgValue = 50 + index;
-                  bool isMajor = kgValue % 5 == 0;
-                  return Container(
-                    width: 40,
-                    alignment: Alignment.bottomCenter,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: isMajor ? 35 : 18,
-                          width: 2,
-                          color: Colors.black,
-                        ),
-                        if (isMajor) ...[
-                          const SizedBox(height: 5),
-                          Text(
-                            "$kgValue",
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          const Spacer(flex: 2),
-
-          // Continue button
-          InkWell(
-            onTap: () {
-              context.push('/onboardingGoal');
-            },
-            child: Container(
-              height: 55,
-              width: 360,
-              margin: const EdgeInsets.only(bottom: 40),
-              decoration: BoxDecoration(
+              "What is your current weight?",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(30),
               ),
-              child: const Center(
-                child: Text(
-                  "Continue",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            ),
+          ),
+          
+          // Precisely positioning the weight display relative to the UI image
+          const Spacer(flex: 3),
+
+          Column(
+            children: [
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "${displayWeight.toInt()} ",
+                      style: const TextStyle(
+                        fontSize: 47,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff605A5A),
+                      ),
+                    ),
+                    TextSpan(
+                      text: isKg ? "kg" : "lb",
+                      style: const TextStyle(
+                        fontSize: 47,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff605A5A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                // Aligns "swipe for lbs" under the 'kg/lb' unit text
+                padding: const EdgeInsets.only(left: 60),
+                child: GestureDetector(
+                  onTap: () => setState(() => isKg = !isKg),
+                  child: Text(
+                    "swipe for ${isKg ? "lbs" : "kg"}",
+                    style: TextStyle(
+                      fontSize: 14, 
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
+            ],
+          ),
+
+          const SizedBox(height: 60),
+
+          // Horizontal Ruler
+          SizedBox(
+            height: 120,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                NotificationListener<ScrollUpdateNotification>(
+                  onNotification: (notification) {
+                    double offset = _scrollController.offset;
+                    setState(() {
+                      weightKg = (minWeightKg + offset / (itemWidth * 10))
+                          .clamp(minWeightKg.toDouble(), maxWeightKg.toDouble());
+                    });
+                    return true;
+                  },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth / 2),
+                    itemCount: (maxWeightKg - minWeightKg) * 10 + 1,
+                    itemBuilder: (context, index) {
+                      double currentKgValue = minWeightKg + (index / 10);
+                      bool isMajor = index % 10 == 0;
+                      bool isFive = index % 5 == 0;
+
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: itemWidth,
+                            alignment: Alignment.topCenter,
+                            child: Container(
+                              height: isMajor ? 45 : (isFive ? 30 : 20),
+                              width: 1.5,
+                              color: Colors.black.withOpacity(0.8),
+                            ),
+                          ),
+                          if (isMajor)
+                            Positioned(
+                              top: 55,
+                              left: -20,
+                              right: -20,
+                              child: Text(
+                                isKg
+                                    ? "${currentKgValue.toInt()}"
+                                    : "${kgToLb(currentKgValue).toInt()}",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  child: Container(
+                    height: 50,
+                    width: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+
+          const Spacer(flex: 4),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+            child: ContinueButton(
+              onPressed: _continueToNextPage,
+              txt: "Continue",
+            ),
+          ),
+          SizedBox(height: screenHeight * 0.05),
         ],
       ),
     );

@@ -1,196 +1,192 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-
+import 'package:graduation_project/models/user_model.dart';
 
 class HeightScreen extends StatefulWidget {
-  const HeightScreen({super.key});
+  final UserModel? userModel;
+  const HeightScreen({super.key, this.userModel});
 
   @override
   State<HeightScreen> createState() => _HeightScreenState();
 }
 
 class _HeightScreenState extends State<HeightScreen> {
-  double heightCm = 170;
+  double heightCm = 185;
   bool isCm = true;
+  bool _isSaving = false;
 
-  double rulerHeight = 0;
-  double rulerTop = 0;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.userModel?.height != null) {
+      heightCm = widget.userModel!.height!;
+    }
+  }
 
-  /// Convert cm to ft/in
   String getFeetInches() {
-    final inches = heightCm / 2.54;
-    final feet = inches ~/ 12;
-    final inch = (inches % 12).round();
+    final double inches = heightCm / 2.54;
+    final int feet = inches ~/ 12;
+    final int inch = (inches % 12).round();
     return "$feet $inch";
   }
 
-  /// Arrow position
-  double getArrowY() => rulerTop + ((220 - heightCm) / 120) * rulerHeight;
+  String getSelectionValue() {
+    if (isCm) return "${heightCm.toInt()}";
+    return getFeetInches().split(" ")[0]; 
+  }
 
-  /// Update height from dragging
-  void updateHeightFromArrow(double posY) {
-    double newHeight = 220 - ((posY - rulerTop) / rulerHeight) * 120;
+  double getArrowY(double rulerActualHeight) {
+    return ((220 - heightCm) / 120) * rulerActualHeight;
+  }
+
+  void updateHeightFromArrow(double posY, double rulerActualHeight) {
+    double newHeight = 220 - (posY / rulerActualHeight) * 120;
     setState(() {
       heightCm = newHeight.clamp(100, 220);
     });
   }
 
+  void _onContinue() async {
+    setState(() => _isSaving = true);
+    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
+    final updatedUser = currentBox.copyWith(height: heightCm);
+    context.push('/onboardingWeight', extra: updatedUser);
+    if (mounted) setState(() => _isSaving = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    rulerHeight = MediaQuery.of(context).size.height * 0.6;
-    rulerTop = MediaQuery.of(context).size.height * 0.25;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    
+    // Adjusted margins: Base percentage + 40 pixels for precision shortening
+    final double rulerTopMargin = (screenHeight * 0.05) + 40; 
+    final double rulerBottomMargin = (screenHeight * 0.35) + 40; 
+    final double rulerActualHeight = screenHeight - rulerTopMargin - rulerBottomMargin;
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: const CustomAppbar(
+        currentStep: 3,
+        totalSteps: 8,
+        showBackButton: true,
+      ),
       body: SafeArea(
         child: Stack(
           children: [
-            /// Top progress bar
-            const CustomAppbar(currentStep: 3, totalSteps: 7),
-
-            /// Title under appbar
             const Positioned(
               left: 24,
-              top: 80,
+              top: 20,
               child: Text(
                 "How tall are you?",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: Colors.black),
               ),
             ),
 
-            /// Vertical Ruler
+            // RULER (Background color removed by using a simple SizedBox)
             Positioned(
               right: 0,
-              top: rulerTop,
+              top: rulerTopMargin,
+              height: rulerActualHeight,
               child: GestureDetector(
                 onVerticalDragUpdate: (details) {
-                  double newPos = getArrowY() + details.delta.dy;
-                  newPos = newPos.clamp(rulerTop, rulerTop + rulerHeight);
-                  updateHeightFromArrow(newPos);
+                  updateHeightFromArrow(details.localPosition.dy, rulerActualHeight);
                 },
                 child: SizedBox(
-                  height: rulerHeight,
-                  width: 80,
-                  child: CustomPaint(painter: _VerticalRulerPainter()),
+                  width: 60,
+                  child: CustomPaint(
+                    painter: _VerticalRulerPainter(),
+                  ),
                 ),
               ),
             ),
 
-            /// Red arrow
-            Positioned(
-              right: 80,
-              top: getArrowY(),
-              child: const Icon(Icons.play_arrow, color: Colors.red, size: 26),
+            // CENTERED HEIGHT TEXT
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: isCm 
+                            ? [
+                                TextSpan(
+                                  text: "${heightCm.toInt()}",
+                                  style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w600, color: Colors.black),
+                                ),
+                                TextSpan(
+                                  text: " cm",
+                                  style: TextStyle(fontSize: 28, color: Colors.grey.shade500),
+                                ),
+                              ]
+                            : [
+                                TextSpan(
+                                  text: getFeetInches().split(" ")[0],
+                                  style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w600, color: Colors.black),
+                                ),
+                                TextSpan(
+                                  text: "ft ",
+                                  style: TextStyle(fontSize: 28, color: Colors.grey.shade500),
+                                ),
+                                TextSpan(
+                                  text: getFeetInches().split(" ")[1],
+                                  style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w600, color: Colors.black),
+                                ),
+                                TextSpan(
+                                  text: "in",
+                                  style: TextStyle(fontSize: 28, color: Colors.grey.shade500),
+                                ),
+                              ],
+                        ),
+                      ),
+                      Text(
+                        "swipe for ${isCm ? "ft/in" : "cm"}",
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
 
-            /// Number + unit centered to ruler
+            Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragEnd: (_) => setState(() => isCm = !isCm),
+                child: const SizedBox(width: 250, height: 150),
+              ),
+            ),
+
+            // RED INDICATOR
             Positioned(
-              right: 120,
-              top: rulerTop + rulerHeight / 2 - 40,
-              child: Column(
+              right: 45,
+              top: rulerTopMargin + getArrowY(rulerActualHeight) - 15,
+              child: Row(
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      children: isCm
-                          ? [
-                              TextSpan(
-                                text: "${heightCm.toInt()}",
-                                style: const TextStyle(
-                                  fontSize: 60,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              TextSpan(
-                                text: " cm",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                            ]
-                          : [
-                              TextSpan(
-                                text: getFeetInches().split(" ")[0],
-                                style: const TextStyle(
-                                  fontSize: 60,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              TextSpan(
-                                text: "ft  ",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              TextSpan(
-                                text: getFeetInches().split(" ")[1],
-                                style: const TextStyle(
-                                  fontSize: 60,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              TextSpan(
-                                text: "in",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onHorizontalDragEnd: (_) => setState(() => isCm = !isCm),
-                    child: Text(
-                      "swipe to ${isCm ? "ft/in" : "cm"}",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
+                  const Icon(Icons.play_arrow, color: Colors.red, size: 30),
+                  const SizedBox(width: 4),
+                  Text(
+                    getSelectionValue(),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  )
                 ],
               ),
             ),
 
-            /// Continue Button
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: GestureDetector(
-                onTap: () {
-                  context.go('/onboardingWeight');
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 40),
-                  height: 54,
-                  width: 384,
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      "Continue",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+            Positioned(
+              bottom: 30,
+              left: 24,
+              right: 24,
+              child: _isSaving
+                  ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                  : ContinueButton(
+                      onPressed: _onContinue,
+                      txt: "Continue",
                     ),
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -199,22 +195,27 @@ class _HeightScreenState extends State<HeightScreen> {
   }
 }
 
-/// Vertical ruler painter
 class _VerticalRulerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2;
-    double y = 0;
-    for (int i = 0; i <= size.height / 10; i++) {
-      double len = i % 5 == 0 ? size.width * 0.5 : size.width * 0.25;
+    final paint = Paint()..strokeWidth = 1.5;
+    
+    // Fixed steps ensures the distance between every line is identical
+    const double steps = 50; 
+    double lineSpacing = size.height / steps;
+    
+    for (int i = 0; i <= steps; i++) {
+      double y = i * lineSpacing;
+      
+      // Every 5th line is longer and darker for visual hierarchy
+      double len = (i % 5 == 0) ? 40 : 20;
+      paint.color = (i % 5 == 0) ? Colors.black : Colors.grey.shade400;
+
       canvas.drawLine(
         Offset(size.width - len, y),
         Offset(size.width, y),
         paint,
       );
-      y += 10;
     }
   }
 

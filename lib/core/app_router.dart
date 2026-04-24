@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_navbar.dart';
+import 'package:graduation_project/models/user_model.dart';
+import 'package:graduation_project/view/custom _widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
+import 'package:graduation_project/view/screens/database/database_search.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
-import 'package:graduation_project/view/screens/home/documents_screen.dart';
-import 'package:graduation_project/view/screens/home/notifications_screen.dart';
+import 'package:graduation_project/view/screens/home/notifications_settings_screen.dart';
 import 'package:graduation_project/view/screens/home/profile_screen.dart';
-import 'package:graduation_project/view/screens/home/settings_screen.dart';
+import 'package:graduation_project/view/screens/notifications/notifications_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/allset.dart';
 import 'package:graduation_project/view/screens/onboarding/birthdate_screen.dart';
 import 'package:graduation_project/view/screens/onboarding/notification_permission.dart';
@@ -15,11 +16,14 @@ import 'package:graduation_project/view/screens/onboarding/onboarding_gender.dar
 import 'package:graduation_project/view/screens/onboarding/onboarding_goal.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_height.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_weight.dart';
+import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
+import 'package:graduation_project/view/screens/settings/settings_screen.dart';
 import 'package:graduation_project/view/screens/splash/splash.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/home/scanner.dart';
+import 'package:graduation_project/view/screens/streak/streak_screen.dart';
 
-// Simulated auth & onboarding state (replace with actual state management)
+// Simulated auth & onboarding state
 class AuthState {
   static bool isLoggedIn = false;
   static bool isRegistered = false;
@@ -30,10 +34,8 @@ class AuthState {
 final GlobalKey<NavigatorState> globalNavigatorKey =
     GlobalKey<NavigatorState>();
 
-// Create a scaffold with bottom nav bar
 class ScaffoldWithBottomNavBar extends StatelessWidget {
   final Widget child;
-
   const ScaffoldWithBottomNavBar({super.key, required this.child});
 
   @override
@@ -47,31 +49,37 @@ abstract class AppRouter {
     navigatorKey: globalNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
-      // Handle redirect logic
-      final location = state.location;
+      final location = state.matchedLocation;
 
-      // If coming from splash, let it finish first
-      if (location == '/splash' && !AuthState.hasSeenSplash) {
+      // 1. SPLASH SAFE ZONE
+      if (location == '/splash') {
         return null;
       }
 
-      // Check authentication status
+      // 2. LOGGED IN LOGIC
       if (AuthState.isLoggedIn) {
-        // If logged in and trying to access auth/onboarding pages, redirect to home
+        if (!AuthState.finishedOnboarding) {
+          if (location == '/home' ||
+              location == '/login' ||
+              location == '/register') {
+            return '/onboardingGender';
+          }
+          return null;
+        }
+
         if (location == '/login' ||
             location == '/register' ||
-            location.startsWith('/onboarding') ||
-            location == '/subscription') {
+            location.startsWith('/onboarding')) {
           return '/home';
         }
         return null;
       }
 
-      // Not registered - only allow auth pages
-      if (!AuthState.isRegistered) {
+      // 3. LOGGED OUT LOGIC
+      if (!AuthState.isLoggedIn) {
         if (location != '/login' &&
             location != '/register' &&
-            location != '/splash') {
+            !location.startsWith('/onboarding')) {
           return '/login';
         }
       }
@@ -79,7 +87,6 @@ abstract class AppRouter {
       return null;
     },
     routes: [
-      // Public routes (no bottom nav)
       GoRoute(
         path: '/splash',
         name: 'splash',
@@ -93,10 +100,11 @@ abstract class AppRouter {
       GoRoute(
         path: '/register',
         name: 'register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return RegisterScreen(userModel: extra);
+        },
       ),
-
-      // Onboarding routes
       GoRoute(
         path: '/onboardingGender',
         name: 'onboarding_gender',
@@ -105,32 +113,50 @@ abstract class AppRouter {
       GoRoute(
         path: '/onboardingHeight',
         name: 'onboarding_height',
-        builder: (context, state) => const HeightScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return HeightScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingBirthdate',
         name: 'onboarding_birthdate',
-        builder: (context, state) => const BirthDateScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return BirthDateScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingWeight',
         name: 'onboarding_weight',
-        builder: (context, state) => const WeightScreen(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return WeightScreen(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/onboardingGoal',
         name: 'onboarding_goal',
-        builder: (context, state) => const OnboardingGoal(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return OnboardingGoal(userModel: extra);
+        },
       ),
       GoRoute(
-        path: '/onboardingNotification',
-        name: 'onboarding_notification',
-        builder: (context, state) => const NotificationPermissionPage(),
+        path: '/onboardingNotifications',
+        name: 'onboarding_notifications',
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return NotificationPermissionPage(userModel: extra);
+        },
       ),
       GoRoute(
-        path: '/onboardingAllset',
+        path: '/onboardingAllSet',
         name: 'onboarding_allset',
-        builder: (context, state) => const AllSet(),
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return AllSet(userModel: extra);
+        },
       ),
       GoRoute(
         path: '/subscription',
@@ -142,8 +168,37 @@ abstract class AppRouter {
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationsSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/notificationsScreen',
+        name: 'notificationsScreen',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: NotificationScreen()),
+      ),
+      GoRoute(
+        path: '/foodScanner',
+        name: 'food_scanner',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: FoodScannerScreen()),
+      ),
+      GoRoute(
+        path: '/log',
+        name: 'log',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: DatabaseSearch()),
+      ),
 
-      // Protected routes with bottom navigation bar
+      GoRoute(
+        path: '/streak',
+        name: 'streak',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: StreakScreen()),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return ScaffoldWithBottomNavBar(child: child);
@@ -152,33 +207,21 @@ abstract class AppRouter {
           GoRoute(
             path: '/home',
             name: 'home',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomeScreen(), // Make sure HomeScreen is your dashboard
-            ),
-          ),
-          GoRoute(
-            path: '/documents',
-            name: 'documents',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DocumentsScreen()),
+                const NoTransitionPage(child: HomeScreen()),
           ),
+
           GoRoute(
-            path: '/foodScanner',
-            name: 'food_scanner',
+            path: '/progress',
+            name: 'progress',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: FoodScannerScreen()),
-          ),
-          GoRoute(
-            path: '/notifications',
-            name: 'notifications',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: NotificationsScreen()),
+                const NoTransitionPage(child: WeeklyProgress()),
           ),
           GoRoute(
             path: '/settings',
             name: 'settings',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+                NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
@@ -188,7 +231,6 @@ abstract class AppRouter {
   );
 }
 
-// Navigation helpers
 extension NavigationHelpers on BuildContext {
   void goToLogin() => go('/login');
   void goToRegister() => go('/register');
@@ -202,10 +244,10 @@ extension NavigationHelpers on BuildContext {
   void goToOnboardingAllSet() => go('/onboardingAllset');
   void goToSubscription() => go('/subscription');
   void goToFoodScanner() => go('/foodScanner');
-  void goToDocuments() => go('/documents');
   void goToNotifications() => go('/notifications');
   void goToSettings() => go('/settings');
   void goToProfile() => go('/profile');
+  void goToStreak() => go('/streak');
 
   void logout() {
     AuthState.isLoggedIn = false;

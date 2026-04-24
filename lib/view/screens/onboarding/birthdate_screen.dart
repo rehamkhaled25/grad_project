@@ -1,46 +1,60 @@
-// view/screens/onboarding/birthdate_screen.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+import 'package:graduation_project/models/user_model.dart';
 
 class BirthDateScreen extends StatefulWidget {
-  const BirthDateScreen({super.key});
+  final UserModel? userModel;
+  const BirthDateScreen({super.key,this.userModel});
 
   @override
   State<BirthDateScreen> createState() => _BirthDateScreenState();
 }
 
 class _BirthDateScreenState extends State<BirthDateScreen> {
-  DateTime selectedDate = DateTime(1995, 6, 15);
+  
+  DateTime selectedDate = DateTime(1995, 6, 25);
+  bool _isSaving = false;
+  
+
+  
+
+  void _onContinue()  {
+    setState(() => _isSaving = true);
+    final currentBox= widget.userModel?? UserModel(uid:'',email:'');
+    final updatedUser=currentBox.copyWith(birthdate: selectedDate);
+
+context.push('/onboardingHeight',extra: updatedUser);
+setState(() {
+  _isSaving = false;
+});
+  }
 
   @override
   Widget build(BuildContext context) {
+    double height= MediaQuery.of(context).size.height;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             const CustomAppbar(
-              currentStep: 2, // Adjust based on your flow
-              totalSteps: 7, // Total onboarding steps
+              currentStep: 2,
+              totalSteps: 8,
+              showBackButton: true,
             ),
-
             const SizedBox(height: 40),
-
-            // Title
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                "Enter Your Birth Date",
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+                "Enter Your Birthdate",
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
               ),
             ),
-
-            const SizedBox(height: 40),
-
-            // Date Picker
+            SizedBox(height: height*0.04),
             Expanded(
               child: Center(
                 child: Container(
@@ -49,6 +63,8 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
                   child: CupertinoDatePicker(
                     mode: CupertinoDatePickerMode.date,
                     initialDateTime: selectedDate,
+                    maximumDate: DateTime.now(),
+                    minimumYear: 1900,
                     onDateTimeChanged: (DateTime newDate) {
                       setState(() {
                         selectedDate = newDate;
@@ -60,18 +76,16 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
                 ),
               ),
             ),
-
-            // Continue Button
             Padding(
               padding: const EdgeInsets.all(20),
-              child: ContinueButton(
-                txt: "Continue",
-                onPressed: () {
-                  // Navigate to next screen (Weight)
-                  context.push('/onboardingHeight');
-                },
-              ),
+              child: _isSaving
+                  ? const CircularProgressIndicator(color: Colors.black)
+                  : ContinueButton(
+                      txt: "Continue",
+                      onPressed: _onContinue,
+                    ),
             ),
+            SizedBox(height: height*0.1),
           ],
         ),
       ),

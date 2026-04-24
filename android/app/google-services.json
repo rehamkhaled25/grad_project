@@ -1,0 +1,71 @@
+{
+  "project_info": {
+    "project_number": "1065830735486",
+    "project_id": "gp-fir",
+    "storage_bucket": "gp-fir.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065830735486:android:b41ed0afcfa530e90b822f",
+        "android_client_info": {
+          "package_name": "com.example.graduation_project"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1065830735486-e1958m6uhh2n2g72r77e4gfhh7o5ga30.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.graduation_project",
+            "certificate_hash": "6e09fca4bd872aa402adfc7a63ce300f291f12db"
+          }
+        },
+        {
+          "client_id": "1065830735486-oq1d3b6u6rvs45lqhhrkrd83evam569e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.graduation_project",
+            "certificate_hash": "21d3d70edd620fa7fb6098483655793ccba09b41"
+          }
+        },
+        {
+          "client_id": "1065830735486-rerfvqigqtaljospogncsn71i02b9btj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.graduation_project",
+            "certificate_hash": "aba0f974fb83a7737f55368193d98528f0857b62"
+          }
+        },
+        {
+          "client_id": "1065830735486-ksh4c0isjr4dn5bb3oesgef0u812vq47.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          
+          "current_key": "AIzaSyCNtBLbvKGxtOwS2EYs0r1Z4H-Q7LPZqIE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1065830735486-ksh4c0isjr4dn5bb3oesgef0u812vq47.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1065830735486-ia8i6bbkh4nmg0c2kmp3ibh82vro81in.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.graduationProject"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

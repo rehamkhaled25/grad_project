@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 
 class AllSet extends StatefulWidget {
-  const AllSet({super.key});
+  final UserModel? userModel;
+  const AllSet({super.key,this.userModel});
 
   @override
   State<AllSet> createState() => _AllSetState();
@@ -39,6 +41,7 @@ class _AllSetState extends State<AllSet> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight=MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -91,7 +94,7 @@ class _AllSetState extends State<AllSet> with SingleTickerProviderStateMixin {
               child: ElevatedButton(
                 onPressed: () {
                   // Use pushReplacement to replace current screen
-                  context.pushReplacement('/subscription');
+                  context.pushReplacement('/register', extra: widget.userModel);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
@@ -110,6 +113,7 @@ class _AllSetState extends State<AllSet> with SingleTickerProviderStateMixin {
               ),
             ),
           ),
+          SizedBox(height: screenHeight * 0.05),
         ],
       ),
     );

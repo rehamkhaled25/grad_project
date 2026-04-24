@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
-import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
-
+import 'package:graduation_project/models/user_model.dart'; // Import your model
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
+import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
 
 class NotificationPermissionPage extends StatefulWidget {
-  const NotificationPermissionPage({super.key});
+  // 1. Accept the userModel from the previous screen (Goal Weight)
+  final UserModel? userModel;
+
+  const NotificationPermissionPage({super.key, this.userModel});
 
   @override
-  State<NotificationPermissionPage> createState() => _NotificationPermissionPageState();
+  State<NotificationPermissionPage> createState() =>
+      _NotificationPermissionPageState();
 }
 
-class _NotificationPermissionPageState extends State<NotificationPermissionPage> {
+class _NotificationPermissionPageState
+    extends State<NotificationPermissionPage> {
   @override
   void initState() {
     super.initState();
-    // Show dialog automatically after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showPermissionDialog();
     });
@@ -32,7 +36,7 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
             borderRadius: BorderRadius.circular(12),
           ),
           title: const Text(
-            '"Appname" Would Like to Send You Notifications',
+            '"Cal Ai" Would Like to Send You Notifications',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           content: const Text(
@@ -45,7 +49,8 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
               style: _dialogButtonStyle(),
               onPressed: () {
                 Navigator.pop(context);
-                context.push('/onboardingAllset');
+                // 2. Pass the model forward to All Set
+                context.push('/onboardingAllset', extra: widget.userModel);
                 debugPrint("Notifications: Denied");
               },
               child: const Text("Don’t Allow"),
@@ -54,9 +59,9 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
               style: _dialogButtonStyle(),
               onPressed: () {
                 Navigator.pop(context);
-                context.push('/onboardingAllset');
+                // 2. Pass the model forward to All Set
+                context.push('/onboardingAllset', extra: widget.userModel);
                 debugPrint("Notifications: Allowed");
-                // TODO: Add real permission request here later (e.g. permission_handler package)
               },
               child: const Text("Allow"),
             ),
@@ -68,13 +73,17 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
 
   ButtonStyle _dialogButtonStyle() {
     return ButtonStyle(
-      backgroundColor: MaterialStateProperty.resolveWith((states) {
-        return states.contains(MaterialState.pressed) ? Colors.black : Colors.transparent;
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        return states.contains(WidgetState.pressed)
+            ? Colors.black
+            : Colors.transparent;
       }),
-      foregroundColor: MaterialStateProperty.resolveWith((states) {
-        return states.contains(MaterialState.pressed) ? Colors.white : Colors.black;
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        return states.contains(WidgetState.pressed)
+            ? Colors.white
+            : Colors.black;
       }),
-      overlayColor: MaterialStateProperty.all(Colors.black12),
+      overlayColor: WidgetStateProperty.all(Colors.black12),
     );
   }
 
@@ -85,24 +94,19 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CustomAppbar(currentStep: 6, totalSteps: 7),
+          const CustomAppbar(currentStep: 6, totalSteps: 8),
 
-      
           const Spacer(),
 
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: ContinueButton(
-              txt: "Continue",
-              onPressed: () {
-                // If dialog was somehow dismissed → show it again
-                // Or just navigate directly — your choice
-                _showPermissionDialog();
-                // Alternative (if you want to skip dialog on button press):
-                // context.push('/onboardingAllset');
-              },
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.all(20),
+          //   child: ContinueButton(
+          //     txt: "Continue",
+          //     onPressed: () {
+          //       _showPermissionDialog();
+          //     },
+          //   ),
+          // ),
         ],
       ),
     );
