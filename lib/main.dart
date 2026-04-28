@@ -57,7 +57,7 @@ class GraduationProjectApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cal Ai',
+      title: 'Nutra',
 
       // routerConfig: AppRouter.router,
       // // home:DatabaseSearch() ,
