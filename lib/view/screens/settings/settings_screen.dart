@@ -2,12 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
-import 'package:graduation_project/services/auth_service.dart';
+import 'package:graduation_project/services/api_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   SettingsScreen({super.key});
 
-  final AuthService _authService = AuthService();
+  // final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -209,38 +209,39 @@ class SettingsScreen extends StatelessWidget {
                   },
                 );
 
-                try {
-                  await _authService.signOut();
+                // try {
+                //   await _authService.signOut();
 
-                  if (context.mounted) Navigator.pop(context);
+                //   if (context.mounted) Navigator.pop(context);
 
-                  AuthState.isLoggedIn = false;
-                  AuthState.isRegistered = false;
+                //   AuthState.isLoggedIn = false;
+                //   AuthState.isRegistered = false;
 
-                  if (context.mounted) {
-                    context.go('/login');
+                //   if (context.mounted) {
+                //     context.go('/login');
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Logged out successfully'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) Navigator.pop(context);
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       const SnackBar(
+                //         content: Text('Logged out successfully'),
+                //         backgroundColor: Colors.green,
+                //         behavior: SnackBarBehavior.floating,
+                //       ),
+                //     );
+                //   }
+                // } 
+                 // catch (e) {
+                //   if (context.mounted) Navigator.pop(context);
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error logging out: $e'),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }
+                //   if (context.mounted) {
+                //     ScaffoldMessenger.of(context).showSnackBar(
+                //       SnackBar(
+                //         content: Text('Error logging out: $e'),
+                //         backgroundColor: Colors.red,
+                //         behavior: SnackBarBehavior.floating,
+                //       ),
+                //     );
+                //   }
+                // }
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Log Out'),

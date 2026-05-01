@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/models/user_model.dart';
-import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
-import 'package:graduation_project/view/custom _widget/continue_button.dart';
+import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
+import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 
 class WeightScreen extends StatefulWidget {
   final UserModel? userModel;
@@ -15,6 +15,7 @@ class WeightScreen extends StatefulWidget {
 class _WeightScreenState extends State<WeightScreen> {
   double weightKg = 65.0;
   bool isKg = true;
+  bool _isSaving = false; // Added to manage state during transition
   final ScrollController _scrollController = ScrollController();
 
   final double itemWidth = 10.0;
@@ -26,6 +27,11 @@ class _WeightScreenState extends State<WeightScreen> {
   @override
   void initState() {
     super.initState();
+    // TEACHER NOTE: Initialize weight from the model if it exists
+    if (widget.userModel?.weight != null) {
+      weightKg = widget.userModel!.weight!;
+    }
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToValue(weightKg);
     });
@@ -45,9 +51,16 @@ class _WeightScreenState extends State<WeightScreen> {
   }
 
   void _continueToNextPage() {
-    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
-    final updatedUser = currentBox.copyWith(weight: weightKg);
-    context.go('/onboardingGoal', extra: updatedUser);
+    setState(() => _isSaving = true);
+    
+    
+    final currentModel = widget.userModel ?? UserModel();
+    final updatedUser = currentModel.copyWith(weight: weightKg);
+    
+   
+    context.push('/onboardingGoal', extra: updatedUser);
+    
+    setState(() => _isSaving = false);
   }
 
   @override
@@ -75,7 +88,6 @@ class _WeightScreenState extends State<WeightScreen> {
             ),
           ),
           
-          // Precisely positioning the weight display relative to the UI image
           const Spacer(flex: 3),
 
           Column(
@@ -103,7 +115,6 @@ class _WeightScreenState extends State<WeightScreen> {
                 ),
               ),
               Padding(
-                // Aligns "swipe for lbs" under the 'kg/lb' unit text
                 padding: const EdgeInsets.only(left: 60),
                 child: GestureDetector(
                   onTap: () => setState(() => isKg = !isKg),
@@ -122,7 +133,6 @@ class _WeightScreenState extends State<WeightScreen> {
 
           const SizedBox(height: 60),
 
-          // Horizontal Ruler
           SizedBox(
             height: 120,
             child: Stack(
@@ -201,10 +211,12 @@ class _WeightScreenState extends State<WeightScreen> {
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-            child: ContinueButton(
-              onPressed: _continueToNextPage,
-              txt: "Continue",
-            ),
+            child: _isSaving 
+              ? const Center(child: CircularProgressIndicator(color: Colors.black))
+              : ContinueButton(
+                  onPressed: _continueToNextPage,
+                  txt: "Continue",
+                ),
           ),
           SizedBox(height: screenHeight * 0.05),
         ],

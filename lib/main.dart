@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 
 import 'package:graduation_project/view/screens/database/database_search.dart';
 import 'package:graduation_project/view/screens/database/servings_database.dart';
+import 'package:graduation_project/view/screens/home/badges.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/home/log_food.dart';
 import 'package:graduation_project/view/screens/onboarding/allergies.dart';
@@ -56,10 +58,10 @@ class GraduationProjectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Nutra',
 
-      // routerConfig: AppRouter.router,
+      routerConfig: AppRouter.router,
       // // home:DatabaseSearch() ,
 
 
@@ -77,7 +79,7 @@ class GraduationProjectApp extends StatelessWidget {
         );
       },
     
-      home: const Allergies(),
+      // home: const SignInScreen(),
     );
   }
 }

@@ -1,18 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:graduation_project/models/user_model.dart';
-import 'package:graduation_project/services/auth_service.dart';
-import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/services/api_service.dart'; 
+import 'package:graduation_project/services/onboarding_service.dart'; // Added for onboarding sync
 import 'package:graduation_project/view/custom _widget/custom_input_field.dart';
-import 'package:graduation_project/view/custom _widget/social_image_button.dart';
 
 class RegisterScreen extends StatefulWidget {
-  // Receives the model containing all onboarding data (height, weight, etc.)
   final UserModel? userModel;
-
   const RegisterScreen({super.key, this.userModel});
 
   @override
@@ -21,9 +16,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  final AuthService _authService = AuthService();
-  final DatabaseService _dbService = DatabaseService();
+  final ApiService _authService = ApiService(); // Initialize Service
 
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -34,262 +27,155 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    fullNameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    super.dispose();
-  }
-
   void _showSnackBar(String message, Color color) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
+      SnackBar(content: Text(message), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
 
-  /// UPDATED: This now merges the onboarding data with the new account details
-  Future<void> _createUserProfile(User user, String name) async {
-    // 1. Start with the model passed from the onboarding screens
-    // 2. Use copyWith to fill in the final Firebase details
-    UserModel finalUser = (widget.userModel ?? UserModel(uid: '', email: '')).copyWith(
-      uid: user.uid,
-      email: user.email ?? emailController.text.trim(),
-      fullName: name,
-    );
-    
-    // 3. Save the COMPLETE profile to Firestore in one go
-    await _dbService.saveUserData(finalUser);
-  }
-
-  void _handleRegister() async {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
+      print("🚀 [CHECKPOINT 1]: Create Account button clicked.");
       setState(() => _isLoading = true);
 
-      try {
-        final User? user = await _authService.registerUser(
-          emailController.text.trim(),
-          passwordController.text.trim(),
-        );
+      // 1. Update the existing model with final screen data
+      final finalUser = widget.userModel ?? UserModel();
+      finalUser.fullName = fullNameController.text.trim();
+      finalUser.email = emailController.text.trim().toLowerCase();
+      finalUser.password = passwordController.text.trim();
 
-        if (user != null) {
-          // Merge and Save everything
-          await _createUserProfile(user, fullNameController.text.trim());
+      print("📦 [DATA PREP]: Sending User: ${finalUser.email}");
+
+      try {
+        // 2. Call the registration service first to get the token[cite: 1]
+        print("📡 [CHECKPOINT 2]: Calling ApiService.register...");
+        final response = await _authService.register(finalUser);
+
+        print("✅ [CHECKPOINT 3]: Server responded with status: ${response.statusCode}");
+        print("📄 [RESPONSE BODY]: ${response.body}");
+
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          // LOGIC UPDATE: User is registered, so the token now exists in SharedPreferences.
+          // Now sync the onboarding data collected from previous screens.[cite: 1]
+          print("🔄 [SYNCING]: Sending onboarding data to database...");
           
-          if (!mounted) return;
+          await OnboardingService().saveOnboardingData(
+            fullName: finalUser.fullName ?? "User",
+            birthdate: finalUser.birthdate ?? "",
+            gender: finalUser.gender ?? "",
+            goal: finalUser.goal ?? "",
+            weight: finalUser.weight ?? 0.0,
+            height: finalUser.height ?? 0.0,
+          );
           _showSnackBar('Account created successfully!', Colors.green);
           
           AuthState.isLoggedIn = true;
-          AuthState.isRegistered = true; 
-          AuthState.finishedOnboarding = true; // Set to true now that data is saved
+          AuthState.finishedOnboarding = true; 
           
-          // Go to home or dashboard
-          context.go('/home'); 
+          if (mounted) {
+            print("🏠 [NAVIGATION]: Moving to /home");
+            context.go('/home'); 
+          }
         } else {
-          _showSnackBar('Registration failed. Email might be in use.', Colors.red);
+          print("❌ [SERVER REJECTION]: Registration failed.");
+          _showSnackBar('Registration failed. Email might already exist.', Colors.red);
         }
       } catch (e) {
-        _showSnackBar('An error occurred during registration.', Colors.red);
+        print("🔥 [CRITICAL ERROR]: $e");
+        _showSnackBar('Connection Error: Check Laptop IP and Firewall.', Colors.red);
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
-    }
-  }
-
-  void _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final UserCredential? userCred = await _authService.signInWithGoogle();
-
-      if (userCred != null && userCred.user != null) {
-        await _createUserProfile(
-          userCred.user!, 
-          userCred.user!.displayName ?? 'New User'
-        );
-
-        if (!mounted) return;
-        _showSnackBar('Signed in with Google successfully!', Colors.green);
-        
-        AuthState.isLoggedIn = true;
-        AuthState.isRegistered = true; 
-        AuthState.finishedOnboarding = true; 
-        context.go('/home');
-      }
-    } catch (e) {
-      if (mounted) _showSnackBar('Google Login failed.', Colors.red);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } else {
+      print("⚠️ [VALIDATION]: Form is not valid. Check input fields.");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Image.asset('assets/images/logo-78.png', height: 100),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFDFDFD),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CustomInputField(
-                            controller: fullNameController,
-                            label: 'Full Name',
-                            hint: 'Enter your full name',
-                            assetIcon: 'assets/images/Profile.png',
-                            validator: (value) =>
-                                value!.isEmpty ? 'Full name cannot be empty' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomInputField(
-                            controller: emailController,
-                            label: 'Email',
-                            hint: 'Enter your email',
-                            assetIcon: 'assets/images/Message.png',
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Email cannot be empty';
-                              if (!value.contains('@')) return 'Enter a valid email address';
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          CustomInputField(
-                            controller: passwordController,
-                            label: 'Password',
-                            hint: 'Enter your password',
-                            assetIcon: 'assets/images/Lock.png',
-                            isPassword: true,
-                            obscureText: _obscurePassword,
-                            toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
-                            validator: (value) =>
-                                value!.length < 6 ? 'Password must be at least 6 characters' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomInputField(
-                            controller: confirmPasswordController,
-                            label: 'Confirm Password',
-                            hint: 'Confirm your password',
-                            assetIcon: 'assets/images/Lock.png',
-                            isPassword: true,
-                            obscureText: _obscureConfirmPassword,
-                            toggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                            validator: (value) {
-                              if (value != passwordController.text) return 'Passwords do not match';
-                              return null;
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: screenWidth > 400 ? 400 : double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleRegister,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      ),
-                      child: _isLoading 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Create Account', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Row(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Image.asset('assets/images/logo-78.png', height: 100),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDFDFD),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
                     children: [
-                      Expanded(child: Divider(thickness: 1)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text('Or continue with'),
+                      CustomInputField(
+                        controller: fullNameController,
+                        label: 'Full Name',
+                        hint: 'Enter your full name',
+                        assetIcon: 'assets/images/Profile.png',
+                        validator: (value) => value!.isEmpty ? 'Name required' : null,
                       ),
-                      Expanded(child: Divider(thickness: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SocialImageButton(
-                        imagePath: 'assets/images/Card.png', 
-                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                      const SizedBox(height: 16),
+                      CustomInputField(
+                        controller: emailController,
+                        label: 'Email',
+                        hint: 'Enter your email',
+                        assetIcon: 'assets/images/Message.png',
+                        validator: (value) => (value == null || !value.contains('@')) ? 'Invalid email' : null,
                       ),
-                      const SizedBox(width: 24),
-                      SocialImageButton(
-                        imagePath: 'assets/images/mdi_apple.png',
-                        onPressed: () {},
+                      const SizedBox(height: 16),
+                      CustomInputField(
+                        controller: passwordController,
+                        label: 'Password',
+                        hint: 'Enter your password',
+                        assetIcon: 'assets/images/Lock.png',
+                        isPassword: true,
+                        obscureText: _obscurePassword,
+                        toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
+                        validator: (value) => value!.length < 6 ? 'Min 6 characters' : null,
                       ),
-                      const SizedBox(width: 24),
-                      SocialImageButton(
-                        imagePath: 'assets/images/logos_facebook.png',
-                        onPressed: () {},
+                      const SizedBox(height: 16),
+                      CustomInputField(
+                        controller: confirmPasswordController,
+                        label: 'Confirm Password',
+                        hint: 'Confirm your password',
+                        assetIcon: 'assets/images/Lock.png',
+                        isPassword: true,
+                        obscureText: _obscureConfirmPassword,
+                        toggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        validator: (value) => value != passwordController.text ? 'Passwords mismatch' : null,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  Text.rich(
-                    TextSpan(
-                      text: 'Already have an account? ',
-                      style: const TextStyle(color: Color(0xFF7C7C7E), fontWeight: FontWeight.w500),
-                      children: [
-                        TextSpan(
-                          text: 'Sign In',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w500,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()..onTap = () => context.go('/login'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: screenWidth > 400 ? 400 : double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleRegister,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Create Account', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
           ),
-          if (_isLoading)
-            const Opacity(
-              opacity: 0.3,
-              child: ModalBarrier(dismissible: false, color: Colors.black),
-            ),
-        ],
+        ),
       ),
     );
   }

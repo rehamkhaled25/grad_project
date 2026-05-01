@@ -5,7 +5,6 @@ import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
 import 'package:graduation_project/models/user_model.dart';
 
 class OnboardingGoal extends StatefulWidget {
-  // Add the userModel to the constructor to receive data from the Weight page
   final UserModel? userModel;
 
   const OnboardingGoal({super.key, this.userModel});
@@ -16,7 +15,6 @@ class OnboardingGoal extends StatefulWidget {
 
 class _OnboardingGoalState extends State<OnboardingGoal> {
   int selectedIndex = -1;
-  // We don't need _isSaving anymore because we aren't talking to the internet yet
   
   final List<String> goals = [
     "Lose Weight",
@@ -24,18 +22,25 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
     "Maintain Weight",
   ];
 
-  /// UPDATED: Logic to update the model and move to the next onboarding step
+  @override
+  void initState() {
+    super.initState();
+    // TEACHER NOTE: If the user came back to this page, show their previous choice
+    if (widget.userModel?.goal != null) {
+      selectedIndex = goals.indexOf(widget.userModel!.goal!);
+    }
+  }
+
   void _updateGoalAndContinue() {
     if (selectedIndex == -1) return;
 
-    // 1. Get the model from the Weight page or create a fresh one if null
-    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
+    // 1. Prepare the model with the existing data plus the new goal
+    final currentModel = widget.userModel ?? UserModel();
+    final updatedUser = currentModel.copyWith(goal: goals[selectedIndex]);
 
-    // 2. Use copyWith to add the selected goal to our "box"
-    final updatedUser = currentBox.copyWith(goal: goals[selectedIndex]);
-
-    // 3. Pass the updated model to the next screen (e.g., Notifications or Sign Up)
+    // 2. Navigate to the next step
     if (mounted) {
+      // Logic: Passing the 'updatedUser' to the next screen via 'extra'
       context.push('/onboardingNotifications', extra: updatedUser);
     }
   }
@@ -104,10 +109,10 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
                 txt: "Continue",
                 onPressed: selectedIndex == -1 
                     ? () {} 
-                    : _updateGoalAndContinue, // Using our updated function
+                    : _updateGoalAndContinue, 
               ),
 
-             SizedBox(height: screenHeight * 0.1),
+              SizedBox(height: screenHeight * 0.1),
             ],
           ),
         ),

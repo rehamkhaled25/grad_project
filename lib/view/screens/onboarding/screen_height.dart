@@ -20,6 +20,7 @@ class _HeightScreenState extends State<HeightScreen> {
   @override
   void initState() {
     super.initState();
+    // Logic: Initialize height from existing model if available
     if (widget.userModel?.height != null) {
       heightCm = widget.userModel!.height!;
     }
@@ -50,9 +51,14 @@ class _HeightScreenState extends State<HeightScreen> {
 
   void _onContinue() async {
     setState(() => _isSaving = true);
-    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
-    final updatedUser = currentBox.copyWith(height: heightCm);
+    
+    // Logic: Get current model or initialize new one, then copy with height
+    final currentModel = widget.userModel ?? UserModel();
+    final updatedUser = currentModel.copyWith(height: heightCm);
+    
+    // Pass the updated model to the next onboarding screen
     context.push('/onboardingWeight', extra: updatedUser);
+    
     if (mounted) setState(() => _isSaving = false);
   }
 
@@ -60,7 +66,6 @@ class _HeightScreenState extends State<HeightScreen> {
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     
-    // Adjusted margins: Base percentage + 40 pixels for precision shortening
     final double rulerTopMargin = (screenHeight * 0.05) + 40; 
     final double rulerBottomMargin = (screenHeight * 0.35) + 40; 
     final double rulerActualHeight = screenHeight - rulerTopMargin - rulerBottomMargin;
@@ -84,7 +89,6 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            // RULER (Background color removed by using a simple SizedBox)
             Positioned(
               right: 0,
               top: rulerTopMargin,
@@ -102,7 +106,6 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            // CENTERED HEIGHT TEXT
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
@@ -161,7 +164,6 @@ class _HeightScreenState extends State<HeightScreen> {
               ),
             ),
 
-            // RED INDICATOR
             Positioned(
               right: 45,
               top: rulerTopMargin + getArrowY(rulerActualHeight) - 15,
@@ -200,14 +202,12 @@ class _VerticalRulerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..strokeWidth = 1.5;
     
-    // Fixed steps ensures the distance between every line is identical
     const double steps = 50; 
     double lineSpacing = size.height / steps;
     
     for (int i = 0; i <= steps; i++) {
       double y = i * lineSpacing;
       
-      // Every 5th line is longer and darker for visual hierarchy
       double len = (i % 5 == 0) ? 40 : 20;
       paint.color = (i % 5 == 0) ? Colors.black : Colors.grey.shade400;
 
