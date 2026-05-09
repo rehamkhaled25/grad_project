@@ -1,13 +1,11 @@
 import 'dart:convert';
+import 'dart:io'; // required for File
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:graduation_project/models/food_model.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-
-
 
 class FoodScannerScreen extends StatefulWidget {
   const FoodScannerScreen({super.key});
@@ -22,6 +20,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   String _activeMode = "Scan Food";
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+
+  // Stores the path of the last captured/picked image
+  String? _currentImagePath;
 
   @override
   void initState() {
@@ -47,7 +48,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     }
   }
 
-  
   Future<void> _processImageForAI(XFile imageFile) async {
     if (_isAnalyzing) return;
     setState(() => _isAnalyzing = true);
@@ -56,7 +56,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       final apiKey = dotenv.env['GEMINI_API_KEY'] ?? "";
       if (apiKey.isEmpty) throw "API Key is missing from .env";
 
-     
       final model = GenerativeModel(
         model: 'gemini-2.5-flash',
         apiKey: apiKey,
@@ -77,12 +76,21 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             "total_protein": number,
             "total_carbs": number,
             "total_fat": number,
+            "sugar": number,
+            "sodium": integer,
+            "glycemic_index": integer,
+            "glycemic_load": integer,
+            "magnesium": integer,
+            "calcium": integer,
+            "fiber": integer,
+            "vitamins": "e.g., Vitamin B, Vitamin K",
             "health_score": integer (1-10),
-            "health_tip": "brief advice"
+            "health_tip": "brief advice",
+            "warning": "e.g., Contains Avocado, High Sugar, etc. (Leave empty if none)"
           }
           IMPORTANT: Return ONLY the JSON. No markdown blocks."""),
           DataPart('image/jpeg', imageBytes),
-        ])
+        ]),
       ];
 
       final response = await model.generateContent(prompt);
@@ -100,12 +108,17 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       final report = NutritionReport.fromJson(data);
 
       if (mounted) {
+        // Store the image path BEFORE showing the sheet
+        _currentImagePath = imageFile.path;
         _showResultsBottomSheet(report);
       }
     } catch (e) {
       debugPrint("AI_FAILURE_LOG: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Analysis Failed: $e"), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text("Analysis Failed: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);
@@ -113,7 +126,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   void _onCapture() async {
-    if (_controller == null || !_controller!.value.isInitialized || _isAnalyzing) return;
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _isAnalyzing)
+      return;
     try {
       final image = await _controller!.takePicture();
       _processImageForAI(image);
@@ -134,7 +150,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _NutritionResultSheet(report: report),
+      builder: (context) => _NutritionResultSheet(
+        report: report,
+        imagePath: _currentImagePath, // pass the stored image path
+      ),
     );
   }
 
@@ -157,10 +176,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-        
           Positioned.fill(child: CameraPreview(_controller!)),
 
-     
+          // Semi-transparent overlay with cut-out frame effect
           ColorFiltered(
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.3),
@@ -168,7 +186,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
             child: Stack(
               children: [
-                Container(decoration: const BoxDecoration(color: Colors.transparent)),
+                Container(
+                  decoration: const BoxDecoration(color: Colors.transparent),
+                ),
                 Align(
                   alignment: Alignment.center,
                   child: Container(
@@ -185,7 +205,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-       
+          // Scanner frame corners
           Center(
             child: Container(
               margin: const EdgeInsets.only(bottom: 100),
@@ -195,7 +215,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-          
+          // Top bar
           Positioned(
             top: 60,
             left: 20,
@@ -224,7 +244,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-          // 5. Bottom Controls
+          // Bottom controls
           Positioned(
             bottom: 0,
             left: 0,
@@ -272,7 +292,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
-         
+          // Loading overlay
           if (_isAnalyzing)
             Container(
               color: Colors.black45,
@@ -322,24 +342,45 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 }
 
-
-class _NutritionResultSheet extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// The bottom sheet – now StatefulWidget to handle quantity and image preview
+// ---------------------------------------------------------------------------
+class _NutritionResultSheet extends StatefulWidget {
   final NutritionReport report;
-  const _NutritionResultSheet({required this.report});
+  final String? imagePath;
+
+  const _NutritionResultSheet({required this.report, this.imagePath});
+
+  @override
+  State<_NutritionResultSheet> createState() => _NutritionResultSheetState();
+}
+
+class _NutritionResultSheetState extends State<_NutritionResultSheet> {
+  int _quantity = 1;
+
+  // Scaled values (macro‑only for simplicity; you can extend to micronutrients)
+  double get scaledCalories => widget.report.totalCalories * _quantity;
+  double get scaledProtein => widget.report.totalProtein * _quantity;
+  double get scaledCarbs => widget.report.totalCarbs * _quantity;
+  double get scaledFat => widget.report.totalFat * _quantity;
+  double get scaledSugar => widget.report.sugar * _quantity;
+  int get scaledSodium => widget.report.sodium * _quantity;
 
   @override
   Widget build(BuildContext context) {
+    final report = widget.report;
     return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
+      height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
-        color: Color(0xFFF8F8F8),
+        color: Color(0xFFF7F7F7),
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
         children: [
           const SizedBox(height: 12),
+          // Drag handle
           Container(
-            width: 40,
+            width: 50,
             height: 5,
             decoration: BoxDecoration(
               color: Colors.grey[300],
@@ -348,114 +389,412 @@ class _NutritionResultSheet extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               children: [
-                const Text("Just now", style: TextStyle(color: Colors.grey)),
-                const SizedBox(height: 8),
-                Text(
-                  report.mealName,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
+                // ---------- IMAGE PREVIEW ----------
+                if (widget.imagePath != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      File(widget.imagePath!),
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
-               
-                _buildStatTile(
-                  "Calories",
-                  "${report.totalCalories}",
-                  Icons.local_fire_department,
-                  Colors.orange,
-                ),
-
-                const SizedBox(height: 16),
+                // Time & Bookmark
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildMacroTile("Protein", "${report.totalProtein}g", Colors.red),
+                    Icon(
+                      Icons.bookmark_outline,
+                      size: 16,
+                      color: Colors.grey[600],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildMacroTile("Carbs", "${report.totalCarbs}g", Colors.orange),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildMacroTile("Fats", "${report.totalFat}g", Colors.blue),
+                    const SizedBox(width: 4),
+                    Text(
+                      "9:14 am",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
 
-                const SizedBox(height: 25),
-                const Text(
-                  "Health score",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                // Title and Quantity Stepper (FIXED +/–)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        report.mealName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[400]!),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              if (_quantity > 1) setState(() => _quantity--);
+                            },
+                            child: const Icon(Icons.remove, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "$_quantity",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () => setState(() => _quantity++),
+                            child: const Icon(Icons.add, size: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: report.healthScore / 10,
-                    minHeight: 10,
-                    color: report.healthScore > 6 ? Colors.green : Colors.orange,
-                    backgroundColor: Colors.grey[300],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 8),
+
+                // Warning
                 Row(
                   children: [
                     const Icon(
-                      Icons.auto_awesome,
-                      color: Colors.green,
-                      size: 18,
+                      Icons.warning_amber_rounded,
+                      size: 14,
+                      color: Colors.deepOrange,
                     ),
-                    const SizedBox(width: 5),
-                    Expanded(
+                    const SizedBox(width: 4),
+                    Flexible(
+                      // allows the text to shrink
                       child: Text(
-                        report.healthTip,
+                        report.warning.isNotEmpty
+                            ? report.warning
+                            : "Contains Avocado",
                         style: const TextStyle(
-                          color: Colors.green,
+                          color: Colors.deepOrange,
+                          fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
-                
-               
+                const SizedBox(height: 20),
+
+                // Calories Card (scaled)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEBEBEB),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Calories",
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.local_fire_department,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "${scaledCalories.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Small Metrics (GI, GL, Sodium) – not scaled here, can be scaled if needed
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                        
-                          Navigator.pop(context);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
-                          side: const BorderSide(color: Colors.black12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: const Text("Fix results", style: TextStyle(color: Colors.black)),
+                      child: _buildSmallMetric(
+                        "Glycemic Index",
+                        "${report.glycemicIndex}",
+                        "Medium",
+                        Colors.red,
                       ),
                     ),
-                    const SizedBox(width: 15),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSmallMetric(
+                        "Glycemic Load",
+                        "${report.glycemicLoad}",
+                        "Medium",
+                        Colors.black,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSmallMetric(
+                        "Sodium",
+                        "${scaledSodium}mg",
+                        "",
+                        Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Moderate response - pair with protein for control",
+                  style: TextStyle(color: Colors.orange, fontSize: 12),
+                ),
+                const SizedBox(height: 24),
+
+                // Macronutrients (scaled)
+                const Text(
+                  "Macronutrients",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGridCard(
+                        "Fats",
+                        "${scaledFat.toStringAsFixed(1)}g",
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildGridCard(
+                        "Protein",
+                        "${scaledProtein.toStringAsFixed(1)}g",
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGridCard(
+                        "Carbohydrates",
+                        "${scaledCarbs.toStringAsFixed(1)}g",
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildGridCard(
+                        "Sugar",
+                        "${scaledSugar.toStringAsFixed(1)}g",
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Micronutrients (unchanged, not scaled – can be extended)
+                const Text(
+                  "Micronutrients",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGridCard(
+                        "Magnesium",
+                        "${report.magnesium}mg",
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildGridCard("Calcium", "${report.calcium}mg"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGridCard("Fiber", "${report.fiber}mg"),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildGridCard("Vitamins", report.vitamins),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Health Score Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEBEBEB),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Health score",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "${report.healthScore}/10",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.favorite_border, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: report.healthScore / 10,
+                                minHeight: 6,
+                                color: const Color(0xFF4CAF50),
+                                backgroundColor: Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Health Tip Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    border: Border.all(
+                      color: const Color(0xFF4CAF50),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome,
+                        color: Color(0xFF4CAF50),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Health Tip",
+                              style: TextStyle(
+                                color: Color(0xFF4CAF50),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '"${report.healthTip}"',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Buttons
+                Row(
+                  children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: const Color(0xFF1E1E1E),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text("Done"),
+                        child: const Text(
+                          "Fix results",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.black, width: 1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text(
+                          "Done",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -464,49 +803,68 @@ class _NutritionResultSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildStatTile(String label, String value, IconData icon, Color color) {
+  Widget _buildSmallMetric(
+    String title,
+    String value,
+    String subtitle,
+    Color valueColor,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFEBEBEB),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 30),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(color: Colors.grey)),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 10, color: Colors.black54),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildMacroTile(String label, String value, Color color) {
+  Widget _buildGridCard(String title, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFEBEBEB),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -514,6 +872,9 @@ class _NutritionResultSheet extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Scanner frame painter (unchanged)
+// ---------------------------------------------------------------------------
 class ScannerFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -525,12 +886,28 @@ class ScannerFramePainter extends CustomPainter {
 
     canvas.drawLine(const Offset(0, 0), const Offset(length, 0), paint);
     canvas.drawLine(const Offset(0, 0), const Offset(0, length), paint);
-    canvas.drawLine(Offset(size.width, 0), Offset(size.width - length, 0), paint);
+    canvas.drawLine(
+      Offset(size.width, 0),
+      Offset(size.width - length, 0),
+      paint,
+    );
     canvas.drawLine(Offset(size.width, 0), Offset(size.width, length), paint);
     canvas.drawLine(Offset(0, size.height), Offset(length, size.height), paint);
-    canvas.drawLine(Offset(0, size.height), Offset(0, size.height - length), paint);
-    canvas.drawLine(Offset(size.width, size.height), Offset(size.width - length, size.height), paint);
-    canvas.drawLine(Offset(size.width, size.height), Offset(size.width, size.height - length), paint);
+    canvas.drawLine(
+      Offset(0, size.height),
+      Offset(0, size.height - length),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width - length, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width, size.height - length),
+      paint,
+    );
   }
 
   @override

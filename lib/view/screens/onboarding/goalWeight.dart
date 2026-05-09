@@ -4,15 +4,15 @@ import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/view/custom _widget/custom_appBar.dart';
 import 'package:graduation_project/view/custom _widget/continue_button.dart';
 
-class WeightScreen extends StatefulWidget {
+class GoalWeightScreen extends StatefulWidget {
   final UserModel? userModel;
-  const WeightScreen({super.key, this.userModel});
+  const GoalWeightScreen({super.key, this.userModel});
 
   @override
-  State<WeightScreen> createState() => _WeightScreenState();
+  State<GoalWeightScreen> createState() => _GoalWeightScreenState();
 }
 
-class _WeightScreenState extends State<WeightScreen> {
+class _GoalWeightScreenState extends State<GoalWeightScreen> {
   double weightKg = 65.0;
   bool isKg = true;
   final ScrollController _scrollController = ScrollController();
@@ -50,6 +50,8 @@ class _WeightScreenState extends State<WeightScreen> {
     // final updatedUser = currentBox.copyWith(weight: weightKg);
     // fix and add app router to the next page
     // context.go('/onboardingGoal', extra: updatedUser);
+
+    context.push('/onboardingAllergies');
   }
 
   @override
@@ -76,7 +78,7 @@ class _WeightScreenState extends State<WeightScreen> {
               ),
             ),
           ),
-          
+
           // Precisely positioning the weight display relative to the UI image
           const Spacer(flex: 3),
 
@@ -112,7 +114,7 @@ class _WeightScreenState extends State<WeightScreen> {
                   child: Text(
                     "swipe for ${isKg ? "lbs" : "kg"}",
                     style: TextStyle(
-                      fontSize: 14, 
+                      fontSize: 14,
                       color: Colors.grey.shade500,
                       fontWeight: FontWeight.w500,
                     ),
@@ -135,7 +137,10 @@ class _WeightScreenState extends State<WeightScreen> {
                     double offset = _scrollController.offset;
                     setState(() {
                       weightKg = (minWeightKg + offset / (itemWidth * 10))
-                          .clamp(minWeightKg.toDouble(), maxWeightKg.toDouble());
+                          .clamp(
+                            minWeightKg.toDouble(),
+                            maxWeightKg.toDouble(),
+                          );
                     });
                     return true;
                   },

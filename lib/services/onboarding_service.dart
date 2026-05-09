@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingService {
-  static const String baseUrl = "http://192.168.1.3:5000";
+  static const String baseUrl = "http://10.0.2.2:5000";
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -25,26 +25,30 @@ class OnboardingService {
     print("🔑 [TOKEN]: ${token != null ? 'Token Found' : 'MISSING TOKEN'}");
 
     if (token == null) {
-      print("❌ [ERROR]: Cannot save onboarding because user is not logged in (Token null)");
+      print(
+        "❌ [ERROR]: Cannot save onboarding because user is not logged in (Token null)",
+      );
       throw Exception("No authentication token found. Please login again.");
     }
 
     try {
-      final response = await http.put(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: jsonEncode({
-          "full_name": fullName,
-          "birthdate": birthdate,
-          "gender": gender,
-          "goal": goal,
-          "weight": weight,
-          "height": height,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .put(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode({
+              "full_name": fullName,
+              "birthdate": birthdate,
+              "gender": gender,
+              "goal": goal,
+              "weight": weight,
+              "height": height,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       print("✅ [ONBOARDING]: Status: ${response.statusCode}");
 

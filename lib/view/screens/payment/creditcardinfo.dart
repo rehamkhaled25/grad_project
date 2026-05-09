@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/payment_options.dart';
 
@@ -39,7 +40,10 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                     ),
                     const Text(
                       "Payment method",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -66,7 +70,7 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 ),
               ),
               const SizedBox(height: 10),
-              
+
               // RESPONSIVE ROW START
               Row(
                 children: const [
@@ -95,8 +99,8 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                   ),
                 ],
               ),
-              // RESPONSIVE ROW END
 
+              // RESPONSIVE ROW END
               SizedBox(height: screenHeight * 0.07),
               const Text(
                 "Card Number",
@@ -176,7 +180,12 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 ],
               ),
               SizedBox(height: screenHeight * 0.04),
-              ContinueButton(onPressed: () {}, txt: "Save"),
+              ContinueButton(
+                onPressed: () {
+                  context.go("/home");
+                },
+                txt: "Save",
+              ),
             ],
           ),
         ),
@@ -207,9 +216,8 @@ class CustomTextField extends StatelessWidget {
       width: hasWidth ? width : double.infinity,
       height: 55,
       child: TextField(
-      
         decoration: InputDecoration(
-         filled: true,
+          filled: true,
           fillColor: Colors.white,
           hintText: label,
           hintStyle: const TextStyle(fontSize: 15, color: Color(0xff8E8E93)),

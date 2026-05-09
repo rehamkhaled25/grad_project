@@ -41,7 +41,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
     // 2. Navigate to the next step
     if (mounted) {
       // Logic: Passing the 'updatedUser' to the next screen via 'extra'
-      context.push('/onboardingNotifications', extra: updatedUser);
+      context.push('/onboardingGoalWeight', extra: updatedUser);
     }
   }
 

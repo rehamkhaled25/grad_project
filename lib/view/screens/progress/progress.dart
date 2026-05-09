@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({Key? key}) : super(key: key);
@@ -39,7 +40,6 @@ class _ProgressPageState extends State<ProgressPage>
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-
             // top bar (back + title)
             SizedBox(
               height: 48,
@@ -55,10 +55,7 @@ class _ProgressPageState extends State<ProgressPage>
                   ),
                   const Text(
                     'Progress',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -157,8 +154,9 @@ class _ProgressPageState extends State<ProgressPage>
                           value: 0.5,
                           minHeight: 10,
                           backgroundColor: Color(0xFFE0E0E0),
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.black),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.black,
+                          ),
                         ),
                       ),
                     ],
@@ -193,11 +191,32 @@ class _ProgressPageState extends State<ProgressPage>
             // small stat cards row
             Row(
               children: [
-                Expanded(child: _stat(Icons.eco_outlined, '1978', 'Calories', Colors.red)),
+                Expanded(
+                  child: _stat(
+                    Icons.eco_outlined,
+                    '1978',
+                    'Calories',
+                    Colors.red,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _stat(Icons.local_fire_department_outlined, '7 days', 'Streak', Colors.orange)),
+                Expanded(
+                  child: _stat(
+                    Icons.local_fire_department_outlined,
+                    '7 days',
+                    'Streak',
+                    Colors.orange,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _stat(Icons.monitor_heart_outlined, '42 days', 'Active', Colors.blueGrey)),
+                Expanded(
+                  child: _stat(
+                    Icons.monitor_heart_outlined,
+                    '42 days',
+                    'Active',
+                    Colors.blueGrey,
+                  ),
+                ),
               ],
             ),
 
@@ -232,16 +251,21 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Weekly Calories',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-              Text(
-                'Details >',
-                style: TextStyle(color: Colors.black45, fontSize: 12),
+              InkWell(
+                onTap: () {
+                  context.push("/weeklyBreakdownScreen");
+                },
+                child: const Text(
+                  'Details >',
+                  style: TextStyle(color: Colors.black45, fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -250,23 +274,19 @@ class _ProgressPageState extends State<ProgressPage>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                final avgY =
-                    chartHeight * (1 - average) * _controller.value;
+                final avgY = chartHeight * (1 - average) * _controller.value;
 
                 return Stack(
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: _AvgLinePainter(y: avgY),
-                      ),
+                      child: CustomPaint(painter: _AvgLinePainter(y: avgY)),
                     ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(values.length, (i) {
                         final isFriday = i == 4;
-                        final h =
-                            chartHeight * values[i] * _controller.value;
+                        final h = chartHeight * values[i] * _controller.value;
 
                         return Column(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -315,9 +335,7 @@ class _ProgressPageState extends State<ProgressPage>
 
   // weight journey graph card
   Widget _weightJourneyCard() {
-    final data = <double>[
-      175, 175, 173, 173, 170, 170, 165, 171, 169, 169.1
-    ];
+    final data = <double>[175, 175, 173, 173, 170, 170, 165, 171, 169, 169.1];
     final segments = ['1W', '1M', '6M', '1Y', 'ALL'];
     final selected = 4;
 
@@ -328,7 +346,6 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           const Text(
             'Weight Journey',
             style: TextStyle(fontWeight: FontWeight.w600),
@@ -370,9 +387,7 @@ class _ProgressPageState extends State<ProgressPage>
 
           const SizedBox(height: 16),
 
-          Expanded(
-            child: _InteractiveWeightChart(data: data),
-          ),
+          Expanded(child: _InteractiveWeightChart(data: data)),
         ],
       ),
     );
@@ -398,17 +413,13 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // header (title + add button)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Weight Log',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
 
               Container(
@@ -426,10 +437,7 @@ class _ProgressPageState extends State<ProgressPage>
                     SizedBox(width: 4),
                     Text(
                       'Add',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
                 ),
@@ -444,16 +452,12 @@ class _ProgressPageState extends State<ProgressPage>
             height: logs.length * rowHeight,
             child: Stack(
               children: [
-
                 // vertical timeline line
                 Positioned(
                   left: lineX + dotSize / 2 - 1,
                   top: rowHeight / 2,
                   bottom: rowHeight / 2,
-                  child: Container(
-                    width: 2,
-                    color: Colors.black,
-                  ),
+                  child: Container(width: 2, color: Colors.black),
                 ),
 
                 // rows
@@ -464,7 +468,6 @@ class _ProgressPageState extends State<ProgressPage>
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-
                           const SizedBox(width: lineX),
 
                           // red dot
@@ -531,10 +534,11 @@ class _ProgressPageState extends State<ProgressPage>
         children: [
           Icon(icon, color: color),
           const SizedBox(height: 6),
-          Text(value,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(label,
-              style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -594,11 +598,7 @@ class _AvgLinePainter extends CustomPainter {
     double x = 0;
 
     while (x < size.width) {
-      canvas.drawLine(
-        Offset(x, y),
-        Offset(x + dash, y),
-        paint,
-      );
+      canvas.drawLine(Offset(x, y), Offset(x + dash, y), paint);
       x += dash + space;
     }
   }
@@ -640,9 +640,7 @@ class _InteractiveWeightChartState extends State<_InteractiveWeightChart> {
   }
 
   void _update(Offset pos) {
-    final index = (pos.dx /
-            context.size!.width *
-            (widget.data.length - 1))
+    final index = (pos.dx / context.size!.width * (widget.data.length - 1))
         .round()
         .clamp(0, widget.data.length - 1);
 
@@ -657,10 +655,7 @@ class _WeightLinePainter extends CustomPainter {
   final List<double> data;
   final int? selectedIndex;
 
-  _WeightLinePainter({
-    required this.data,
-    this.selectedIndex,
-  });
+  _WeightLinePainter({required this.data, this.selectedIndex});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -680,8 +675,7 @@ class _WeightLinePainter extends CustomPainter {
     const minWeight = 160.0;
     const maxWeight = 180.0;
 
-    double norm(double v) =>
-        (v - minWeight) / (maxWeight - minWeight);
+    double norm(double v) => (v - minWeight) / (maxWeight - minWeight);
 
     const horizontalPadding = 28.0;
     const bottomPadding = 22.0;
@@ -717,8 +711,7 @@ class _WeightLinePainter extends CustomPainter {
     final points = <Offset>[];
 
     for (int i = 0; i < data.length; i++) {
-      final x = horizontalPadding +
-          (i / (data.length - 1)) * chartWidth;
+      final x = horizontalPadding + (i / (data.length - 1)) * chartWidth;
       final y = chartHeight - (norm(data[i]) * chartHeight);
       points.add(Offset(x, y));
     }
@@ -762,9 +755,7 @@ class _WeightLinePainter extends CustomPainter {
           Colors.white.withOpacity(0.0),
         ],
         stops: const [0.0, 0.6, 1.0],
-      ).createShader(
-        Rect.fromLTWH(0, 0, size.width, chartHeight),
-      );
+      ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight));
 
     canvas.drawPath(fillPath, fillPaint);
 
@@ -786,11 +777,7 @@ class _WeightLinePainter extends CustomPainter {
           ..strokeWidth = 1,
       );
 
-      canvas.drawCircle(
-        p,
-        5,
-        Paint()..color = Colors.black,
-      );
+      canvas.drawCircle(p, 5, Paint()..color = Colors.black);
 
       canvas.drawCircle(
         p,
@@ -813,10 +800,7 @@ class _WeightLinePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      final offset = Offset(
-        p.dx - textPainter.width / 2,
-        p.dy - 30,
-      );
+      final offset = Offset(p.dx - textPainter.width / 2, p.dy - 30);
 
       final bg = RRect.fromRectAndRadius(
         Rect.fromLTWH(
@@ -828,10 +812,7 @@ class _WeightLinePainter extends CustomPainter {
         const Radius.circular(8),
       );
 
-      canvas.drawRRect(
-        bg,
-        Paint()..color = Colors.white,
-      );
+      canvas.drawRRect(bg, Paint()..color = Colors.white);
 
       canvas.drawRRect(
         bg,
@@ -847,24 +828,17 @@ class _WeightLinePainter extends CustomPainter {
     // x axis labels
     final months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
 
-    const textStyle = TextStyle(
-      fontSize: 11,
-      color: Colors.black87,
-    );
+    const textStyle = TextStyle(fontSize: 11, color: Colors.black87);
 
     for (int i = 0; i < months.length; i++) {
-      final x = horizontalPadding +
-          (i / (months.length - 1)) * chartWidth;
+      final x = horizontalPadding + (i / (months.length - 1)) * chartWidth;
 
       final tp = TextPainter(
         text: TextSpan(text: months[i], style: textStyle),
         textDirection: TextDirection.ltr,
       )..layout();
 
-      tp.paint(
-        canvas,
-        Offset(x - tp.width / 2, chartHeight + 4),
-      );
+      tp.paint(canvas, Offset(x - tp.width / 2, chartHeight + 4));
     }
   }
 
