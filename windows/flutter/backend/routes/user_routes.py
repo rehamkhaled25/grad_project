@@ -2,14 +2,16 @@ import os
 import uuid
 import jwt
 import requests
+import json
 
 from datetime import datetime, date
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
-from models import Plan, UserPlan, UserFoodLog
+from models import Plan, UserPlan, UserFoodLog, FoodScan
 from extensions import db
+from services.gemini_service import analyze_meal
 
 user_bp = Blueprint("user", __name__)
 
@@ -25,15 +27,17 @@ def get_current_user():
 
     try:
         payload = jwt.decode(
-            token,
-            current_app.config["SECRET_KEY"],
-            algorithms=["HS256"]
+            token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
         )
 
-        user = db.session.execute(
-            text("SELECT id, full_name, email FROM users WHERE id = :id"),
-            {"id": payload["user_id"]}
-        ).mappings().first()
+        user = (
+            db.session.execute(
+                text("SELECT id, full_name, email FROM users WHERE id = :id"),
+                {"id": payload["user_id"]},
+            )
+            .mappings()
+            .first()
+        )
 
         if not user:
             return None, jsonify({"message": "User not found"}), 404
@@ -53,11 +57,7 @@ def allergies_to_text(allergies):
         return None
 
     if isinstance(allergies, list):
-        return ",".join([
-            str(item).strip()
-            for item in allergies
-            if str(item).strip()
-        ])
+        return ",".join([str(item).strip() for item in allergies if str(item).strip()])
 
     if isinstance(allergies, str):
         return allergies.strip()
@@ -69,28 +69,35 @@ def allergies_to_list(allergies_text):
     if not allergies_text:
         return []
 
-    return [
-        item.strip()
-        for item in str(allergies_text).split(",")
-        if item.strip()
-    ]
+    return [item.strip() for item in str(allergies_text).split(",") if item.strip()]
 
 
 # ---------------- Helper: Save Image ----------------
-def save_image_temporarily(image):
-    upload_folder = os.path.join(current_app.root_path, "uploads")
+def save_food_scan(user_id, image):
+    upload_folder = os.path.join(
+        current_app.root_path, current_app.config.get("UPLOAD_FOLDER", "uploads")
+    )
 
     if not os.path.exists(upload_folder):
         os.makedirs(upload_folder)
 
-    filename = secure_filename(image.filename)
+    original_filename = secure_filename(image.filename or "food_image.jpg")
     scan_id = str(uuid.uuid4())
-    new_filename = f"{scan_id}_{filename}"
+    new_filename = f"{scan_id}_{original_filename}"
     file_path = os.path.join(upload_folder, new_filename)
 
     image.save(file_path)
 
-    return scan_id
+    scan = FoodScan(
+        scan_id=scan_id,
+        user_id=user_id,
+        image_path=file_path,
+    )
+
+    db.session.add(scan)
+    db.session.commit()
+
+    return scan
 
 
 # ---------------- User Profile ----------------
@@ -101,8 +108,9 @@ def get_profile():
     if error_response:
         return error_response, status_code
 
-    user_data = db.session.execute(
-        text("""
+    user_data = (
+        db.session.execute(
+            text("""
             SELECT
                 id,
                 full_name,
@@ -118,8 +126,11 @@ def get_profile():
             WHERE id = :id
             LIMIT 1
         """),
-        {"id": user["id"]}
-    ).mappings().first()
+            {"id": user["id"]},
+        )
+        .mappings()
+        .first()
+    )
 
     if not user_data:
         return jsonify({"message": "User not found"}), 404
@@ -151,7 +162,10 @@ def update_profile():
                 datetime.strptime(data["birthdate"], "%Y-%m-%d")
                 allowed_fields["birthdate"] = data["birthdate"]
             except Exception:
-                return jsonify({"message": "Invalid birthdate format. Use YYYY-MM-DD"}), 400
+                return (
+                    jsonify({"message": "Invalid birthdate format. Use YYYY-MM-DD"}),
+                    400,
+                )
 
     if "gender" in data:
         allowed_fields["gender"] = data["gender"]
@@ -161,19 +175,25 @@ def update_profile():
 
     if "weight" in data:
         try:
-            allowed_fields["weight"] = float(data["weight"]) if data["weight"] is not None else None
+            allowed_fields["weight"] = (
+                float(data["weight"]) if data["weight"] is not None else None
+            )
         except Exception:
             return jsonify({"message": "weight must be a number"}), 400
 
     if "height" in data:
         try:
-            allowed_fields["height"] = float(data["height"]) if data["height"] is not None else None
+            allowed_fields["height"] = (
+                float(data["height"]) if data["height"] is not None else None
+            )
         except Exception:
             return jsonify({"message": "height must be a number"}), 400
 
     if "goal_weight" in data:
         try:
-            allowed_fields["goal_weight"] = float(data["goal_weight"]) if data["goal_weight"] is not None else None
+            allowed_fields["goal_weight"] = (
+                float(data["goal_weight"]) if data["goal_weight"] is not None else None
+            )
         except Exception:
             return jsonify({"message": "goal_weight must be a number"}), 400
 
@@ -192,8 +212,7 @@ def update_profile():
     allowed_fields["id"] = user["id"]
 
     db.session.execute(
-        text(f"UPDATE users SET {set_clause} WHERE id = :id"),
-        allowed_fields
+        text(f"UPDATE users SET {set_clause} WHERE id = :id"), allowed_fields
     )
 
     db.session.commit()
@@ -225,10 +244,10 @@ def apply_plan():
     db.session.add(user_plan)
     db.session.commit()
 
-    return jsonify({
-        "message": "Plan applied successfully",
-        "plan": plan.to_dict()
-    }), 200
+    return (
+        jsonify({"message": "Plan applied successfully", "plan": plan.to_dict()}),
+        200,
+    )
 
 
 # ---------------- Plan Calories ----------------
@@ -239,23 +258,29 @@ def calculate_calories():
     if error_response:
         return error_response, status_code
 
-    user_data = db.session.execute(
-        text("""
+    user_data = (
+        db.session.execute(
+            text("""
             SELECT weight, height, birthdate, gender, goal
             FROM users
             WHERE id = :id
             LIMIT 1
         """),
-        {"id": user["id"]}
-    ).mappings().first()
+            {"id": user["id"]},
+        )
+        .mappings()
+        .first()
+    )
 
-    if not all([
-        user_data["weight"],
-        user_data["height"],
-        user_data["birthdate"],
-        user_data["gender"],
-        user_data["goal"]
-    ]):
+    if not all(
+        [
+            user_data["weight"],
+            user_data["height"],
+            user_data["birthdate"],
+            user_data["gender"],
+            user_data["goal"],
+        ]
+    ):
         return jsonify({"message": "User profile incomplete"}), 400
 
     birthdate_value = str(user_data["birthdate"])
@@ -287,14 +312,19 @@ def calculate_calories():
     fats = int(calories * 0.25 / 9)
     carbs = int(calories * 0.5 / 4)
 
-    return jsonify({
-        "calories": round(calories),
-        "protein": protein,
-        "fats": fats,
-        "carbs": carbs,
-        "health_score": 7,
-        "weight_loss_target": "Lose 10 kg by October 31"
-    }), 200
+    return (
+        jsonify(
+            {
+                "calories": round(calories),
+                "protein": protein,
+                "fats": fats,
+                "carbs": carbs,
+                "health_score": 7,
+                "weight_loss_target": "Lose 10 kg by October 31",
+            }
+        ),
+        200,
+    )
 
 
 # ---------------- Food Logging ----------------
@@ -310,12 +340,17 @@ def scan_food():
     if not image:
         return jsonify({"message": "Image is required"}), 400
 
-    scan_id = save_image_temporarily(image)
+    scan = save_food_scan(user["id"], image)
 
-    return jsonify({
-        "message": "Image uploaded successfully",
-        "scan_id": scan_id
-    }), 200
+    return (
+        jsonify(
+            {
+                "message": "Image uploaded successfully",
+                "scan": scan.to_dict(),
+            }
+        ),
+        201,
+    )
 
 
 @user_bp.route("/food/analyze/<scan_id>", methods=["POST"])
@@ -325,14 +360,104 @@ def analyze_food(scan_id):
     if error_response:
         return error_response, status_code
 
-    # بدل placeholder، نعمل request للـ Colab API
-    colab_api_url = "https://utmost-barometer-aim.ngrok-free.dev"
-    payload = {"scan_id": scan_id}
+    scan = FoodScan.query.filter_by(scan_id=scan_id, user_id=user["id"]).first()
 
-    response = requests.post(colab_api_url, json=payload)
-    ai_result = response.json()
+    if not scan:
+        return jsonify({"message": "Scan not found"}), 404
 
-    return jsonify(ai_result), 200
+    data = request.get_json(silent=True) or {}
+    context = data.get("context", "")
+
+    try:
+        report = analyze_meal(scan.image_path, context)
+    except Exception as e:
+        return jsonify({"message": "AI analysis failed", "error": str(e)}), 500
+
+    health_score = report.get("health_score")
+
+    try:
+        health_score = float(health_score)
+        if health_score > 10:
+            health_score = round(health_score / 10)
+        health_score = max(0, min(10, int(health_score)))
+    except Exception:
+        health_score = None
+
+    health_score = report.get("health_score")
+
+    try:
+        health_score = float(health_score)
+
+        # Gemini sometimes returns score as percentage like 50 or 68.
+        # We convert it to 0-10.
+        if health_score > 10:
+            health_score = round(health_score / 10)
+
+        health_score = max(0, min(10, int(health_score)))
+    except Exception:
+        health_score = None
+
+    # Force the report itself to store the corrected score
+    report["health_score"] = health_score
+
+    scan.context = context
+    scan.meal_name = report.get("meal_name")
+    scan.calories = report.get("total_calories")
+    scan.protein = report.get("total_protein")
+    scan.carbs = report.get("total_carbs")
+    scan.fat = report.get("total_fat")
+    scan.health_score = health_score
+    scan.full_report = json.dumps(report)
+    scan.analyzed_at = datetime.utcnow()
+
+    db.session.commit()
+
+    ui = {
+        "scan_id": scan.scan_id,
+        "meal_name": scan.meal_name,
+        "image_path": scan.image_path,
+        "calories": scan.calories,
+        "protein": scan.protein,
+        "carbs": scan.carbs,
+        "fat": scan.fat,
+        "health_score": scan.health_score,
+    }
+
+    return (
+        jsonify(
+            {
+                "message": "Food analyzed successfully",
+                "ui": ui,
+                "report": report,
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/food/scans/<scan_id>", methods=["GET"])
+def get_food_scan_details(scan_id):
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    scan = FoodScan.query.filter_by(scan_id=scan_id, user_id=user["id"]).first()
+
+    if not scan:
+        return jsonify({"message": "Scan not found"}), 404
+
+    full_report = json.loads(scan.full_report) if scan.full_report else None
+
+    return (
+        jsonify(
+            {
+                "scan": scan.to_dict(),
+                "report": full_report,
+            }
+        ),
+        200,
+    )
 
 
 @user_bp.route("/food/log", methods=["POST"])
@@ -350,7 +475,7 @@ def log_food():
         "protein",
         "carbs",
         "fats",
-        "serving_size"
+        "serving_size",
     ]
 
     for field in required_fields:
@@ -366,16 +491,16 @@ def log_food():
         fats=data["fats"],
         serving_size=data["serving_size"],
         ai_scan=data.get("ai_scan", False),
-        log_time=datetime.utcnow()
+        log_time=datetime.utcnow(),
     )
 
     db.session.add(log)
     db.session.commit()
 
-    return jsonify({
-        "message": "Food logged successfully",
-        "food_log": log.to_dict()
-    }), 200
+    return (
+        jsonify({"message": "Food logged successfully", "food_log": log.to_dict()}),
+        200,
+    )
 
 
 @user_bp.route("/food/search", methods=["GET"])
@@ -391,13 +516,12 @@ def search_food():
     results = [
         {"food_name": "Apple", "calories": 95},
         {"food_name": "Banana", "calories": 105},
-        {"food_name": "Rice", "calories": 206}
+        {"food_name": "Rice", "calories": 206},
     ]
 
     if query:
         results = [
-            food for food in results
-            if query.lower() in food["food_name"].lower()
+            food for food in results if query.lower() in food["food_name"].lower()
         ]
 
     return jsonify({"results": results}), 200
@@ -410,10 +534,10 @@ def food_history():
     if error_response:
         return error_response, status_code
 
-    logs = UserFoodLog.query.filter_by(
-        user_id=user["id"]
-    ).order_by(
-        UserFoodLog.log_time.desc()
-    ).all()
+    logs = (
+        UserFoodLog.query.filter_by(user_id=user["id"])
+        .order_by(UserFoodLog.log_time.desc())
+        .all()
+    )
 
     return jsonify([log.to_dict() for log in logs]), 200

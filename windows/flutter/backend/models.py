@@ -90,3 +90,43 @@ class UserFoodLog(db.Model):
             "log_time": self.log_time.strftime("%Y-%m-%d %H:%M:%S"),
             "ai_scan": self.ai_scan
         }
+    
+    # ---------------- FoodScan ----------------
+class FoodScan(db.Model):
+    __tablename__ = "food_scans"
+
+    id = db.Column(db.Integer, primary_key=True)
+    scan_id = db.Column(db.String(120), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    image_path = db.Column(db.String(500), nullable=False)
+    context = db.Column(db.Text, nullable=True)
+
+    meal_name = db.Column(db.String(255), nullable=True)
+    calories = db.Column(db.Float, nullable=True)
+    protein = db.Column(db.Float, nullable=True)
+    carbs = db.Column(db.Float, nullable=True)
+    fat = db.Column(db.Float, nullable=True)
+    health_score = db.Column(db.Integer, nullable=True)
+
+    full_report = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    analyzed_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "scan_id": self.scan_id,
+            "user_id": self.user_id,
+            "image_path": self.image_path,
+            "context": self.context,
+            "meal_name": self.meal_name,
+            "calories": self.calories,
+            "protein": self.protein,
+            "carbs": self.carbs,
+            "fat": self.fat,
+            "health_score": self.health_score,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            "analyzed_at": self.analyzed_at.strftime("%Y-%m-%d %H:%M:%S") if self.analyzed_at else None,
+        }
