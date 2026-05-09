@@ -98,3 +98,59 @@ def analyze_meal(image_path, context=""):
         raise RuntimeError("Gemini API failed after 3 retry attempts")
 
     return json.loads(response.text)
+
+
+def analyze_food_name(food_name, serving_size="", context=""):
+    api_key = current_app.config.get("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is missing from environment variables")
+
+    genai.configure(api_key=api_key)
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        generation_config={
+            "response_mime_type": "application/json",
+            "response_schema": NutritionReport,
+        },
+    )
+
+    prompt = f"""Act as a Clinical Nutrition Scientist.
+
+Analyze this food entry based on the user's text only.
+
+Food name: {food_name}
+Serving size or quantity: {serving_size}
+Extra context: {context}
+
+Estimate the nutrition values as accurately as possible.
+Calculate calories, macros, daily value percentages, fiber, sugar, sodium, key micronutrients, glycemic load, and health score.
+
+Important rules:
+- Return valid JSON only.
+- health_score must be an integer from 0 to 10 only, not a percentage.
+- If the quantity is unclear, estimate a common serving size and mention that in user_summary.
+- Be realistic and conservative with estimates.
+"""
+
+    response = _safe_generate_content(model, [prompt])
+
+    if response is None:
+        raise RuntimeError("Gemini API failed after 3 retry attempts")
+
+    data = json.loads(response.text)
+
+    health_score = data.get("health_score")
+
+    try:
+        health_score = float(health_score)
+        if health_score > 10:
+            health_score = round(health_score / 10)
+        health_score = max(0, min(10, int(health_score)))
+    except Exception:
+        health_score = None
+
+    data["health_score"] = health_score
+
+    return data

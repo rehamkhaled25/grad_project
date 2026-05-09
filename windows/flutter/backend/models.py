@@ -1,6 +1,7 @@
 from datetime import datetime
 from extensions import db
 
+
 # ---------------- User ----------------
 class User(db.Model):
     __tablename__ = "users"
@@ -15,23 +16,29 @@ class User(db.Model):
     goal = db.Column(db.String(50), nullable=True)
     weight = db.Column(db.Float, nullable=True)
     height = db.Column(db.Float, nullable=True)
-
+    goal_weight = db.Column(db.Float, nullable=True)
+    allergies = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # علاقة بالـ Food Logs
-    food_logs = db.relationship('UserFoodLog', backref='user', lazy=True)
+    food_logs = db.relationship("UserFoodLog", backref="user", lazy=True)
 
     def to_dict(self):
         return {
             "id": self.id,
             "full_name": self.full_name,
             "email": self.email,
-            "birthdate": self.birthdate.strftime('%Y-%m-%d') if self.birthdate else None,
+            "birthdate": (
+                self.birthdate.strftime("%Y-%m-%d") if self.birthdate else None
+            ),
             "gender": self.gender,
             "goal": self.goal,
             "weight": self.weight,
             "height": self.height,
+            "goal_weight": self.goal_weight,
+            "allergies": self.allergies.split(",") if self.allergies else [],
         }
+
 
 # ---------------- Plan ----------------
 class Plan(db.Model):
@@ -47,35 +54,49 @@ class Plan(db.Model):
             "id": self.id,
             "name": self.name,
             "price": self.price,
-            "benefits": self.benefits.split(";") if self.benefits else []
+            "benefits": self.benefits.split(";") if self.benefits else [],
         }
+
 
 # ---------------- UserPlan ----------------
 class UserPlan(db.Model):
     __tablename__ = "user_plans"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey("plans.id"), nullable=False)
     start_date = db.Column(db.Date, default=datetime.utcnow)
-    
-    user = db.relationship('User', backref='plans')
-    plan = db.relationship('Plan')
+
+    user = db.relationship("User", backref="plans")
+    plan = db.relationship("Plan")
+
 
 # ---------------- UserFoodLog ----------------
 class UserFoodLog(db.Model):
     __tablename__ = "user_food_logs"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    food_name = db.Column(db.String(255))
-    calories = db.Column(db.Float)
-    protein = db.Column(db.Float)
-    carbs = db.Column(db.Float)
-    fats = db.Column(db.Float)
-    serving_size = db.Column(db.Float)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    food_name = db.Column(db.String(255), nullable=False)
+    calories = db.Column(db.Float, default=0)
+    protein = db.Column(db.Float, default=0)
+    carbs = db.Column(db.Float, default=0)
+    fats = db.Column(db.Float, default=0)
+
+    serving_size = db.Column(db.Float, default=1)
+
+    # New fields for Log Food page
+    meal_type = db.Column(
+        db.String(50), nullable=True
+    )  # breakfast / lunch / dinner / snack
+    scan_id = db.Column(db.String(120), nullable=True)  # لو الأكلة جاية من AI scan
+    food_item_id = db.Column(db.Integer, nullable=True)  # بعدين مع Food Database
+    serving_name = db.Column(db.String(100), nullable=True)
+    full_report = db.Column(db.Text, nullable=True)
+
     log_time = db.Column(db.DateTime, default=datetime.utcnow)
-    ai_scan = db.Column(db.Boolean, default=False)  # لو تحليل AI
+    ai_scan = db.Column(db.Boolean, default=False)
 
     def to_dict(self):
         return {
@@ -87,11 +108,19 @@ class UserFoodLog(db.Model):
             "carbs": self.carbs,
             "fats": self.fats,
             "serving_size": self.serving_size,
-            "log_time": self.log_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "ai_scan": self.ai_scan
+            "meal_type": self.meal_type,
+            "scan_id": self.scan_id,
+            "food_item_id": self.food_item_id,
+            "serving_name": self.serving_name,
+            "log_time": (
+                self.log_time.strftime("%Y-%m-%d %H:%M:%S") if self.log_time else None
+            ),
+            "ai_scan": self.ai_scan,
         }
-    
+
     # ---------------- FoodScan ----------------
+
+
 class FoodScan(db.Model):
     __tablename__ = "food_scans"
 
@@ -127,6 +156,14 @@ class FoodScan(db.Model):
             "carbs": self.carbs,
             "fat": self.fat,
             "health_score": self.health_score,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
-            "analyzed_at": self.analyzed_at.strftime("%Y-%m-%d %H:%M:%S") if self.analyzed_at else None,
+            "created_at": (
+                self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.created_at
+                else None
+            ),
+            "analyzed_at": (
+                self.analyzed_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.analyzed_at
+                else None
+            ),
         }

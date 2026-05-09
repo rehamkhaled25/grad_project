@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 
 from models import Plan, UserPlan, UserFoodLog, FoodScan
 from extensions import db
-from services.gemini_service import analyze_meal
+from services.gemini_service import analyze_meal, analyze_food_name
 
 user_bp = Blueprint("user", __name__)
 
@@ -460,6 +460,29 @@ def get_food_scan_details(scan_id):
     )
 
 
+def to_float(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def normalize_meal_type(meal_type):
+    allowed = ["breakfast", "lunch", "dinner", "snack"]
+
+    if not meal_type:
+        return "snack"
+
+    meal_type = str(meal_type).lower().strip()
+
+    if meal_type not in allowed:
+        return "snack"
+
+    return meal_type
+
+
 @user_bp.route("/food/log", methods=["POST"])
 def log_food():
     user, error_response, status_code = get_current_user()
@@ -469,28 +492,71 @@ def log_food():
 
     data = request.get_json() or {}
 
-    required_fields = [
-        "food_name",
-        "calories",
-        "protein",
-        "carbs",
-        "fats",
-        "serving_size",
-    ]
+    scan_id = data.get("scan_id")
+    food_name = data.get("food_name")
+    serving_size_input = data.get("serving_size", "")
+    context = data.get("context", "")
 
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"message": f"{field} is required"}), 400
+    scan = None
+    report = None
+
+    # Case 1: Log from AI image scan
+    if scan_id:
+        scan = FoodScan.query.filter_by(scan_id=scan_id, user_id=user["id"]).first()
+
+        if not scan:
+            return jsonify({"message": "Scan not found"}), 404
+
+        if not scan.meal_name:
+            return jsonify({"message": "Scan is not analyzed yet"}), 400
+
+        food_name = scan.meal_name
+
+        if scan.full_report:
+            report = json.loads(scan.full_report)
+
+        calories = scan.calories
+        protein = scan.protein
+        carbs = scan.carbs
+        fats = scan.fat
+
+    # Case 2: User logs food name only
+    else:
+        if not food_name:
+            return jsonify({"message": "food_name is required"}), 400
+
+        try:
+            report = analyze_food_name(
+                food_name=food_name,
+                serving_size=serving_size_input,
+                context=context,
+            )
+        except Exception as e:
+            return (
+                jsonify({"message": "Food name analysis failed", "error": str(e)}),
+                500,
+            )
+
+        food_name = report.get("meal_name") or food_name
+        calories = report.get("total_calories", 0)
+        protein = report.get("total_protein", 0)
+        carbs = report.get("total_carbs", 0)
+        fats = report.get("total_fat", 0)
 
     log = UserFoodLog(
         user_id=user["id"],
-        food_name=data["food_name"],
-        calories=data["calories"],
-        protein=data["protein"],
-        carbs=data["carbs"],
-        fats=data["fats"],
-        serving_size=data["serving_size"],
-        ai_scan=data.get("ai_scan", False),
+        food_name=food_name,
+        calories=to_float(calories),
+        protein=to_float(protein),
+        carbs=to_float(carbs),
+        fats=to_float(fats),
+        serving_size=to_float(data.get("serving_size"), 1),
+        meal_type=normalize_meal_type(data.get("meal_type")),
+        scan_id=scan_id,
+        food_item_id=data.get("food_item_id"),
+        serving_name=data.get("serving_name") or str(serving_size_input),
+        ai_scan=True,
+        full_report=json.dumps(report) if report else None,
         log_time=datetime.utcnow(),
     )
 
@@ -498,8 +564,14 @@ def log_food():
     db.session.commit()
 
     return (
-        jsonify({"message": "Food logged successfully", "food_log": log.to_dict()}),
-        200,
+        jsonify(
+            {
+                "message": "Food logged successfully",
+                "food_log": log.to_dict(),
+                "report": report,
+            }
+        ),
+        201,
     )
 
 
@@ -534,10 +606,67 @@ def food_history():
     if error_response:
         return error_response, status_code
 
-    logs = (
-        UserFoodLog.query.filter_by(user_id=user["id"])
-        .order_by(UserFoodLog.log_time.desc())
-        .all()
-    )
+    meal_type = request.args.get("meal_type")
+    date_filter = request.args.get("date")
 
-    return jsonify([log.to_dict() for log in logs]), 200
+    query = UserFoodLog.query.filter_by(user_id=user["id"])
+
+    if meal_type:
+        query = query.filter_by(meal_type=normalize_meal_type(meal_type))
+
+    if date_filter:
+        try:
+            selected_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+            start = datetime.combine(selected_date, datetime.min.time())
+            end = datetime.combine(selected_date, datetime.max.time())
+            query = query.filter(
+                UserFoodLog.log_time >= start, UserFoodLog.log_time <= end
+            )
+        except Exception:
+            return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+    logs = query.order_by(UserFoodLog.log_time.desc()).all()
+
+    grouped = {
+        "breakfast": [],
+        "lunch": [],
+        "dinner": [],
+        "snack": [],
+    }
+
+    totals = {
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fats": 0,
+    }
+
+    for log in logs:
+        item = log.to_dict()
+        current_meal_type = log.meal_type or "snack"
+
+        if current_meal_type not in grouped:
+            current_meal_type = "snack"
+
+        grouped[current_meal_type].append(item)
+
+        totals["calories"] += log.calories or 0
+        totals["protein"] += log.protein or 0
+        totals["carbs"] += log.carbs or 0
+        totals["fats"] += log.fats or 0
+
+    return (
+        jsonify(
+            {
+                "logs": [log.to_dict() for log in logs],
+                "grouped": grouped,
+                "totals": {
+                    "calories": round(totals["calories"], 2),
+                    "protein": round(totals["protein"], 2),
+                    "carbs": round(totals["carbs"], 2),
+                    "fats": round(totals["fats"], 2),
+                },
+            }
+        ),
+        200,
+    )
