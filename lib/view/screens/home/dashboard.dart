@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/models/user_model.dart';
-import 'package:graduation_project/services/database_service.dart';
+import 'package:graduation_project/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,8 +15,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final DatabaseService _dbService = DatabaseService();
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  late Future<UserModel?> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userFuture = ApiService().getProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +31,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
       body: SafeArea(
-      
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-
-          padding: EdgeInsets.symmetric( horizontal: width * 0.05,
+          padding: EdgeInsets.symmetric(
+            horizontal: width * 0.05,
             vertical: size.height * 0.02,
-          ), 
-
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -57,13 +59,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: StreamBuilder<UserModel?>(
-                              stream: _currentUser != null
-                                  ? _dbService.streamUserData(_currentUser!.uid)
-                                  : null,
+                            child: FutureBuilder<UserModel?>(
+                              future: _userFuture,
                               builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Text(
+                                    "Loading...",
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.grey),
+                                  );
+                                }
+
+                                // Use the fullName from the database, fallback to "User"
                                 final String displayName =
-                                    snapshot.data?.fullName ?? "Guest";
+                                    snapshot.data?.fullName ?? "User";
 
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,15 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Text(
                                       "Hello, $displayName",
                                       style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xff141414)
-                                      ),
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xff141414)),
                                     ),
                                     const Text(
                                       "Remember why you started..",
                                       style: TextStyle(
-                                        fontSize:11,
+                                        fontSize: 11,
                                         fontWeight: FontWeight.w500,
                                         color: Color(0xff464646),
                                       ),
@@ -96,7 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         IconButton(
-                          onPressed: () => context.push('/notificationsScreen'),
+                          onPressed: () =>
+                              context.push('/notificationsScreen'),
                           icon: const Icon(
                             Icons.notifications,
                             size: 20,
@@ -130,11 +140,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 40),
-
               const DaysOfWeekBar(),
               const SizedBox(height: 30),
+
+           
 
               SizedBox(
                 height: 380,
@@ -144,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() => _currentPage = index),
                   children: [
                     DailyProgressCard(size: size),
-
                     Container(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -197,7 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                   ),
-
                                   CircularPercentIndicator(
                                     radius: 68.5,
                                     lineWidth: 15.0,
@@ -206,7 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     backgroundColor: Colors.transparent,
                                     reverse: true,
                                   ),
-
                                   CircularPercentIndicator(
                                     radius: 68.5,
                                     lineWidth: 15.0,
@@ -215,7 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     backgroundColor: Colors.transparent,
                                     reverse: true,
                                   ),
-
                                   CircularPercentIndicator(
                                     radius: 68.5,
                                     lineWidth: 15.0,
@@ -224,7 +230,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     backgroundColor: Colors.transparent,
                                     reverse: true,
                                   ),
-
                                   CircularPercentIndicator(
                                     radius: 68.5,
                                     lineWidth: 15.0,
@@ -271,7 +276,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -291,7 +295,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
@@ -357,9 +360,7 @@ class DaysOfWeekBar extends StatelessWidget {
     ];
 
     return Padding(
-
-      padding: const EdgeInsets.symmetric(horizontal: 7), 
-
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(8, (index) {
@@ -367,7 +368,7 @@ class DaysOfWeekBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 19, 
+                radius: 19,
                 backgroundColor: bgColors[index],
                 child: Text(
                   dates[index].toString(),
@@ -377,11 +378,8 @@ class DaysOfWeekBar extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
-
               ),
-
-              const SizedBox(height: 8), 
-
+              const SizedBox(height: 8),
               Text(
                 days[index],
                 style: const TextStyle(
@@ -449,16 +447,17 @@ class DailyProgressCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
                 SizedBox(
-                child:FittedBox(
-                  fit: BoxFit.scaleDown,
-                     child: Text(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
                       "1600",
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                                       ),
-                   ),
+                      style:
+                          TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
                 FittedBox(
-                  fit:  BoxFit.scaleDown,
+                  fit: BoxFit.scaleDown,
                   child: Text(
                     "of 2400",
                     style: TextStyle(

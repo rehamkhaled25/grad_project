@@ -15,14 +15,18 @@ class OnboardingGender extends StatefulWidget {
 class _OnboardingGenderState extends State<OnboardingGender> {
   String? selectedGender;
   bool _isSaving = false;
-    void _onContinue() {
+
+  void _onContinue() {
     if (selectedGender == null) return;
 
     setState(() => _isSaving = true);
-    final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
-    final updatedUser = currentBox.copyWith(gender: selectedGender);
+    
+    // Initialize the model if it's the first screen, or use the existing one
+    final currentModel = widget.userModel ?? UserModel();
+    
+    // Update the model with the selected gender
+    final updatedUser = currentModel.copyWith(gender: selectedGender);
 
-  
     context.push('/onboardingBirthdate', extra: updatedUser);
 
     setState(() => _isSaving = false);
@@ -30,7 +34,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
 
   @override
   Widget build(BuildContext context) {
-    double height=MediaQuery.of(context).size.height;
+    double height = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -40,7 +44,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             totalSteps: 8,
             showBackButton: true,
           ),
-          SizedBox(height: height*0.04),
+          SizedBox(height: height * 0.04),
           const Text(
             'Choose your gender',
             style: TextStyle(
@@ -85,7 +89,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
                         selectedGender == null ? () {} : _onContinue,
                   ),
           ),
-           SizedBox(height: height*0.1),
+          SizedBox(height: height * 0.1),
         ],
       ),
     );
@@ -109,7 +113,10 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         decoration: BoxDecoration(
           color: const Color.fromARGB(255, 243, 239, 239),
           borderRadius: BorderRadius.circular(12),
-          
+          // Adding a border to visually show selection
+          border: isSelected 
+              ? Border.all(color: const Color(0xffF20D0D), width: 2)
+              : Border.all(color: Colors.transparent),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -122,10 +129,10 @@ class _OnboardingGenderState extends State<OnboardingGender> {
             const SizedBox(height: 20),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color:  Colors.black87,
+                color: Colors.black87,
               ),
             ),
           ],

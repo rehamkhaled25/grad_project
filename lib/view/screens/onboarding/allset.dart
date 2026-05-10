@@ -5,7 +5,7 @@ import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 
 class AllSet extends StatefulWidget {
   final UserModel? userModel;
-  const AllSet({super.key,this.userModel});
+  const AllSet({super.key, this.userModel});
 
   @override
   State<AllSet> createState() => _AllSetState();
@@ -41,7 +41,7 @@ class _AllSetState extends State<AllSet> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight=MediaQuery.of(context).size.height;
+    final double screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -94,7 +94,10 @@ class _AllSetState extends State<AllSet> with SingleTickerProviderStateMixin {
               child: ElevatedButton(
                 onPressed: () {
                   // Use pushReplacement to replace current screen
-                  context.pushReplacement('/register', extra: widget.userModel);
+                  context.pushReplacement(
+                    '/onboardingPlan',
+                    extra: widget.userModel,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,

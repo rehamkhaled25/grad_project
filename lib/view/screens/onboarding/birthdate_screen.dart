@@ -4,38 +4,42 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 import 'package:graduation_project/models/user_model.dart';
+import 'package:intl/intl.dart'; // Ensure you have intl in pubspec.yaml for formatting
 
 class BirthDateScreen extends StatefulWidget {
   final UserModel? userModel;
-  const BirthDateScreen({super.key,this.userModel});
+  const BirthDateScreen({super.key, this.userModel});
 
   @override
   State<BirthDateScreen> createState() => _BirthDateScreenState();
 }
 
 class _BirthDateScreenState extends State<BirthDateScreen> {
-  
   DateTime selectedDate = DateTime(1995, 6, 25);
   bool _isSaving = false;
-  
 
-  
-
-  void _onContinue()  {
+  void _onContinue() {
     setState(() => _isSaving = true);
-    final currentBox= widget.userModel?? UserModel(uid:'',email:'');
-    final updatedUser=currentBox.copyWith(birthdate: selectedDate);
 
-context.push('/onboardingHeight',extra: updatedUser);
-setState(() {
-  _isSaving = false;
-});
+    // Format the date to "YYYY-MM-DD" string to match your UserModel and Flask DB
+    String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+
+    // Retrieve current model and update the birthdate field
+    final currentModel = widget.userModel ?? UserModel();
+    final updatedUser = currentModel.copyWith(birthdate: formattedDate);
+
+    // Move to the next onboarding screen (Height) with the updated model
+    context.push('/onboardingHeight', extra: updatedUser);
+
+    setState(() {
+      _isSaving = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    double height= MediaQuery.of(context).size.height;
-    
+    double height = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -54,7 +58,7 @@ setState(() {
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
               ),
             ),
-            SizedBox(height: height*0.04),
+            SizedBox(height: height * 0.04),
             Expanded(
               child: Center(
                 child: Container(
@@ -79,13 +83,14 @@ setState(() {
             Padding(
               padding: const EdgeInsets.all(20),
               child: _isSaving
-                  ? const CircularProgressIndicator(color: Colors.black)
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.black))
                   : ContinueButton(
                       txt: "Continue",
                       onPressed: _onContinue,
                     ),
             ),
-            SizedBox(height: height*0.1),
+            SizedBox(height: height * 0.1),
           ],
         ),
       ),

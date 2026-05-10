@@ -4,18 +4,26 @@ import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/view/custom _widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
+import 'package:graduation_project/view/screens/badges/badgesScreen.dart';
 import 'package:graduation_project/view/screens/database/database_search.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/home/notifications_settings_screen.dart';
 import 'package:graduation_project/view/screens/home/profile_screen.dart';
 import 'package:graduation_project/view/screens/notifications/notifications_screen.dart';
+import 'package:graduation_project/view/screens/onboarding/allergies.dart';
 import 'package:graduation_project/view/screens/onboarding/allset.dart';
 import 'package:graduation_project/view/screens/onboarding/birthdate_screen.dart';
+import 'package:graduation_project/view/screens/onboarding/goalWeight.dart';
 import 'package:graduation_project/view/screens/onboarding/notification_permission.dart';
 import 'package:graduation_project/view/screens/onboarding/onboarding_gender.dart';
 import 'package:graduation_project/view/screens/onboarding/onboarding_goal.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_height.dart';
 import 'package:graduation_project/view/screens/onboarding/screen_weight.dart';
+import 'package:graduation_project/view/screens/payment/creditcardinfo.dart';
+import 'package:graduation_project/view/screens/payment/payment_application.dart';
+import 'package:graduation_project/view/screens/plan/plan.dart';
+import 'package:graduation_project/view/screens/progress/progress.dart';
+import 'package:graduation_project/view/screens/progress/weekly_breakdown_screen.dart';
 import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
 import 'package:graduation_project/view/screens/settings/settings_screen.dart';
 import 'package:graduation_project/view/screens/splash/splash.dart';
@@ -143,6 +151,22 @@ abstract class AppRouter {
         },
       ),
       GoRoute(
+        path: '/onboardingAllset',
+        name: 'onboarding_allset',
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return AllSet(userModel: extra);
+        },
+      ),
+      GoRoute(
+        path: '/onboardingPlan',
+        name: 'onboarding_plan',
+        builder: (context, state) {
+          // final extra = state.extra as UserModel?;
+          return Plan();
+        },
+      ),
+      GoRoute(
         path: '/onboardingNotifications',
         name: 'onboarding_notifications',
         builder: (context, state) {
@@ -150,13 +174,34 @@ abstract class AppRouter {
           return NotificationPermissionPage(userModel: extra);
         },
       ),
+
       GoRoute(
-        path: '/onboardingAllSet',
-        name: 'onboarding_allset',
+        path: '/onboardingAllergies',
+        name: 'onboarding_allergies',
         builder: (context, state) {
           final extra = state.extra as UserModel?;
-          return AllSet(userModel: extra);
+          return Allergies(userModel: extra);
         },
+      ),
+      GoRoute(
+        path: '/onboardingGoalWeight',
+        name: 'onboarding_goal_weight',
+        builder: (context, state) {
+          final extra = state.extra as UserModel?;
+          return GoalWeightScreen(userModel: extra);
+        },
+      ),
+      GoRoute(
+        path: '/paymentApplication',
+        name: 'payment_application',
+        builder: (context, state) {
+          return PaymentApplication();
+        },
+      ),
+      GoRoute(
+        path: '/creditCardInfo',
+        name: 'creditCardInfo',
+        builder: (context, state) => const Creditcardinfo(),
       ),
       GoRoute(
         path: '/subscription',
@@ -187,6 +232,18 @@ abstract class AppRouter {
             const NoTransitionPage(child: FoodScannerScreen()),
       ),
       GoRoute(
+        path: '/trialSubscriptionPage',
+        name: 'trial_subscription_page',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: TrialSubscriptionPage()),
+      ),
+      GoRoute(
+        path: '/weeklyBreakdownScreen',
+        name: 'WeeklyBreakdownScreen',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: WeeklyBreakdownScreen()),
+      ),
+      GoRoute(
         path: '/log',
         name: 'log',
         pageBuilder: (context, state) =>
@@ -210,12 +267,18 @@ abstract class AppRouter {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: HomeScreen()),
           ),
+          GoRoute(
+            path: '/log_food',
+            name: 'log_food',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: LogFood()),
+          ),
 
           GoRoute(
             path: '/progress',
             name: 'progress',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: WeeklyProgress()),
+                const NoTransitionPage(child: ProgressPage()),
           ),
           GoRoute(
             path: '/settings',

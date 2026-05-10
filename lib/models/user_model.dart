@@ -1,19 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class UserModel {
-  final String uid;
-  final String email;
-  final String? fullName;
-  final DateTime? birthdate;
-  final String? gender;
-  final String? goal;
-  final double? weight;
-  final double? height;
+  int? id;
+  String? fullName;
+  String? email;
+  String? password; // Used for registration only, not stored in cleartext in DB
+  String? birthdate; // Stored as "YYYY-MM-DD" to match Flask's db.Date requirements
+  String? gender;
+  String? goal;
+  double? weight;
+  double? height;
 
   UserModel({
-    required this.uid,
-    required this.email,
+    this.id,
     this.fullName,
+    this.email,
+    this.password,
     this.birthdate,
     this.gender,
     this.goal,
@@ -21,57 +23,59 @@ class UserModel {
     this.height,
   });
 
-  
+  /// 1. Converts the Flutter Object into a Map (JSON) to send to your Flask Backend.
+  /// Used in: ApiService.signup()
+  Map<String, dynamic> toJson() {
+    return {
+      "full_name": fullName,
+      "email": email,
+      "password": password,
+      "birthdate": birthdate,
+      "gender": gender,
+      "goal": goal,
+      "weight": weight,
+      "height": height,
+    };
+  }
+
+  /// 2. Creates a Flutter Object from the JSON data received from Flask.
+  /// Used in: ApiService.login() or fetching user profile
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id'],
+      fullName: json['full_name'],
+      email: json['email'],
+      // Password is never returned from the backend for security
+      birthdate: json['birthdate'],
+      gender: json['gender'],
+      goal: json['goal'],
+      weight: json['weight']?.toDouble(), // Safely handle int-to-double conversion
+      height: json['height']?.toDouble(),
+    );
+  }
+
+  /// Helper method to create a copy of the user with updated fields 
+  /// (Useful for passing the model between onboarding screens)
   UserModel copyWith({
-    String? uid,
-    String? email,
     String? fullName,
-    DateTime? birthdate,
+    String? email,
+    String? password,
+    String? birthdate,
     String? gender,
     String? goal,
     double? weight,
     double? height,
   }) {
     return UserModel(
-      uid: uid ?? this.uid,
-      email: email ?? this.email,
+      id: id,
       fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      password: password ?? this.password,
       birthdate: birthdate ?? this.birthdate,
       gender: gender ?? this.gender,
       goal: goal ?? this.goal,
       weight: weight ?? this.weight,
       height: height ?? this.height,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    final Map<String, dynamic> map = {
-      'uid': uid,
-      'email': email,
-    };
-
-    if (fullName != null) map['fullName'] = fullName;
-    if (birthdate != null) map['birthdate'] = birthdate;
-    if (gender != null) map['gender'] = gender;
-    if (goal != null) map['goal'] = goal;
-    if (weight != null) map['weight'] = weight;
-    if (height != null) map['height'] = height;
-
-    return map;
-  }
-
-  factory UserModel.fromMap(Map<String, dynamic> map) {
-    return UserModel(
-      uid: map['uid'] ?? '',
-      email: map['email'] ?? '',
-      fullName: map['fullName'],
-      birthdate: map['birthdate'] != null 
-          ? (map['birthdate'] as Timestamp).toDate() 
-          : null,
-      gender: map['gender'],
-      goal: map['goal'],
-      weight: (map['weight'] as num?)?.toDouble(),
-      height: (map['height'] as num?)?.toDouble(),
     );
   }
 }

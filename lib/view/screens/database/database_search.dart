@@ -26,7 +26,9 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                     children: [
                       IconButton(
                         padding: const EdgeInsets.symmetric(horizontal: 25),
-                        onPressed: () {},
+                        onPressed: () {
+                          context.pop();
+                        },
                         icon: const Icon(
                           Icons.arrow_back,
                           size: 24,
@@ -60,7 +62,10 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                   child: TextField(
                     decoration: InputDecoration(
                       hintText: "What are you looking for?",
-                      hintStyle: const TextStyle(color: Colors.black, fontSize: 14),
+                      hintStyle: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                      ),
                       filled: true,
                       fillColor: const Color(0xffEBEBEB),
                       contentPadding: const EdgeInsets.symmetric(
@@ -89,19 +94,14 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
             ),
           ),
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return const Padding(
-                  padding: EdgeInsets.only(bottom: 40),
-                  child: CustomContainer(),
-                );
-              },
-              childCount: 8,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 40),
+                child: CustomContainer(),
+              );
+            }, childCount: 8),
           ),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 20),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
     );

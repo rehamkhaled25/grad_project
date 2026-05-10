@@ -31,7 +31,9 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                       children: [
                         const SizedBox(height: 20),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            context.go("/home");
+                          },
                           child: const Text(
                             "skip",
                             textAlign: TextAlign.end,
@@ -50,7 +52,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black
+                              color: Colors.black,
                             ),
                           ),
                         ),
@@ -119,7 +121,7 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                           onPressed: () {
                             AuthState.finishedOnboarding = true;
                             AuthState.isLoggedIn = true;
-                            context.go('/home');
+                            context.go('/paymentApplication');
                           },
                           txt: "Continue",
                         ),
@@ -194,7 +196,7 @@ class TimelineStep extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 15,
-             
+
               color: Colors.black,
               decoration: isDone
                   ? TextDecoration.lineThrough
@@ -229,7 +231,9 @@ class PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color borderColor = isSelected ? Color(0xffF20D0D) : Colors.grey.shade300;
+    final Color borderColor = isSelected
+        ? Color(0xffF20D0D)
+        : Colors.grey.shade300;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
