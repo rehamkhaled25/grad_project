@@ -11,3 +11,4 @@ class Config:
 
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+    FDC_API_KEY = os.getenv("FDC_API_KEY")
