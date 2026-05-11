@@ -2,57 +2,93 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
 import 'package:graduation_project/services/api_service.dart';
+import 'package:graduation_project/services/onboarding_service.dart';
 import 'package:graduation_project/view/custom _widget/custom_input_field.dart';
-
+ 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
-
+ 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
-
+ 
 class _SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _authService = ApiService();
-
+ 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
+ 
   bool _obscurePassword = true;
   bool _isLoading = false;
-
+ 
   void _showSnackBar(String message, bool isError) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: isError ? Colors.red : Colors.green),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
-
+ 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      try {
-        final response = await _authService.login(
-          emailController.text, 
-          passwordController.text
-        );
-
-        if (response.statusCode == 200) {
-          AuthState.isLoggedIn = true;
-          AuthState.finishedOnboarding = true;
-          if (mounted) context.go('/home');
-        } else {
-          _showSnackBar("Invalid email or password", true);
-        }
-      } catch (e) {
-        _showSnackBar("Server connection failed", true);
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
+    if (!_formKey.currentState!.validate()) return;
+ 
+    setState(() => _isLoading = true);
+ 
+    try {
+      // Step 1: Login — ApiService.login() saves the token automatically
+      final response = await _authService.login(
+        emailController.text.trim().toLowerCase(),
+        passwordController.text.trim(),
+      );
+ 
+      if (response.statusCode != 200) {
+        _showSnackBar("Invalid email or password", true);
+        return;
       }
+ 
+      print("✅ [LOGIN] Credentials valid. Fetching profile...");
+ 
+      // Step 2: Fetch profile to check if onboarding is complete
+      final user = await OnboardingService().getUserProfile();
+ 
+      if (!mounted) return;
+ 
+      if (user == null) {
+        _showSnackBar("Login succeeded but could not load profile.", true);
+        return;
+      }
+ 
+      final bool onboardingDone =
+          user.gender != null &&
+          user.gender!.isNotEmpty &&
+          user.gender != "N/A" &&
+          user.goal != null &&
+          user.goal!.isNotEmpty &&
+          user.goal != "N/A";
+ 
+      AuthState.isLoggedIn = true;
+      AuthState.finishedOnboarding = onboardingDone;
+ 
+      if (onboardingDone) {
+        print("✅ [LOGIN] Onboarding complete → /home");
+        context.go('/home');
+      } else {
+        // Registered but never finished onboarding
+        print("➡️ [LOGIN] Onboarding incomplete → /onboardingGender");
+        context.go('/onboardingGender');
+      }
+    } catch (e) {
+      print("🔥 [LOGIN ERROR]: $e");
+      _showSnackBar("Server connection failed. Check your network.", true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -71,7 +107,11 @@ class _SignInScreenState extends State<SignInScreen> {
                   color: const Color(0xFFFDFDFD),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: Form(
@@ -83,7 +123,10 @@ class _SignInScreenState extends State<SignInScreen> {
                         label: 'Email',
                         hint: 'Enter your email',
                         assetIcon: 'assets/images/Message.png',
-                        validator: (value) => (value == null || !value.contains('@')) ? 'Invalid email' : null,
+                        validator: (value) =>
+                            (value == null || !value.contains('@'))
+                                ? 'Invalid email'
+                                : null,
                       ),
                       const SizedBox(height: 16),
                       CustomInputField(
@@ -93,8 +136,11 @@ class _SignInScreenState extends State<SignInScreen> {
                         assetIcon: 'assets/images/Lock.png',
                         isPassword: true,
                         obscureText: _obscurePassword,
-                        toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
-                        validator: (value) => value!.isEmpty ? 'Password required' : null,
+                        toggleObscure: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Password required' : null,
                       ),
                     ],
                   ),
@@ -108,11 +154,16 @@ class _SignInScreenState extends State<SignInScreen> {
                   onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Login', style: TextStyle(color: Colors.white)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Login',
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
               ),
             ],
@@ -122,3 +173,4 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+ 

@@ -56,7 +56,7 @@ class _OnboardingGoalState extends State<OnboardingGoal> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
-              const CustomAppbar(currentStep: 5, totalSteps: 8),
+              const CustomAppbar(currentStep: 5, totalSteps: 9),
 
               Expanded(
                 child: Column(

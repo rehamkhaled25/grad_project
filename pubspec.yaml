@@ -1,8 +1,6 @@
 name: graduation_project
 description: "A new Flutter project."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -15,12 +13,11 @@ dependencies:
   firebase_core: ^4.1.1
   firebase_auth: ^6.1.0
   go_router: ^9.0.7
-  # mobile_scanner: ^5.1.0
   camera: ^0.11.4
-  path_provider: ^2.1.5 # For saving the image temporarily
+  path_provider: ^2.1.5
   path: ^1.9.0
   image_picker: ^1.0.7
-  fl_chart: ^0.68.0
+  fl_chart: ^1.2.0
 
   # AI & Networking Additions
   google_generative_ai: ^0.4.7
@@ -38,15 +35,16 @@ dependencies:
   cloud_firestore: ^6.1.3
   dotted_border: ^3.1.0
   shared_preferences: ^2.5.5
-  
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_native_splash: ^2.3.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
-  uses-material-design: true  # CRITICAL: Enables MaterialIcons
+  uses-material-design: true
   assets:
     - assets/images/
     - .env
@@ -95,3 +93,10 @@ flutter_native_splash:
   ios: true
   android_gravity: center
   ios_content_mode: scaleAspectFill
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/wallpaper.png"
+  remove_alpha_ios: true

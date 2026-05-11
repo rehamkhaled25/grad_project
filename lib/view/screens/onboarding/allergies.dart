@@ -60,13 +60,12 @@ class _AllergiesState extends State<Allergies> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-
           child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CustomAppbar(currentStep: 1, totalSteps: 8),
+                const CustomAppbar(currentStep: 8, totalSteps: 9),
                 SizedBox(height: height * 0.02),
                 const Center(
                   child: Text(
@@ -176,7 +175,6 @@ class _AllergiesState extends State<Allergies> {
                             radius: Radius.circular(40),
                             color: const Color(0xffD9D9D9),
                           ),
-
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -209,11 +207,19 @@ class _AllergiesState extends State<Allergies> {
                     ],
                   ),
                 ),
-                SizedBox(height: height * 0.1), // Spacer space before button
+                SizedBox(height: height * 0.1),
                 ContinueButton(
                   txt: "Continue",
                   onPressed: () {
-                    context.push("/onboardingNotifications");
+                    // --- BACKEND TOUCH: Combine and pass the data ---
+                    List<String> combinedAllergies = [...selectedAllergies, ...customAllergies];
+                    
+                    // Update model and pass it to the next page
+                    UserModel updatedUser = (widget.userModel ?? UserModel()).copyWith(
+                      allergies: combinedAllergies,
+                    );
+
+                    context.push("/onboardingNotifications", extra: updatedUser);
                   },
                 ),
                 SizedBox(height: height * 0.051),
@@ -346,7 +352,6 @@ class Popup extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         color: Colors.white,
       ),
-
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

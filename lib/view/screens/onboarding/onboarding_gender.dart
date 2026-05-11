@@ -21,10 +21,10 @@ class _OnboardingGenderState extends State<OnboardingGender> {
 
     setState(() => _isSaving = true);
     
-    // Initialize the model if it's the first screen, or use the existing one
+   
     final currentModel = widget.userModel ?? UserModel();
     
-    // Update the model with the selected gender
+  
     final updatedUser = currentModel.copyWith(gender: selectedGender);
 
     context.push('/onboardingBirthdate', extra: updatedUser);
@@ -41,7 +41,7 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         children: [
           const CustomAppbar(
             currentStep: 1,
-            totalSteps: 8,
+            totalSteps: 9,
             showBackButton: true,
           ),
           SizedBox(height: height * 0.04),
@@ -113,10 +113,8 @@ class _OnboardingGenderState extends State<OnboardingGender> {
         decoration: BoxDecoration(
           color: const Color.fromARGB(255, 243, 239, 239),
           borderRadius: BorderRadius.circular(12),
-          // Adding a border to visually show selection
-          border: isSelected 
-              ? Border.all(color: const Color(0xffF20D0D), width: 2)
-              : Border.all(color: Colors.transparent),
+       
+         
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

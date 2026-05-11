@@ -74,7 +74,7 @@ class _HeightScreenState extends State<HeightScreen> {
       backgroundColor: Colors.white,
       appBar: const CustomAppbar(
         currentStep: 3,
-        totalSteps: 8,
+        totalSteps: 9,
         showBackButton: true,
       ),
       body: SafeArea(

@@ -29,26 +29,27 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// Future<void> 
+main()  {
+  // WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  // await dotenv.load(fileName: ".env");
 
-  final String androidApiKey = dotenv.get(
-    'FIREBASE_ANDROID_API_KEY',
-    fallback: '',
-  );
+  // final String androidApiKey = dotenv.get(
+  //   'FIREBASE_ANDROID_API_KEY',
+  //   fallback: '',
+  // );
 
-  final FirebaseOptions customizedOptions = FirebaseOptions(
-    apiKey: androidApiKey,
-    appId: DefaultFirebaseOptions.currentPlatform.appId,
-    messagingSenderId: DefaultFirebaseOptions.currentPlatform.messagingSenderId,
-    projectId: DefaultFirebaseOptions.currentPlatform.projectId,
-    storageBucket: DefaultFirebaseOptions.currentPlatform.storageBucket,
-    iosBundleId: DefaultFirebaseOptions.currentPlatform.iosBundleId, 
-  );
+  // final FirebaseOptions customizedOptions = FirebaseOptions(
+  //   apiKey: androidApiKey,
+  //   appId: DefaultFirebaseOptions.currentPlatform.appId,
+  //   messagingSenderId: DefaultFirebaseOptions.currentPlatform.messagingSenderId,
+  //   projectId: DefaultFirebaseOptions.currentPlatform.projectId,
+  //   storageBucket: DefaultFirebaseOptions.currentPlatform.storageBucket,
+  //   iosBundleId: DefaultFirebaseOptions.currentPlatform.iosBundleId, 
+  // );
 
-  await Firebase.initializeApp(options: customizedOptions);
+  // await Firebase.initializeApp(options: customizedOptions);
 
   runApp(const GraduationProjectApp());
 }

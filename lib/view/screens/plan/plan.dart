@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 import 'package:graduation_project/view/custom%20_widget/custom_appBar.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-
+ 
 class Plan extends StatelessWidget {
-  const Plan({super.key});
-
+  final UserModel? userModel;
+  const Plan({super.key, this.userModel});
+ 
   @override
   Widget build(BuildContext context) {
     double pageWidth = MediaQuery.of(context).size.width;
-
+ 
     return Scaffold(
-      backgroundColor: Colors.white, // Match the clean background
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            CustomAppbar(currentStep: 7, totalSteps: 8),
-
+            CustomAppbar(currentStep: 9, totalSteps: 9),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -51,9 +52,7 @@ class Plan extends StatelessWidget {
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 10,
-                      ),
+                          horizontal: 24, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xff262626),
                         borderRadius: BorderRadius.circular(30),
@@ -80,14 +79,13 @@ class Plan extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Using GridView for better spacing management
                     GridView.count(
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.1, // Adjusts the height/width ratio
+                      childAspectRatio: 1.1,
                       children: const [
                         CustomItem(
                           text1: "Calories",
@@ -128,30 +126,21 @@ class Plan extends StatelessWidget {
                           const Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                "Health score",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "7/10",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              Text("Health score",
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold)),
+                              Text("7/10",
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(
-                                Icons.favorite_border,
-                                color: Color(0xff141414),
-                                size: 24,
-                              ),
+                              const Icon(Icons.favorite_border,
+                                  color: Color(0xff141414), size: 24),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: ClipRRect(
@@ -161,8 +150,7 @@ class Plan extends StatelessWidget {
                                     minHeight: 8,
                                     backgroundColor: Colors.white,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color(0xff43A047),
-                                    ),
+                                        Color(0xff43A047)),
                                   ),
                                 ),
                               ),
@@ -174,17 +162,16 @@ class Plan extends StatelessWidget {
                     const SizedBox(height: 30),
                     Padding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: pageWidth * 0.002,
-                        vertical: 20,
-                      ),
+                          horizontal: pageWidth * 0.002, vertical: 20),
                       child: ContinueButton(
                         onPressed: () {
-                          //NAVIGATION
-                          context.push("/register");
+                          // User is already registered and logged in at this point
+                          // Go to the trial subscription page
+                          context.go('/trialSubscriptionPage');
                         },
                         txt: "Let's get started!!",
                       ),
-                    ), // Extra space for scrolling comfort
+                    ),
                   ],
                 ),
               ),
@@ -195,13 +182,13 @@ class Plan extends StatelessWidget {
     );
   }
 }
-
+ 
 class CustomItem extends StatelessWidget {
   final String text1;
   final int color;
   final double percent;
   final String text2;
-
+ 
   const CustomItem({
     required this.text1,
     required this.color,
@@ -209,7 +196,7 @@ class CustomItem extends StatelessWidget {
     required this.text2,
     super.key,
   });
-
+ 
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -223,19 +210,12 @@ class CustomItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.local_fire_department,
-                size: 14,
-                color: Color(0xff141414),
-              ),
+              const Icon(Icons.local_fire_department,
+                  size: 14, color: Color(0xff141414)),
               const SizedBox(width: 6),
-              Text(
-                text1,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text(text1,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold)),
             ],
           ),
           const Expanded(child: SizedBox()),
@@ -245,15 +225,11 @@ class CustomItem extends StatelessWidget {
               lineWidth: 5,
               percent: percent,
               progressColor: Color(color),
-              backgroundColor: Color(0xffC9C8C8),
+              backgroundColor: const Color(0xffC9C8C8),
               circularStrokeCap: CircularStrokeCap.round,
-              center: Text(
-                text2,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              center: Text(text2,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold)),
             ),
           ),
           const Expanded(child: SizedBox()),

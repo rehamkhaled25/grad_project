@@ -6,7 +6,7 @@
                      android:maxSdkVersion="32" />
 
     <application
-        android:label="graduation_project"
+        android:label="Nutra"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"

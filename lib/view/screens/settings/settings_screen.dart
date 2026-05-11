@@ -1,14 +1,38 @@
-// lib/view/screens/home/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/core/app_router.dart';
+import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/services/api_service.dart';
-
-class SettingsScreen extends StatelessWidget {
+import 'package:graduation_project/services/onboarding_service.dart';
+ 
+class SettingsScreen extends StatefulWidget {
   SettingsScreen({super.key});
-
-  // final AuthService _authService = AuthService();
-
+ 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+ 
+class _SettingsScreenState extends State<SettingsScreen> {
+  final OnboardingService _onboardingService = OnboardingService();
+  final ApiService _apiService = ApiService();
+ 
+  // ✅ Clears token, resets AuthState, and navigates to login
+  Future<void> _performLogout() async {
+    // 1. Delete the stored JWT token from SharedPreferences
+    await _apiService.deleteToken();
+ 
+    // 2. Reset all in-memory auth flags
+    AuthState.isLoggedIn = false;
+    AuthState.isRegistered = false;
+    AuthState.finishedOnboarding = false;
+ 
+    // 3. Navigate to login and clear the entire navigation stack
+    if (mounted) {
+      context.go('/splash');
+    }
+  }
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,133 +50,120 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Section
-            const SettingsContainer(
-              child: ListTile(
-                leading: CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage(
-                    "assets/images/placeholder_profile.png",
+      body: FutureBuilder<UserModel?>(
+        future: _onboardingService.getUserProfile(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.black),
+            );
+          }
+          if (snapshot.hasError || snapshot.data == null) {
+            return const Center(
+              child: Text("Could not load profile. Please try again."),
+            );
+          }
+          final user = snapshot.data!;
+ 
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SettingsContainer(
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      radius: 25,
+                      backgroundImage: AssetImage(
+                        "assets/images/placeholder_profile.png",
+                      ),
+                    ),
+                    title: Text(
+                      user.fullName ?? "",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff141414),
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${user.gender ?? "N/A"} / ${user.goal ?? "N/A"}',
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   ),
                 ),
-                title: Text(
-                  'Moe_Hany',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+ 
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+                  child: Text(
+                    'Account',
+                    style: TextStyle(fontSize: 16, color: Colors.black),
                   ),
                 ),
-                subtitle: Text(
-                  'Male / Maintain Weight',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
+ 
+                SettingsContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTile(
+                        context,
+                        Icons.track_changes,
+                        'My Target',
+                        onTap: () {},
+                      ),
+                      _buildTile(
+                        context,
+                        Icons.energy_savings_leaf,
+                        'Your Premium',
+                        onTap: () => context.push('/profile'),
+                      ),
+                      _buildTile(
+                        context,
+                        Icons.notifications_none,
+                        'Notifications',
+                        isLast: true,
+                        onTap: () => context.push('/notifications'),
+                      ),
+                    ],
                   ),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16),
-              ),
-            ),
-
-            // Other settings title - matches first design spacing
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-              child: Text(
-                'Account',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+ 
+                SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                Center(
+                  child: _buildLogoutButton(
+                    onTap: () => _showLogoutDialog(context),
+                  ),
                 ),
-              ),
+              ],
             ),
-
-            // Account Settings Section
-            SettingsContainer(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // No dividers between items - exactly like first design
-                  _buildTile(
-                    context,
-                    Icons.track_changes,
-                    'My Target',
-                    onTap: () {
-                      // Navigate to target screen
-                    },
-                  ),
-                  _buildTile(
-                    context,
-                    Icons.energy_savings_leaf,
-                    'Your Premium',
-                    onTap: () => context.push('/profile'),
-                  ),
-                  _buildTile(
-                    context,
-                    Icons.notifications_none,
-                    'Notifications',
-                    isLast: true,
-                    onTap: () => context.push('/notifications'),
-                  ),
-                ],
-              ),
-            ),
-
-            // Extra spacing before subscription section
-            const SizedBox(height: 20),
-
-            //Logout Section
-            // SettingsContainer(
-            //   child: Column(
-            //     children: [
-            //       _buildTile(
-            //         context,
-            //         Icons.logout,
-            //         'Log Out',
-            //         iconColor: Colors.red,
-            //         textColor: Colors.red,
-            //         isLast: true,
-            //         onTap: () => _showLogoutDialog(context),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-            SizedBox(
-              height:
-                  MediaQuery.of(context).size.height *
-                  0.25, // 25% of screen height
-            ),
-            Center(child: _buildLogoutButton(onTap: () {})),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
-
+ 
   Widget _buildLogoutButton({required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 190,
         height: 48,
-        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(50),
         ),
-        child: Center(
+        child: const Center(
           child: Text(
             'Log Out',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Figtree',
               fontStyle: FontStyle.normal,
               fontWeight: FontWeight.w700,
               fontSize: 18,
-              height: 1.5, // 150% line height
+              height: 1.5,
               letterSpacing: -0.011,
               color: Colors.white,
             ),
@@ -161,7 +172,7 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
+ 
   Widget _buildTile(
     BuildContext context,
     IconData icon,
@@ -176,72 +187,44 @@ class SettingsScreen extends StatelessWidget {
       title: Text(
         title,
         style: TextStyle(
-          color: textColor ?? Colors.black,
-          fontWeight: FontWeight.bold,
+          color: textColor ?? const Color(0xff141414),
+          fontSize: 14,
         ),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap ?? () {},
+      onTap: onTap ?? () => context.pop(),
     );
   }
-
+ 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Log Out'),
           content: const Text('Are you sure you want to log out?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
-
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                );
-
-                // try {
-                //   await _authService.signOut();
-
-                //   if (context.mounted) Navigator.pop(context);
-
-                //   AuthState.isLoggedIn = false;
-                //   AuthState.isRegistered = false;
-
-                //   if (context.mounted) {
-                //     context.go('/login');
-
-                //     ScaffoldMessenger.of(context).showSnackBar(
-                //       const SnackBar(
-                //         content: Text('Logged out successfully'),
-                //         backgroundColor: Colors.green,
-                //         behavior: SnackBarBehavior.floating,
-                //       ),
-                //     );
-                //   }
-                // } 
-                 // catch (e) {
-                //   if (context.mounted) Navigator.pop(context);
-
-                //   if (context.mounted) {
-                //     ScaffoldMessenger.of(context).showSnackBar(
-                //       SnackBar(
-                //         content: Text('Error logging out: $e'),
-                //         backgroundColor: Colors.red,
-                //         behavior: SnackBarBehavior.floating,
-                //       ),
-                //     );
-                //   }
-                // }
+                // Close the dialog first
+                Navigator.pop(dialogContext);
+ 
+                // Show a loading spinner while we clear data
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+                }
+ 
+                // ✅ Actually log out: delete token + reset state + navigate
+                await _performLogout();
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Log Out'),
@@ -252,11 +235,11 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-
+ 
 class SettingsContainer extends StatelessWidget {
   final Widget child;
   const SettingsContainer({super.key, required this.child});
-
+ 
   @override
   Widget build(BuildContext context) {
     return Container(

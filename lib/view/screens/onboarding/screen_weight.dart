@@ -73,7 +73,7 @@ class _WeightScreenState extends State<WeightScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const CustomAppbar(currentStep: 4, totalSteps: 8),
+          const CustomAppbar(currentStep: 4, totalSteps: 9),
           const SizedBox(height: 40),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 40),

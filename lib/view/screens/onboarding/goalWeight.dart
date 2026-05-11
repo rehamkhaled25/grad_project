@@ -45,13 +45,9 @@ class _GoalWeightScreenState extends State<GoalWeightScreen> {
   }
 
   void _continueToNextPage() {
-    // needs backend to add goal weight into user database
-    // final currentBox = widget.userModel ?? UserModel(uid: '', email: '');
-    // final updatedUser = currentBox.copyWith(weight: weightKg);
-    // fix and add app router to the next page
-    // context.go('/onboardingGoal', extra: updatedUser);
-
-    context.push('/onboardingAllergies');
+    final currentModel = widget.userModel ?? UserModel();
+  final updatedUser = currentModel.copyWith(goalWeight: weightKg);
+    context.push('/onboardingAllergies',extra: updatedUser);
   }
 
   @override
@@ -64,7 +60,7 @@ class _GoalWeightScreenState extends State<GoalWeightScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const CustomAppbar(currentStep: 4, totalSteps: 8),
+          const CustomAppbar(currentStep: 6, totalSteps: 9),
           const SizedBox(height: 40),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 40),

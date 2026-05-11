@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 
 // Assuming your dashboard/bar import is here
@@ -25,10 +26,15 @@ class LogFood extends StatelessWidget {
             
             Row(
               children: [
-                CircleAvatar(
-                  
-                  backgroundImage: const AssetImage(
-                    'assets/images/placeholder_profile.png',
+                GestureDetector(
+                  onTap: (){
+                    context.push('/profile');
+                  },
+                  child: CircleAvatar(
+                    
+                    backgroundImage: const AssetImage(
+                      'assets/images/placeholder_profile.png',
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -132,7 +138,7 @@ class DailyProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 30),
           
-          // Stats Row with your Flame Asset
+         
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -168,7 +174,7 @@ class MealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      // Padding handles the height instead of a fixed value
+     
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -247,16 +253,7 @@ class SnackCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Row(
-                  //   children: [
-                  //     Image.asset(
-                  //       'assets/images/flame bta3et saf7et el database.png',
-                  //       color: const Color(0xffB3B3B3),
-                  //       height: 14,
-                  //     ),
-                  //     const Text(" 300", style: TextStyle(color: Color(0xffB3B3B3), fontSize: 12)),
-                  //   ],
-                  // ),
+               
                   const SizedBox(height: 8),
                   const AddFoodButton(),
                 ],
@@ -274,18 +271,25 @@ class AddFoodButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: const Color(0xffF2F2F2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, offset: Offset(0, 1), blurRadius: 2),
-        ],
-      ),
-      child: const Text(
-        "Add food",
-        style: TextStyle(color: Color(0xffD90C0C), fontSize: 10, fontWeight: FontWeight.bold),
+    return GestureDetector(
+      
+      onTap: () {
+          context.push("/log");
+     
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: const Color(0xffF2F2F2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, offset: Offset(0, 1), blurRadius: 2),
+          ],
+        ),
+        child: const Text(
+          "Add food",
+          style: TextStyle(color: Color(0xffD90C0C), fontSize: 10, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

@@ -49,7 +49,7 @@ class _NotificationPermissionPageState
               style: _dialogButtonStyle(),
               onPressed: () {
                 Navigator.pop(context);
-                // 2. Pass the model forward to All Set
+               
                 context.push('/onboardingAllset', extra: widget.userModel);
                 debugPrint("Notifications: Denied");
               },
@@ -94,7 +94,7 @@ class _NotificationPermissionPageState
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CustomAppbar(currentStep: 6, totalSteps: 8),
+          const CustomAppbar(currentStep: 9, totalSteps: 9),
 
           const Spacer(),
 

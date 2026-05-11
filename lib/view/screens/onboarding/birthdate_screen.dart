@@ -47,7 +47,7 @@ class _BirthDateScreenState extends State<BirthDateScreen> {
           children: [
             const CustomAppbar(
               currentStep: 2,
-              totalSteps: 8,
+              totalSteps: 9,
               showBackButton: true,
             ),
             const SizedBox(height: 40),
