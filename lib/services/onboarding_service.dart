@@ -1,6 +1,7 @@
 
 import 'dart:convert';
 
+import 'package:graduation_project/models/plan_model.dart';
 import 'package:graduation_project/models/user_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,7 +38,7 @@ class OnboardingService {
     print("   height        : $height");
     print("   goalWeight    : $goalWeight");
     print("   allergies     : $allergies");
-    // ────────────────────────────────────────────────────────────────────────
+
  
     if (token == null) {
       print("❌ [SAVE ONBOARDING] No token found — user is not logged in");
@@ -67,10 +68,8 @@ class OnboardingService {
           )
           .timeout(const Duration(seconds: 30));
  
-      // ── DEBUG: print the raw server response ───────────────────────────────
       print("📡 [SAVE ONBOARDING] Response status : ${response.statusCode}");
       print("📡 [SAVE ONBOARDING] Response body   : ${response.body}");
-      // ───────────────────────────────────────────────────────────────────────
  
       if (response.statusCode == 200) {
         print("✅ [SAVE ONBOARDING] Profile saved successfully");
@@ -120,6 +119,29 @@ class OnboardingService {
       return null;
     }
   }
+Future<PlanModel?> getCalculatedPlan() async {
+  final url = Uri.parse('$baseUrl/user/plan/calories');
+  final token = await _getToken();
+
+  try {
+    final response = await http.get(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return PlanModel.fromJson(data);
+    }
+    return null;
+  } catch (e) {
+    print("Error fetching plan: $e");
+    return null;
+  }
+}
 }
 
 

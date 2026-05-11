@@ -17,17 +17,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final OnboardingService _onboardingService = OnboardingService();
   final ApiService _apiService = ApiService();
  
-  // ✅ Clears token, resets AuthState, and navigates to login
   Future<void> _performLogout() async {
-    // 1. Delete the stored JWT token from SharedPreferences
     await _apiService.deleteToken();
  
-    // 2. Reset all in-memory auth flags
+   
     AuthState.isLoggedIn = false;
     AuthState.isRegistered = false;
     AuthState.finishedOnboarding = false;
  
-    // 3. Navigate to login and clear the entire navigation stack
+    
     if (mounted) {
       context.go('/splash');
     }
@@ -223,7 +221,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                 }
  
-                // ✅ Actually log out: delete token + reset state + navigate
                 await _performLogout();
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
