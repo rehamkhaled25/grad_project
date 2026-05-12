@@ -1,8 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:graduation_project/services/api_service.dart';
+import 'package:graduation_project/services/food_service.dart';
+import 'package:image_picker/image_picker.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? _profileData;
+  Map<String, dynamic>? _planData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final profile = await ApiService().getProfile();
+      Map<String, dynamic>? plan;
+      try {
+        plan = await FoodService().getCaloriePlan();
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() {
+          if (profile != null) {
+            _profileData = {
+              'full_name': profile.fullName,
+              'email': profile.email,
+              'gender': profile.gender,
+              'goal': profile.goal,
+              'weight': profile.weight,
+              'height': profile.height,
+              'goal_weight': profile.goalWeight,
+              'birthdate': profile.birthdate,
+              'profile_image_url': profile.profileImageUrl,
+            };
+          }
+          _planData = plan;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickAndUploadProfileImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    final newUrl = await ApiService().uploadProfileImage(image.path);
+    if (newUrl != null && mounted) {
+      setState(() {
+        _profileData?['profile_image_url'] = newUrl;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile image updated!'), backgroundColor: Colors.green),
+      );
+    }
+  }
+
+  // Helper getters
+  String get _name => _profileData?['full_name'] ?? 'User';
+  String get _gender => _profileData?['gender'] ?? 'Not set';
+  String get _goal => _profileData?['goal'] ?? 'Not set';
+  double get _weight => (_profileData?['weight'] as num?)?.toDouble() ?? 0;
+  double get _height => (_profileData?['height'] as num?)?.toDouble() ?? 0;
+  double get _goalWeight => (_profileData?['goal_weight'] as num?)?.toDouble() ?? 0;
+  String? get _profileImageUrl => _profileData?['profile_image_url'];
+  int get _age {
+    final bd = _profileData?['birthdate'];
+    if (bd == null) return 0;
+    try {
+      final date = DateTime.parse(bd.toString());
+      return DateTime.now().difference(date).inDays ~/ 365;
+    } catch (_) { return 0; }
+  }
+  double get _bmi {
+    if (_height <= 0 || _weight <= 0) return 0;
+    final hm = _height / 100;
+    return _weight / (hm * hm);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,10 +98,15 @@ class ProfileScreen extends StatelessWidget {
     final baseWidth = screenWidth < 430 ? screenWidth : 430.0;
     final scaleFactor = baseWidth / 430.0;
 
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF141414),
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(
-        0xFF141414,
-      ), // Match header color for top area
+      backgroundColor: const Color(0xFF141414),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -23,30 +116,14 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(color: const Color(0xFFF4F4F4)),
                 child: Column(
                   children: [
-                    // Header Section - No SafeArea, use padding instead
                     _buildHeader(context, scaleFactor),
-
-                    // Stats Cards
                     _buildStatsCards(scaleFactor),
-
-                    // Edit Profile Button
                     _buildEditProfileButton(context, scaleFactor),
-
-                    // Body Stats Card
                     _buildBodyStatsCard(scaleFactor),
-
-                    // Weight Progress Card
                     _buildWeightProgressCard(scaleFactor),
-
-                    // Daily Goals Card
                     _buildDailyGoalsCard(scaleFactor),
-
-                    // Food Preferences Card
                     _buildFoodPreferencesCard(scaleFactor),
-
-                    // Premium Card
                     _buildPremiumCard(context, scaleFactor),
-
                     SizedBox(height: 20 * scaleFactor),
                   ],
                 ),
@@ -64,229 +141,128 @@ class ProfileScreen extends StatelessWidget {
       width: double.infinity,
       decoration: const BoxDecoration(
         color: Color(0xFF141414),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(0),
-        ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none, // Allow content to overflow if needed
+      child: Column(
         children: [
-          // Main content
-          Column(
-            children: [
-              SizedBox(height: 13 * scale),
-              // Status Bar Row
-              SizedBox(height: 30 * scale),
-              // Title Row
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 19 * scale),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 24 * scale,
-                      ),
-                    ),
-                    Text(
-                      'Profile',
-                      style: TextStyle(
-                        fontFamily: 'SF Pro',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 17 * scale,
-                        color: Colors.white,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.push('/settings'),
-                      child: Icon(
-                        Icons.settings_outlined,
-                        color: const Color(0xFFF8F9FD),
-                        size: 22 * scale,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 27 * scale),
-              // Profile Section
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 25 * scale),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Image.asset("assets/images/placeholder_profile.png"),
-
-                        Positioned(
-                          right: -5 * scale,
-                          bottom: -5 * scale,
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: Container(
-                              width: 27 * scale,
-                              height: 27 * scale,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.camera_alt,
-                                color: const Color(0xFF605A5A),
-                                size: 18 * scale,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(width: 15 * scale),
-                    // Name and Username
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mohannad Hany',
-                            style: TextStyle(
-                              fontFamily: 'Figtree',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 17 * scale,
-                              color: const Color(0xFFF4F4F4),
-                            ),
-                          ),
-                          SizedBox(height: 3 * scale),
-                          Text(
-                            '@moe_hani',
-                            style: TextStyle(
-                              fontFamily: 'Figtree',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13 * scale,
-                              color: const Color(0xFFF4F4F4),
-                            ),
-                          ),
-                          SizedBox(height: 8 * scale),
-                          // Streak Badge
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12 * scale,
-                              vertical: 4 * scale,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF680909).withOpacity(0.19),
-                              border: Border.all(
-                                color: const Color(0xFFE50101),
-                              ),
-                              borderRadius: BorderRadius.circular(15 * scale),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.local_fire_department,
-                                  color: const Color(0xFFF81E1E),
-                                  size: 14 * scale,
-                                ),
-                                SizedBox(width: 4 * scale),
-                                Text(
-                                  '12 Day Streak',
-                                  style: TextStyle(
-                                    fontFamily: 'Figtree',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13 * scale,
-                                    color: const Color(0xFFF81E1E),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 24 * scale),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsCards(double scale) {
-    return Column(
-      children: [
-        // First row - overlaps the black header (negative margin)
-        Transform.translate(
-          offset: Offset(0, -30 * scale), // Pull up over the header
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale),
+          SizedBox(height: 50 * scale),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 19 * scale),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildStatCard(
-                    '24',
-                    'Days Logged',
-                    Icons.water_drop_outlined,
-                    const Color(0xFFF1F0F0),
-                    const Color(0xFF605A5A),
-                    Colors.black,
-                    scale,
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Icon(Icons.arrow_back, color: Colors.white, size: 24 * scale),
+                ),
+                Text(
+                  'Profile',
+                  style: TextStyle(
+                    fontFamily: 'SF Pro',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 17 * scale,
+                    color: Colors.white,
                   ),
                 ),
-                SizedBox(width: 12 * scale),
-                Expanded(
-                  child: _buildStatCard(
-                    '18',
-                    'Best Streak',
-                    Icons.emoji_events,
-                    const Color(0xFFFFE2E2),
-                    const Color(0xFFD90C0C),
-                    const Color(0xFFD90C0C),
-                    scale,
+                GestureDetector(
+                  onTap: () => context.push('/settings'),
+                  child: Icon(Icons.settings_outlined, color: const Color(0xFFF8F9FD), size: 22 * scale),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 35 * scale),
+          Center(
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                _profileImageUrl != null
+                    ? CircleAvatar(
+                        radius: 40 * scale,
+                        backgroundImage: NetworkImage(
+                          _profileImageUrl!.startsWith('http')
+                              ? _profileImageUrl!
+                              : '${ApiService.baseUrl}$_profileImageUrl',
+                        ),
+                      )
+                    : CircleAvatar(
+                        radius: 40 * scale,
+                        backgroundImage: const AssetImage('assets/images/placeholder_profile.png'),
+                      ),
+                GestureDetector(
+                  onTap: _pickAndUploadProfileImage,
+                  child: Container(
+                    width: 24 * scale,
+                    height: 24 * scale,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD90C0C),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Icon(Icons.camera_alt, color: Colors.white, size: 12 * scale),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          SizedBox(height: 12 * scale),
+          Center(
+            child: Text(
+              _name,
+              style: TextStyle(
+                fontFamily: 'SF Pro',
+                fontWeight: FontWeight.w700,
+                fontSize: 17 * scale,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Center(
+            child: Text(
+              _goal,
+              style: TextStyle(
+                fontFamily: 'SF Pro',
+                fontSize: 13 * scale,
+                color: const Color(0xFFF4F4F4),
+              ),
+            ),
+          ),
+          SizedBox(height: 24 * scale),
+        ],
+      ),
+    );
+  }
 
-        // Second row - on white background
+
+  Widget _buildStatsCards(double scale) {
+    return Column(
+      children: [
+        Transform.translate(
+          offset: Offset(0, -30 * scale),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16 * scale),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard('24', 'Days Logged', Icons.water_drop_outlined, const Color(0xFFF1F0F0), const Color(0xFF605A5A), Colors.black, scale),
+                ),
+                SizedBox(width: 12 * scale),
+                Expanded(
+                  child: _buildStatCard('18', 'Best Streak', Icons.emoji_events, const Color(0xFFFFE2E2), const Color(0xFFD90C0C), const Color(0xFFD90C0C), scale),
+                ),
+              ],
+            ),
+          ),
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16 * scale),
           child: Row(
             children: [
               Expanded(
-                child: _buildStatCard(
-                  '-3.5kg',
-                  'Weight Lost',
-                  Icons.trending_down,
-                  const Color(0xFFFFE2E2),
-                  const Color(0xFFD90C0C),
-                  const Color(0xFFD90C0C),
-                  scale,
-                ),
+                child: _buildStatCard('${_weight - _goalWeight}kg', 'Weight Lost', Icons.trending_down, const Color(0xFFFFE2E2), const Color(0xFFD90C0C), const Color(0xFFD90C0C), scale),
               ),
               SizedBox(width: 12 * scale),
               Expanded(
-                child: _buildStatCard(
-                  'Jan 25',
-                  'Member Since',
-                  Icons.calendar_today,
-                  const Color(0xFFF1F0F0),
-                  const Color(0xFF605A5A),
-                  Colors.black,
-                  scale,
-                ),
+                child: _buildStatCard('2024', 'Member Since', Icons.calendar_today, const Color(0xFFF1F0F0), const Color(0xFF605A5A), Colors.black, scale),
               ),
             ],
           ),
@@ -295,38 +271,21 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-    String value,
-    String label,
-    IconData icon,
-    Color bgColor,
-    Color iconColor,
-    Color valueColor,
-    double scale,
-  ) {
+  Widget _buildStatCard(String value, String label, IconData icon, Color bgColor, Color iconColor, Color valueColor, double scale) {
     return Container(
       padding: EdgeInsets.all(12 * scale),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12 * scale),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 36 * scale, // Fixed: Increased size
-            height: 36 * scale, // Fixed: Increased size
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(8 * scale),
-            ),
+            width: 36 * scale,
+            height: 36 * scale,
+            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8 * scale)),
             child: Icon(icon, color: iconColor, size: 18 * scale),
           ),
           SizedBox(width: 10 * scale),
@@ -335,26 +294,9 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'SF Pro',
-                    fontSize: 11 * scale,
-                    color: const Color(0xFF605A5A),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(label, style: TextStyle(fontFamily: 'SF Pro', fontSize: 11 * scale, color: const Color(0xFF605A5A))),
                 SizedBox(height: 2 * scale),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontFamily: 'Figtree',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16 * scale,
-                    color: valueColor,
-                  ),
-                ),
+                Text(value, style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 16 * scale, color: valueColor)),
               ],
             ),
           ),
@@ -367,32 +309,17 @@ class ProfileScreen extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 24 * scale, vertical: 20),
       child: GestureDetector(
-        onTap: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Edit Profile tapped')));
-        },
+        onTap: () => context.push('/edit-profile'),
         child: Container(
           width: 238 * scale,
           height: 42 * scale,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(12 * scale),
-          ),
+          decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12 * scale)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.edit_outlined, color: Colors.white, size: 20 * scale),
               SizedBox(width: 8 * scale),
-              Text(
-                'Edit Profile',
-                style: TextStyle(
-                  fontFamily: 'Figtree',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16 * scale,
-                  color: Colors.white,
-                ),
-              ),
+              Text('Edit Profile', style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 16 * scale, color: Colors.white)),
             ],
           ),
         ),
@@ -402,58 +329,31 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildBodyStatsCard(double scale) {
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: 24 * scale,
-        vertical: 16 * scale,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 24 * scale, vertical: 16 * scale),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(16 * scale),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10 * scale),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10 * scale)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Body Stats',
-              style: TextStyle(
-                fontFamily: 'Figtree',
-                fontWeight: FontWeight.w600,
-                fontSize: 16 * scale,
-              ),
-            ),
+            Text('Body Stats', style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 16 * scale)),
             SizedBox(height: 16 * scale),
             Row(
               children: [
-                Expanded(
-                  child: _buildMetricBox(
-                    'Current Weight',
-                    '68 kg',
-                    Icons.monitor_weight_outlined,
-                    scale,
-                  ),
-                ),
+                Expanded(child: _buildMetricBox('Current Weight', '${_weight.toInt()} kg', Icons.monitor_weight_outlined, scale)),
                 SizedBox(width: 12 * scale),
-                Expanded(
-                  child: _buildMetricBox(
-                    'Goal Weight',
-                    '62 kg',
-                    Icons.flag_outlined,
-                    scale,
-                  ),
-                ),
+                Expanded(child: _buildMetricBox('Goal Weight', '${_goalWeight.toInt()} kg', Icons.flag_outlined, scale)),
               ],
             ),
             SizedBox(height: 12 * scale),
             Row(
               children: [
-                Expanded(child: _buildSmallMetricBox('Height', '170cm', scale)),
+                Expanded(child: _buildSmallMetricBox('Height', '${_height.toInt()}cm', scale)),
                 SizedBox(width: 8 * scale),
-                Expanded(child: _buildSmallMetricBox('Age', '28', scale)),
+                Expanded(child: _buildSmallMetricBox('Age', '$_age', scale)),
                 SizedBox(width: 8 * scale),
-                Expanded(child: _buildSmallMetricBox('BMI', '25.0', scale)),
+                Expanded(child: _buildSmallMetricBox('BMI', _bmi.toStringAsFixed(1), scale)),
               ],
             ),
           ],
@@ -462,38 +362,16 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricBox(
-    String label,
-    String value,
-    IconData icon,
-    double scale,
-  ) {
+  Widget _buildMetricBox(String label, String value, IconData icon, double scale) {
     return Container(
       padding: EdgeInsets.all(12 * scale),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F9),
-        borderRadius: BorderRadius.circular(10 * scale),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF9F9F9), borderRadius: BorderRadius.circular(10 * scale)),
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFFD90C0C), size: 16 * scale),
           SizedBox(height: 4 * scale),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'SF Pro',
-              fontSize: 11 * scale,
-              color: const Color(0xFF605A5A),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Figtree',
-              fontWeight: FontWeight.w600,
-              fontSize: 14 * scale,
-            ),
-          ),
+          Text(label, style: TextStyle(fontFamily: 'SF Pro', fontSize: 11 * scale, color: const Color(0xFF605A5A))),
+          Text(value, style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 14 * scale)),
         ],
       ),
     );
@@ -502,40 +380,21 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildSmallMetricBox(String label, String value, double scale) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8 * scale),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9F9F9),
-        borderRadius: BorderRadius.circular(10 * scale),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF9F9F9), borderRadius: BorderRadius.circular(10 * scale)),
       child: Column(
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'SF Pro',
-              fontSize: 11 * scale,
-              color: const Color(0xFF605A5A),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Figtree',
-              fontWeight: FontWeight.w600,
-              fontSize: 14 * scale,
-            ),
-          ),
+          Text(label, style: TextStyle(fontFamily: 'SF Pro', fontSize: 11 * scale, color: const Color(0xFF605A5A))),
+          Text(value, style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 14 * scale)),
         ],
       ),
     );
   }
 
-  // FIXED: Weight Progress Card with visible chart
   Widget _buildWeightProgressCard(double scale) {
+    final diff = _weight - _goalWeight;
+    final diffStr = diff > 0 ? '-${diff.toStringAsFixed(1)} kg' : '+${diff.abs().toStringAsFixed(1)} kg';
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: 24 * scale,
-        vertical: 8 * scale,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 24 * scale, vertical: 8 * scale),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(16 * scale),
@@ -552,57 +411,31 @@ class ProfileScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Weight Progress',
-                      style: TextStyle(
-                        fontFamily: 'Figtree',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16 * scale,
-                      ),
-                    ),
-                    Text(
-                      '-3.5 kg',
-                      style: TextStyle(
-                        fontFamily: 'Figtree',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14 * scale,
-                        color: const Color(0xFFD90C0C),
-                      ),
-                    ),
+                    Text('Weight Progress', style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 16 * scale)),
+                    Text(diffStr, style: TextStyle(fontFamily: 'Figtree', fontWeight: FontWeight.w600, fontSize: 14 * scale, color: const Color(0xFFD90C0C))),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildWeightRow('Current Weight', '68', scale),
-                    _buildWeightRow('Start Weight', '85', scale),
-                    _buildWeightRow('Goal Weight', '65', scale),
+                    _buildWeightRow('Current Weight', '${_weight.toInt()}', scale),
+                    _buildWeightRow('Start Weight', '${_weight.toInt()}', scale),
+                    _buildWeightRow('Goal Weight', '${_goalWeight.toInt()}', scale),
                   ],
                 ),
               ],
             ),
             SizedBox(height: 16 * scale),
-            // FIXED: Chart with proper constraints
             Container(
               height: 120 * scale,
               width: double.infinity,
               margin: EdgeInsets.symmetric(vertical: 8 * scale),
               child: CustomPaint(painter: _WeightChartPainter()),
             ),
-            // Month labels
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
-                  .map(
-                    (month) => Text(
-                      month,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 10 * scale,
-                        color: const Color(0xFF8A8C90),
-                      ),
-                    ),
-                  )
+                  .map((month) => Text(month, style: TextStyle(fontFamily: 'Poppins', fontSize: 10 * scale, color: const Color(0xFF8A8C90))))
                   .toList(),
             ),
           ],
@@ -681,10 +514,10 @@ class ProfileScreen extends StatelessWidget {
               crossAxisSpacing: 12 * scale,
               childAspectRatio: 2.2,
               children: [
-                _buildGoalBox('Calories', '1,800', 'cal/day', true, scale),
-                _buildGoalBox('Protein', '120', 'grams', false, scale),
-                _buildGoalBox('Carbs', '180', 'grams', false, scale),
-                _buildGoalBox('Fat', '60', 'grams', false, scale),
+                _buildGoalBox('Calories', '${_planData?['calories'] ?? 0}', 'cal/day', true, scale),
+                _buildGoalBox('Protein', '${_planData?['protein'] ?? 0}', 'grams', false, scale),
+                _buildGoalBox('Carbs', '${_planData?['carbs'] ?? 0}', 'grams', false, scale),
+                _buildGoalBox('Fat', '${_planData?['fats'] ?? 0}', 'grams', false, scale),
               ],
             ),
           ],

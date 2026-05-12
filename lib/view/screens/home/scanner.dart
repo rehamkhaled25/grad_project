@@ -3,9 +3,8 @@ import 'dart:io'; // required for File
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:graduation_project/models/food_model.dart';
+import 'package:graduation_project/services/food_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class FoodScannerScreen extends StatefulWidget {
   const FoodScannerScreen({super.key});
@@ -20,6 +19,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   String _activeMode = "Scan Food";
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
+  final FoodService _foodService = FoodService();
 
   // Stores the path of the last captured/picked image
   String? _currentImagePath;
@@ -53,73 +53,41 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     setState(() => _isAnalyzing = true);
 
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? "";
-      if (apiKey.isEmpty) throw "API Key is missing from .env";
+      // Store the image path BEFORE processing
+      _currentImagePath = imageFile.path;
 
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: apiKey,
-        generationConfig: GenerationConfig(
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        ),
-      );
+      // Step 1: Upload image to backend for scanning
+      final scanResult = await _foodService.scanFood(File(imageFile.path));
+      final scanObj = scanResult['scan'] ?? scanResult;
+      final scanId = (scanObj['scan_id'] ?? scanObj['id'])?.toString();
 
-      final imageBytes = await imageFile.readAsBytes();
-
-      final prompt = [
-        Content.multi([
-          TextPart("""Analyze this food image and return a JSON object:
-          {
-            "meal_name": "name of food",
-            "total_calories": integer,
-            "total_protein": number,
-            "total_carbs": number,
-            "total_fat": number,
-            "sugar": number,
-            "sodium": integer,
-            "glycemic_index": integer,
-            "glycemic_load": integer,
-            "magnesium": integer,
-            "calcium": integer,
-            "fiber": integer,
-            "vitamins": "e.g., Vitamin B, Vitamin K",
-            "health_score": integer (1-10),
-            "health_tip": "brief advice",
-            "warning": "e.g., Contains Avocado, High Sugar, etc. (Leave empty if none)"
-          }
-          IMPORTANT: Return ONLY the JSON. No markdown blocks."""),
-          DataPart('image/jpeg', imageBytes),
-        ]),
-      ];
-
-      final response = await model.generateContent(prompt);
-
-      if (response.text == null || response.text!.isEmpty) {
-        throw "AI returned an empty string.";
+      if (scanId == null || scanId.isEmpty) {
+        throw "No scan_id returned from server";
       }
 
-      String cleanJson = response.text!.trim();
-      if (cleanJson.startsWith("```")) {
-        cleanJson = cleanJson.replaceAll(RegExp(r'```json|```'), '').trim();
-      }
+      // Step 2: Analyze the scanned food
+      final analyzeResult = await _foodService.analyzeFood(scanId);
 
-      final Map<String, dynamic> data = jsonDecode(cleanJson);
-      final report = NutritionReport.fromJson(data);
+      // Step 3: Parse the nutrition data from the 'report' key
+      final nutritionData = analyzeResult['report'] ?? analyzeResult;
+      final report = NutritionReport.fromJson(nutritionData as Map<String, dynamic>);
+
+      // Extract scan_id from the ui block if available
+      final returnedScanId = analyzeResult['ui']?['scan_id']?.toString() ?? scanId;
 
       if (mounted) {
-        // Store the image path BEFORE showing the sheet
-        _currentImagePath = imageFile.path;
-        _showResultsBottomSheet(report);
+        _showResultsBottomSheet(report, scanId);
       }
     } catch (e) {
       debugPrint("AI_FAILURE_LOG: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Analysis Failed: $e"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Analysis Failed: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);
     }
@@ -145,7 +113,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     }
   }
 
-  void _showResultsBottomSheet(NutritionReport report) {
+  void _showResultsBottomSheet(NutritionReport report, [String? scanId]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -153,6 +121,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       builder: (context) => _NutritionResultSheet(
         report: report,
         imagePath: _currentImagePath, // pass the stored image path
+        scanId: scanId,
       ),
     );
   }
@@ -348,8 +317,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 class _NutritionResultSheet extends StatefulWidget {
   final NutritionReport report;
   final String? imagePath;
+  final String? scanId;
 
-  const _NutritionResultSheet({required this.report, this.imagePath});
+  const _NutritionResultSheet({required this.report, this.imagePath, this.scanId});
 
   @override
   State<_NutritionResultSheet> createState() => _NutritionResultSheetState();
@@ -357,6 +327,8 @@ class _NutritionResultSheet extends StatefulWidget {
 
 class _NutritionResultSheetState extends State<_NutritionResultSheet> {
   int _quantity = 1;
+  bool _isLogging = false;
+  final FoodService _foodService = FoodService();
 
   // Scaled values (macro‑only for simplicity; you can extend to micronutrients)
   double get scaledCalories => widget.report.totalCalories * _quantity;
@@ -365,6 +337,49 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
   double get scaledFat => widget.report.totalFat * _quantity;
   double get scaledSugar => widget.report.sugar * _quantity;
   int get scaledSodium => widget.report.sodium * _quantity;
+
+  Future<void> _logFood() async {
+    if (_isLogging) return;
+    setState(() => _isLogging = true);
+
+    try {
+      final data = <String, dynamic>{};
+      if (widget.scanId != null) {
+        data['scan_id'] = widget.scanId;
+        data['quantity'] = _quantity;
+      } else {
+        data['food_name'] = widget.report.mealName;
+        data['calories'] = scaledCalories;
+        data['protein'] = scaledProtein;
+        data['carbs'] = scaledCarbs;
+        data['fat'] = scaledFat;
+        data['quantity'] = _quantity;
+      }
+
+      await _foodService.logFood(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Food logged successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to log food: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLogging = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +430,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      "9:14 am",
+                      "${TimeOfDay.now().format(context)}",
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
@@ -776,7 +791,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _isLogging ? null : _logFood,
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
@@ -786,10 +801,19 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text(
-                          "Done",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        child: _isLogging
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.black,
+                                ),
+                              )
+                            : const Text(
+                                "Done",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                       ),
                     ),
                   ],

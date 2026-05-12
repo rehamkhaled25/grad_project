@@ -1,15 +1,14 @@
-import 'dart:convert';
-
 class UserModel {
   int? id;
   String? fullName;
   String? email;
-  String? password; 
-  String? birthdate; 
+  String? password;
+  String? birthdate;
   String? gender;
   String? goal;
   double? weight;
   double? height;
+  String? profileImageUrl;
   double? goalWeight;
   List<String>? allergies;
 
@@ -23,8 +22,9 @@ class UserModel {
     this.goal,
     this.weight,
     this.height,
+    this.profileImageUrl,
+    this.goalWeight,
     this.allergies,
-     this.goalWeight,
   });
 
   Map<String, dynamic> toJson() {
@@ -38,8 +38,9 @@ class UserModel {
       "goal": goal,
       "weight": weight,
       "height": height,
+      "profile_image_url": profileImageUrl,
+      "goal_weight": goalWeight,
       "allergies": allergies,
-      "goal_weight": goalWeight, 
     };
   }
 
@@ -51,13 +52,19 @@ class UserModel {
       birthdate: json['birthdate'],
       gender: json['gender'] ?? "N/A",
       goal: json['goal'] ?? "N/A",
-      // These conversions ensure strings like "70.5" don't crash the app
-      weight: json['weight'] != null ? double.tryParse(json['weight'].toString()) : null,
-      height: json['height'] != null ? double.tryParse(json['height'].toString()) : null,
-       goalWeight: json['goal_weight'] != null   // ← ADD THIS
+      weight: json['weight'] != null
+          ? double.tryParse(json['weight'].toString())
+          : null,
+      height: json['height'] != null
+          ? double.tryParse(json['height'].toString())
+          : null,
+      profileImageUrl: json['profile_image_url'],
+      goalWeight: json['goal_weight'] != null
           ? double.tryParse(json['goal_weight'].toString())
           : null,
-      allergies: json['allergies'] != null ? List<String>.from(json['allergies']) : [],
+      allergies: json['allergies'] != null
+          ? List<String>.from(json['allergies'])
+          : [],
     );
   }
 
@@ -70,7 +77,8 @@ class UserModel {
     String? goal,
     double? weight,
     double? height,
-      double? goalWeight, 
+    String? profileImageUrl,
+    double? goalWeight,
     List<String>? allergies,
   }) {
     return UserModel(
@@ -83,8 +91,9 @@ class UserModel {
       goal: goal ?? this.goal,
       weight: weight ?? this.weight,
       height: height ?? this.height,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      goalWeight: goalWeight ?? this.goalWeight,
       allergies: allergies ?? this.allergies,
-       goalWeight: goalWeight ?? this.goalWeight, 
     );
   }
 }

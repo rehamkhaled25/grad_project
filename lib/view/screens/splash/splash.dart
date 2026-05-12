@@ -197,39 +197,47 @@ class _SplashScreenState extends State<SplashScreen> {
  
     // Token exists → fetch profile to confirm it's still valid
     print("🔀 [SPLASH] Token found, checking profile...");
-    final user = await OnboardingService().getUserProfile();
+    
+    try {
+      final user = await OnboardingService().getUserProfile()
+          .timeout(const Duration(seconds: 8));
  
-    if (!mounted) return;
+      if (!mounted) return;
  
-    if (user == null) {
-      // Token expired or invalid → treat as new user
-      print("🔀 [SPLASH] Token invalid → show splash buttons");
-      setState(() => _checkingSession = false);
-      return;
-    }
+      if (user == null) {
+        // Token expired or invalid → treat as new user
+        print("🔀 [SPLASH] Token invalid → show splash buttons");
+        setState(() => _checkingSession = false);
+        return;
+      }
  
-    // Valid token + profile → skip splash buttons and go straight to home
-    final bool onboardingDone =
-        user.gender != null &&
-        user.gender!.isNotEmpty &&
-        user.gender != "N/A" &&
-        user.goal != null &&
-        user.goal!.isNotEmpty &&
-        user.goal != "N/A";
+      // Valid token + profile → skip splash buttons and go straight to home
+      final bool onboardingDone =
+          user.gender != null &&
+          user.gender!.isNotEmpty &&
+          user.gender != "N/A" &&
+          user.goal != null &&
+          user.goal!.isNotEmpty &&
+          user.goal != "N/A";
  
-    AuthState.isLoggedIn = true;
-    AuthState.finishedOnboarding = onboardingDone;
+      AuthState.isLoggedIn = true;
+      AuthState.finishedOnboarding = onboardingDone;
  
-    // Wait for animations to finish before navigating (min 5s splash)
-    await Future.delayed(const Duration(seconds: 5));
-    if (!mounted) return;
+      // Wait for animations to finish before navigating (min 5s splash)
+      await Future.delayed(const Duration(seconds: 5));
+      if (!mounted) return;
  
-    if (onboardingDone) {
-      print("🔀 [SPLASH] Returning user, onboarding done → /home");
-      context.go('/home');
-    } else {
-      print("🔀 [SPLASH] Returning user, onboarding incomplete → /login");
-      context.go('/login');
+      if (onboardingDone) {
+        print("🔀 [SPLASH] Returning user, onboarding done → /home");
+        context.go('/home');
+      } else {
+        print("🔀 [SPLASH] Returning user, onboarding incomplete → /login");
+        context.go('/login');
+      }
+    } catch (e) {
+      // Network error or timeout → show splash buttons so user isn't stuck
+      print("🔀 [SPLASH] Error checking session: $e → show splash buttons");
+      if (mounted) setState(() => _checkingSession = false);
     }
   }
  

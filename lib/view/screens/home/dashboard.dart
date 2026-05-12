@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/services/api_service.dart';
+import 'package:graduation_project/services/food_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,11 +17,15 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 0;
 
   late Future<UserModel?> _userFuture;
+  late Future<Map<String, dynamic>> _historyFuture;
+  late Future<Map<String, dynamic>> _planFuture;
 
   @override
   void initState() {
     super.initState();
     _userFuture = ApiService().getProfile();
+    _historyFuture = FoodService().getFoodHistory().catchError((_) => <String, dynamic>{});
+    _planFuture = FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{});
   }
 
   @override
@@ -50,11 +55,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => context.push('/profile'),
-                            child: const CircleAvatar(
-                              radius: 23.5,
-                              backgroundImage: AssetImage(
-                                'assets/images/placeholder_profile.png',
-                              ),
+                            child: FutureBuilder<UserModel?>(
+                              future: _userFuture,
+                              builder: (context, snapshot) {
+                                final imageUrl = snapshot.data?.profileImageUrl;
+                                if (imageUrl != null && imageUrl.isNotEmpty) {
+                                  return CircleAvatar(
+                                    radius: 23.5,
+                                    backgroundImage: NetworkImage(
+                                      imageUrl.startsWith('http')
+                                          ? imageUrl
+                                          : '${ApiService.baseUrl}$imageUrl',
+                                    ),
+                                  );
+                                }
+                                return const CircleAvatar(
+                                  radius: 23.5,
+                                  backgroundImage: AssetImage(
+                                    'assets/images/placeholder_profile.png',
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -148,132 +169,155 @@ class _HomeScreenState extends State<HomeScreen> {
 
               SizedBox(
                 height: 380,
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (index) =>
-                      setState(() => _currentPage = index),
-                  children: [
-                    DailyProgressCard(size: size),
-                    Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Calories Breakdown',
-                              style: TextStyle(
-                                color: Color(0xff1E1B39),
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            Center(
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 1.0,
-                                    progressColor: const Color(0xFF0000FF),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                    circularStrokeCap: CircularStrokeCap.butt,
-                                    center: const Text(
-                                      "1600\nCalories",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.41,
-                                    progressColor: Colors.white,
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.40,
-                                    progressColor: const Color(0xFFFF0000),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.16,
-                                    progressColor: Colors.white,
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                  CircularPercentIndicator(
-                                    radius: 68.5,
-                                    lineWidth: 15.0,
-                                    percent: 0.15,
-                                    progressColor: const Color(0xFFFF9705),
-                                    backgroundColor: Colors.transparent,
-                                    reverse: true,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 15,
-                              ),
-                              child: Column(
-                                children: [
-                                  _macroBreakdownLabel(
-                                    Colors.orange,
-                                    "Fats",
-                                    "410",
-                                  ),
-                                  const SizedBox(height: 5),
-                                  _macroBreakdownLabel(
-                                    Colors.red,
-                                    "Protein",
-                                    "142",
-                                  ),
-                                  const SizedBox(height: 5),
-                                  _macroBreakdownLabel(
-                                    Colors.blue,
-                                    "Carbs",
-                                    "340",
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: _planFuture,
+                  builder: (context, planSnap) {
+                    final plan = planSnap.data ?? {};
+                    final dailyCal = (plan['calories'] ?? plan['daily_calories'] ?? 2400).toDouble();
+                    final consumed = (plan['consumed'] ?? plan['calories_consumed'] ?? 0).toDouble();
+                    final burned = (plan['burned'] ?? plan['calories_burned'] ?? 0).toDouble();
+                    final remaining = (dailyCal - consumed).clamp(0, dailyCal);
+                    final progress = dailyCal > 0 ? (consumed / dailyCal).clamp(0.0, 1.0) : 0.0;
+
+                    final fats = (plan['fat'] ?? plan['fats'] ?? 0).toDouble();
+                    final protein = (plan['protein'] ?? 0).toDouble();
+                    final carbs = (plan['carbs'] ?? plan['carbohydrates'] ?? 0).toDouble();
+
+                    return PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) =>
+                          setState(() => _currentPage = index),
+                      children: [
+                        _DailyProgressCard(
+                          size: size,
+                          consumed: consumed,
+                          dailyCal: dailyCal,
+                          burned: burned,
+                          remaining: remaining,
+                          progress: progress,
                         ),
-                      ),
-                    ),
-                  ],
+                        Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Calories Breakdown',
+                                  style: TextStyle(
+                                    color: Color(0xff1E1B39),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Center(
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      CircularPercentIndicator(
+                                        radius: 68.5,
+                                        lineWidth: 15.0,
+                                        percent: 1.0,
+                                        progressColor: const Color(0xFF0000FF),
+                                        backgroundColor: Colors.transparent,
+                                        reverse: true,
+                                        circularStrokeCap: CircularStrokeCap.butt,
+                                        center: Text(
+                                          "${consumed.toStringAsFixed(0)}\nCalories",
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            height: 1.2,
+                                          ),
+                                        ),
+                                      ),
+                                      CircularPercentIndicator(
+                                        radius: 68.5,
+                                        lineWidth: 15.0,
+                                        percent: 0.41,
+                                        progressColor: Colors.white,
+                                        backgroundColor: Colors.transparent,
+                                        reverse: true,
+                                      ),
+                                      CircularPercentIndicator(
+                                        radius: 68.5,
+                                        lineWidth: 15.0,
+                                        percent: 0.40,
+                                        progressColor: const Color(0xFFFF0000),
+                                        backgroundColor: Colors.transparent,
+                                        reverse: true,
+                                      ),
+                                      CircularPercentIndicator(
+                                        radius: 68.5,
+                                        lineWidth: 15.0,
+                                        percent: 0.16,
+                                        progressColor: Colors.white,
+                                        backgroundColor: Colors.transparent,
+                                        reverse: true,
+                                      ),
+                                      CircularPercentIndicator(
+                                        radius: 68.5,
+                                        lineWidth: 15.0,
+                                        percent: 0.15,
+                                        progressColor: const Color(0xFFFF9705),
+                                        backgroundColor: Colors.transparent,
+                                        reverse: true,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Spacer(),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 15,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _macroBreakdownLabel(
+                                        Colors.orange,
+                                        "Fats",
+                                        "${fats.toStringAsFixed(0)}",
+                                      ),
+                                      const SizedBox(height: 5),
+                                      _macroBreakdownLabel(
+                                        Colors.red,
+                                        "Protein",
+                                        "${protein.toStringAsFixed(0)}",
+                                      ),
+                                      const SizedBox(height: 5),
+                                      _macroBreakdownLabel(
+                                        Colors.blue,
+                                        "Carbs",
+                                        "${carbs.toStringAsFixed(0)}",
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 10),
@@ -304,15 +348,47 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 15),
-              SizedBox(
-                height: 350,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: 3,
-                  itemBuilder: (context, index) => const FoodCard(),
-                ),
+              FutureBuilder<Map<String, dynamic>>(
+                future: _historyFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 350,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final data = snapshot.data ?? {};
+                  // Try to extract meals from various response shapes
+                  final List meals = data['meals'] ?? data['logs'] ?? data['history'] ?? [];
+
+                  if (meals.isEmpty) {
+                    return SizedBox(
+                      height: 350,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: 1,
+                        itemBuilder: (context, index) => const FoodCard(),
+                      ),
+                    );
+                  }
+
+                  return SizedBox(
+                    height: 350,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: meals.length > 5 ? 5 : meals.length,
+                      itemBuilder: (context, index) {
+                        final meal = meals[index] as Map<String, dynamic>;
+                        return FoodCard(mealData: meal);
+                      },
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -395,9 +471,22 @@ class DaysOfWeekBar extends StatelessWidget {
   }
 }
 
-class DailyProgressCard extends StatelessWidget {
+class _DailyProgressCard extends StatelessWidget {
   final Size size;
-  const DailyProgressCard({super.key, required this.size});
+  final double consumed;
+  final double dailyCal;
+  final double burned;
+  final double remaining;
+  final double progress;
+
+  const _DailyProgressCard({
+    required this.size,
+    required this.consumed,
+    required this.dailyCal,
+    required this.burned,
+    required this.remaining,
+    required this.progress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -421,14 +510,14 @@ class DailyProgressCard extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 "Today's Progress",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
-                "On Track",
-                style: TextStyle(
+                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "Getting Started",
+                style: const TextStyle(
                   color: Color(0xffD90C0C),
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -439,28 +528,28 @@ class DailyProgressCard extends StatelessWidget {
           CircularPercentIndicator(
             radius: 64,
             lineWidth: 5,
-            percent: 0.66,
+            percent: progress.toDouble(),
             progressColor: const Color(0xffD90C0C),
             backgroundColor: Colors.grey.shade100,
             circularStrokeCap: CircularStrokeCap.round,
             center: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 SizedBox(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      "1600",
-                      style:
-                          TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      "${consumed.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                          fontSize: 32, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    "of 2400",
-                    style: TextStyle(
+                    "of ${dailyCal.toStringAsFixed(0)}",
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -472,18 +561,18 @@ class DailyProgressCard extends StatelessWidget {
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
+            children: [
               ProgressItem(
                 img: 'assets/images/bultorone fireee.png',
-                label: "400\nBurned",
+                label: "${burned.toStringAsFixed(0)}\nBurned",
               ),
               ProgressItem(
                 img: 'assets/images/target.png',
-                label: "800\nRemaining",
+                label: "${remaining.toStringAsFixed(0)}\nRemaining",
               ),
               ProgressItem(
                 img: 'assets/images/chart.png',
-                label: "66.6%\nProgress",
+                label: "${(progress * 100).toStringAsFixed(1)}%\nProgress",
               ),
             ],
           ),
@@ -494,10 +583,21 @@ class DailyProgressCard extends StatelessWidget {
 }
 
 class FoodCard extends StatelessWidget {
-  const FoodCard({super.key});
+  final Map<String, dynamic>? mealData;
+  const FoodCard({super.key, this.mealData});
 
   @override
   Widget build(BuildContext context) {
+    final name = mealData?['food_name'] ?? mealData?['meal_name'] ?? mealData?['name'] ?? "Power Breakfast Bowl";
+    final calories = mealData?['calories'] ?? mealData?['total_calories'] ?? 520;
+    final time = mealData?['logged_at'] ?? mealData?['time'] ?? "8:00am";
+    final proteinVal = mealData?['protein'] ?? mealData?['total_protein'] ?? 30;
+    final carbsVal = mealData?['carbs'] ?? mealData?['total_carbs'] ?? 10;
+    final fatsVal = mealData?['fat'] ?? mealData?['total_fat'] ?? 30;
+
+    // Try to get an image URL from the meal data
+    final imageUrl = mealData?['image_url'] ?? mealData?['food_image_url'];
+
     return Container(
       width: 280,
       margin: const EdgeInsets.only(right: 15, bottom: 10, left: 5),
@@ -517,12 +617,27 @@ class FoodCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-            child: Image.asset(
-              'assets/images/food log.png',
-              height: 130,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+            child: imageUrl != null
+                ? Image.network(
+                    imageUrl.toString().startsWith('http')
+                        ? imageUrl.toString()
+                        : '${ApiService.baseUrl}$imageUrl',
+                    height: 130,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/food log.png',
+                      height: 130,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Image.asset(
+                    'assets/images/food log.png',
+                    height: 130,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(12),
@@ -532,10 +647,10 @@ class FoodCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        "Power Breakfast Bowl",
-                        style: TextStyle(
+                        "$name",
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -543,15 +658,15 @@ class FoodCard extends StatelessWidget {
                       ),
                     ),
                     Column(
-                      children: const [
+                      children: [
                         Text(
-                          "520",
-                          style: TextStyle(
+                          "${(calories is num) ? calories.toStringAsFixed(0) : calories}",
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
                         ),
-                        Text(
+                        const Text(
                           "Calories",
                           style: TextStyle(
                             fontSize: 8,
@@ -563,9 +678,9 @@ class FoodCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Text(
-                  "8:00am",
-                  style: TextStyle(
+                Text(
+                  "$time",
+                  style: const TextStyle(
                     color: Colors.black,
                     fontSize: 8,
                     fontWeight: FontWeight.bold,
@@ -604,9 +719,9 @@ class FoodCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _macroLabel(Colors.red, "Protein 30g"),
-                    _macroLabel(Colors.black, "Carbs 10g"),
-                    _macroLabel(Colors.grey, "Fats 30g"),
+                    _macroLabel(Colors.red, "Protein ${proteinVal is num ? '${proteinVal.toStringAsFixed(0)}g' : proteinVal}"),
+                    _macroLabel(Colors.black, "Carbs ${carbsVal is num ? '${carbsVal.toStringAsFixed(0)}g' : carbsVal}"),
+                    _macroLabel(Colors.grey, "Fats ${fatsVal is num ? '${fatsVal.toStringAsFixed(0)}g' : fatsVal}"),
                   ],
                 ),
               ],

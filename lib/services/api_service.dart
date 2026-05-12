@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
  
 class ApiService {
-  static const String baseUrl = "http://192.168.1.3:5000";
+  static const String baseUrl = "http://10.0.2.2:5000";
  
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -87,11 +87,45 @@ class ApiService {
  
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return UserModel.fromJson(data['user']);
+        // Handle both { "user": {...} } and direct {...} response shapes
+        final userData = data['user'] ?? data;
+        return UserModel.fromJson(userData);
       }
       return null;
     } catch (e) {
       print("⚠️ [PROFILE FETCH ERROR]: $e");
+      return null;
+    }
+  }
+
+  /// Upload a profile image.
+  /// Returns the updated profile_image_url on success, null on failure.
+  Future<String?> uploadProfileImage(String imagePath) async {
+    final url = Uri.parse('$baseUrl/user/profile/image');
+    final token = await getToken();
+    if (token == null) return null;
+
+    print("📷 [PROFILE IMAGE]: Uploading to $url");
+
+    try {
+      final request = http.MultipartRequest('POST', url)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..files
+            .add(await http.MultipartFile.fromPath('image', imagePath));
+
+      final streamed =
+          await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamed);
+
+      print("📷 [PROFILE IMAGE]: Status ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['profile_image_url'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print("⚠️ [PROFILE IMAGE ERROR]: $e");
       return null;
     }
   }

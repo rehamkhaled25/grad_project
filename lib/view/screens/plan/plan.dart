@@ -45,10 +45,9 @@ class _PlanState extends State<Plan> {
 
   /// Helper to clean up any long decimals sent in the summary string from the backend
   String _formatTargetSummary(String summary) {
-    // This regex finds numbers with many decimals and rounds them to 2 places
     return summary.replaceAllMapped(RegExp(r'(\d+\.\d{2,})'), (match) {
       double val = double.parse(match.group(0)!);
-      return val.toStringAsFixed(2); 
+      return val.toStringAsFixed(2);
     });
   }
 
@@ -146,25 +145,25 @@ class _PlanState extends State<Plan> {
                                   CustomItem(
                                     text1: "Calories",
                                     text2: "${_plan!.calories}",
-                                    percent: 0.85,
+                                    percent: (_plan!.calories / 2500).clamp(0.0, 1.0),
                                     color: 0xffF20D0D,
                                   ),
                                   CustomItem(
                                     text1: "Carbs",
                                     text2: "${_plan!.carbs}g",
-                                    percent: 0.75,
+                                    percent: (_plan!.carbs / 300).clamp(0.0, 1.0),
                                     color: 0xff2A00C3,
                                   ),
                                   CustomItem(
                                     text1: "Protein",
                                     text2: "${_plan!.protein}g",
-                                    percent: 0.65,
+                                    percent: (_plan!.protein / 200).clamp(0.0, 1.0),
                                     color: 0xff0E683E,
                                   ),
                                   CustomItem(
                                     text1: "Fats",
                                     text2: "${_plan!.fats}g",
-                                    percent: 0.55,
+                                    percent: (_plan!.fats / 100).clamp(0.0, 1.0),
                                     color: 0xffF17D11,
                                   ),
                                 ],
