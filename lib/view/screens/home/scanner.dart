@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'dart:io'; // required for File
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:graduation_project/models/food_model.dart';
 import 'package:graduation_project/services/food_service.dart';
+import 'package:graduation_project/view/meal_prompts/fix_results.dart';
 import 'package:image_picker/image_picker.dart';
 
 class FoodScannerScreen extends StatefulWidget {
@@ -501,7 +501,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                       child: Text(
                         report.warning.isNotEmpty
                             ? report.warning
-                            : "Contains Avocado",
+                            : "",
                         style: const TextStyle(
                           color: Colors.deepOrange,
                           fontSize: 12,
@@ -767,12 +767,18 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                 ),
                 const SizedBox(height: 30),
 
-                // Buttons
+                // FIX RESULTS BUTTON NAVIGATION SHOULD BE HERE AND SHOULD BE STACKED UNTOP OF THIS PAGE
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            barrierColor: Colors.black54, 
+                            builder: (context) => const FixResultsPage(),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E1E1E),
                           foregroundColor: Colors.white,

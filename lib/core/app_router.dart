@@ -327,6 +327,7 @@ import 'package:graduation_project/view/custom _widget/custom_navbar.dart';
 import 'package:graduation_project/view/screens/auth/sign_in_screen.dart';
 import 'package:graduation_project/view/screens/auth/register_screen.dart';
 import 'package:graduation_project/view/screens/database/database_search.dart';
+import 'package:graduation_project/view/screens/home/badges.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/view/screens/home/log_food.dart';
 import 'package:graduation_project/view/screens/home/notifications_settings_screen.dart';
@@ -515,6 +516,11 @@ abstract class AppRouter {
         path: '/paymentApplication',
         name: 'payment_application',
         builder: (context, state) => PaymentApplication(),
+      ),
+         GoRoute(
+        path: '/badges',
+        name: 'badges',
+        builder: (context, state) => BadgesScreen(),
       ),
       GoRoute(
         path: '/creditCardInfo',

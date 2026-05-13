@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({Key? key}) : super(key: key);
@@ -17,6 +16,8 @@ class _ProgressPageState extends State<ProgressPage>
 
   double get average => values.reduce((a, b) => a + b) / values.length;
 
+  int _currentIndex = 2;
+
   @override
   void initState() {
     super.initState();
@@ -32,15 +33,163 @@ class _ProgressPageState extends State<ProgressPage>
     super.dispose();
   }
 
+  // --- دالة إظهار الـ Dialog لإضافة وزن جديد ---
+  void _showAddWeightDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24), // حواف دائرية للبوب أب
+          ),
+          backgroundColor: Colors.white,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // عشان البوب أب تاخد مساحة المحتوى بس
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // الهيدر (العنوان + علامة X)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Add Weight Log',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context), // لقفل البوب أب
+                      child: const Icon(Icons.close, size: 20),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+                const Divider(color: Color(0xFFEEEEEE), thickness: 1), // الخط الفاصل
+                const SizedBox(height: 16),
+
+                // إدخال الوزن
+                const Text(
+                  'Weight (kg/lbs)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Enter your weight',
+                    hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+                    filled: true,
+                    fillColor: const Color(0xFFF5F5F5), // لون رمادي فاتح
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+
+                const SizedBox(height: 20),
+
+                // إدخال التاريخ
+                const Text(
+                  'Date',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '02/24/26',
+                        style: TextStyle(color: Colors.black54, fontSize: 13),
+                      ),
+                      Icon(Icons.calendar_today_outlined, size: 16, color: Colors.black),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // زراير Cancel و Save
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          // هنا ممكن تحط الكود اللي بيحفظ الداتا بعدين
+                          Navigator.pop(context);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'Save Log',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // top bar (back + title)
             SizedBox(
               height: 48,
               child: Stack(
@@ -50,12 +199,15 @@ class _ProgressPageState extends State<ProgressPage>
                     alignment: Alignment.centerLeft,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {},
                     ),
                   ),
                   const Text(
                     'Progress',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -83,8 +235,8 @@ class _ProgressPageState extends State<ProgressPage>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Icon(Icons.track_changes, color: Colors.black),
                           SizedBox(width: 6),
                           Text(
@@ -97,10 +249,10 @@ class _ProgressPageState extends State<ProgressPage>
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      const Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
-                        children: const [
+                        children: [
                           Text(
                             '170',
                             style: TextStyle(
@@ -154,21 +306,18 @@ class _ProgressPageState extends State<ProgressPage>
                           value: 0.5,
                           minHeight: 10,
                           backgroundColor: Color(0xFFE0E0E0),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.black,
-                          ),
+                          valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.black),
                         ),
                       ),
                     ],
                   ),
-
-                  // top-right badge section
-                  Positioned(
+                  const Positioned(
                     top: 0,
                     right: 0,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: const [
+                      children: [
                         _Label(),
                         SizedBox(height: 6),
                         Text(
@@ -192,31 +341,16 @@ class _ProgressPageState extends State<ProgressPage>
             Row(
               children: [
                 Expanded(
-                  child: _stat(
-                    Icons.eco_outlined,
-                    '1978',
-                    'Calories',
-                    Colors.red,
-                  ),
-                ),
+                    child: _stat(
+                        Icons.eco_outlined, '1978', 'Calories', Colors.red)),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _stat(
-                    Icons.local_fire_department_outlined,
-                    '7 days',
-                    'Streak',
-                    Colors.orange,
-                  ),
-                ),
+                    child: _stat(Icons.local_fire_department_outlined, '7 days',
+                        'Streak', Colors.orange)),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _stat(
-                    Icons.monitor_heart_outlined,
-                    '42 days',
-                    'Active',
-                    Colors.blueGrey,
-                  ),
-                ),
+                    child: _stat(Icons.monitor_heart_outlined, '42 days',
+                        'Active', Colors.blueGrey)),
               ],
             ),
 
@@ -233,14 +367,148 @@ class _ProgressPageState extends State<ProgressPage>
             const SizedBox(height: 16),
 
             // weight log timeline card
-            _weightLogCard(),
+            _weightLogCard(context), // باصينا الـ context هنا عشان الـ Dialog
+
+            const SizedBox(height: 16),
+
+            // الكارت الخاص بالـ Milestone
+            _milestoneCard(),
+
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  // weekly bar chart
+  Widget _milestoneCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCEAEB),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.red.shade600,
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.lock_open_rounded,
+            size: 44,
+            color: Colors.black,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Milestone Unlocked!',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD90C0C), // اللون اللي طلبته للـ XP
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '+75 XP',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                RichText(
+                  text: const TextSpan(
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.6,
+                      color: Color(0xFF757575),
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'You have achieved your ',
+                      ),
+                      TextSpan(
+                        text: '7-day streak!\n',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Unlocked: ',
+                        style: TextStyle(
+                          color: Colors.black
+                        )
+                      ),
+                      TextSpan(
+                        text: 'Consistency Champion ',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Avatar',
+                        style:
+                          TextStyle(
+                            color: Colors.black
+                          )
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: InkWell(
+                    onTap: () {},
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Check it out',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward, size: 16, color: Colors.black),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _chart() {
     const chartHeight = 160.0;
 
@@ -251,21 +519,16 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Weekly Calories',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-              InkWell(
-                onTap: () {
-                  context.push("/weeklyBreakdownScreen");
-                },
-                child: const Text(
-                  'Details >',
-                  style: TextStyle(color: Colors.black45, fontSize: 12),
-                ),
+              Text(
+                'Details >',
+                style: TextStyle(color: Colors.black45, fontSize: 12),
               ),
             ],
           ),
@@ -279,7 +542,9 @@ class _ProgressPageState extends State<ProgressPage>
                 return Stack(
                   children: [
                     Positioned.fill(
-                      child: CustomPaint(painter: _AvgLinePainter(y: avgY)),
+                      child: CustomPaint(
+                        painter: _AvgLinePainter(y: avgY),
+                      ),
                     ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -300,13 +565,13 @@ class _ProgressPageState extends State<ProgressPage>
                                   end: Alignment.bottomCenter,
                                   colors: isFriday
                                       ? [
-                                          Colors.red.shade300,
-                                          Colors.red.shade800,
-                                        ]
+                                    Colors.red.shade300,
+                                    Colors.red.shade800,
+                                  ]
                                       : [
-                                          Colors.red.withOpacity(0.2),
-                                          Colors.red.withOpacity(0.6),
-                                        ],
+                                    Colors.red.withOpacity(0.2),
+                                    Colors.red.withOpacity(0.6),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
@@ -333,11 +598,12 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  // weight journey graph card
   Widget _weightJourneyCard() {
-    final data = <double>[175, 175, 173, 173, 170, 170, 165, 171, 169, 169.1];
+    final data = <double>[
+      175, 175, 173, 173, 170, 170, 165, 171, 169, 169.1
+    ];
     final segments = ['1W', '1M', '6M', '1Y', 'ALL'];
-    final selected = 4;
+    const selected = 4;
 
     return Container(
       height: 300,
@@ -350,10 +616,7 @@ class _ProgressPageState extends State<ProgressPage>
             'Weight Journey',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-
           const SizedBox(height: 12),
-
-          // segmented control (time filters)
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -384,17 +647,17 @@ class _ProgressPageState extends State<ProgressPage>
               }),
             ),
           ),
-
           const SizedBox(height: 16),
-
-          Expanded(child: _InteractiveWeightChart(data: data)),
+          Expanded(
+            child: _InteractiveWeightChart(data: data),
+          ),
         ],
       ),
     );
   }
 
-  // weight log timeline card
-  Widget _weightLogCard() {
+  // ضفنا هنا BuildContext عشان نستخدمه في الـ Dialog
+  Widget _weightLogCard(BuildContext context) {
     final logs = [
       {'date': 'Mar 1, 2025', 'weight': '70kg'},
       {'date': 'Feb 15, 2025', 'weight': '75kg'},
@@ -413,54 +676,61 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // header (title + add button)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Weight Log',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
 
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.add, color: Colors.white, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Add',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
+              // --- تعديل زرار Add ---
+              InkWell(
+                onTap: () => _showAddWeightDialog(context), // استدعاء دالة الـ Popup
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.add, color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // timeline list
           SizedBox(
             height: logs.length * rowHeight,
             child: Stack(
               children: [
-                // vertical timeline line
                 Positioned(
                   left: lineX + dotSize / 2 - 1,
                   top: rowHeight / 2,
                   bottom: rowHeight / 2,
-                  child: Container(width: 2, color: Colors.black),
+                  child: Container(
+                    width: 2,
+                    color: Colors.black,
+                  ),
                 ),
-
-                // rows
                 Column(
                   children: List.generate(logs.length, (i) {
                     return SizedBox(
@@ -469,8 +739,6 @@ class _ProgressPageState extends State<ProgressPage>
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(width: lineX),
-
-                          // red dot
                           Container(
                             width: dotSize,
                             height: dotSize,
@@ -479,10 +747,7 @@ class _ProgressPageState extends State<ProgressPage>
                               shape: BoxShape.circle,
                             ),
                           ),
-
                           const SizedBox(width: 12),
-
-                          // date
                           Expanded(
                             child: Text(
                               logs[i]['date']!,
@@ -492,8 +757,6 @@ class _ProgressPageState extends State<ProgressPage>
                               ),
                             ),
                           ),
-
-                          // weight value
                           SizedBox(
                             width: 52,
                             child: Align(
@@ -523,7 +786,6 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  // small stat card helper
   Widget _stat(IconData icon, String value, String label, Color color) {
     return Container(
       height: 90,
@@ -535,16 +797,13 @@ class _ProgressPageState extends State<ProgressPage>
           Icon(icon, color: color),
           const SizedBox(height: 6),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );
   }
 
-  // reusable card style
   BoxDecoration _box() {
     return BoxDecoration(
       color: Colors.white,
@@ -560,7 +819,6 @@ class _ProgressPageState extends State<ProgressPage>
   }
 }
 
-// little badge to the right of current weight
 class _Label extends StatelessWidget {
   const _Label();
 
@@ -580,7 +838,6 @@ class _Label extends StatelessWidget {
   }
 }
 
-// dashed average line painter
 class _AvgLinePainter extends CustomPainter {
   final double y;
 
@@ -598,7 +855,11 @@ class _AvgLinePainter extends CustomPainter {
     double x = 0;
 
     while (x < size.width) {
-      canvas.drawLine(Offset(x, y), Offset(x + dash, y), paint);
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x + dash, y),
+        paint,
+      );
       x += dash + space;
     }
   }
@@ -609,7 +870,6 @@ class _AvgLinePainter extends CustomPainter {
   }
 }
 
-// interactive chart wrapper
 class _InteractiveWeightChart extends StatefulWidget {
   final List<double> data;
 
@@ -650,12 +910,14 @@ class _InteractiveWeightChartState extends State<_InteractiveWeightChart> {
   }
 }
 
-// main line chart painter
 class _WeightLinePainter extends CustomPainter {
   final List<double> data;
   final int? selectedIndex;
 
-  _WeightLinePainter({required this.data, this.selectedIndex});
+  _WeightLinePainter({
+    required this.data,
+    this.selectedIndex,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -683,7 +945,6 @@ class _WeightLinePainter extends CustomPainter {
     final chartWidth = size.width - horizontalPadding * 2;
     final chartHeight = size.height - bottomPadding;
 
-    // grid lines (just visual structure)
     const gridLines = 4;
     for (int i = 0; i <= gridLines; i++) {
       final y = (chartHeight / gridLines) * i;
@@ -694,7 +955,6 @@ class _WeightLinePainter extends CustomPainter {
       );
     }
 
-    // axes
     canvas.drawLine(
       Offset(horizontalPadding, chartHeight),
       Offset(size.width - horizontalPadding, chartHeight),
@@ -707,7 +967,6 @@ class _WeightLinePainter extends CustomPainter {
       axisPaint,
     );
 
-    // points
     final points = <Offset>[];
 
     for (int i = 0; i < data.length; i++) {
@@ -716,7 +975,6 @@ class _WeightLinePainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // smooth curve path
     final path = Path();
     path.moveTo(points.first.dx, points.first.dy);
 
@@ -739,7 +997,6 @@ class _WeightLinePainter extends CustomPainter {
       path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
     }
 
-    // gradient fill under curve
     final fillPath = Path.from(path)
       ..lineTo(points.last.dx, chartHeight)
       ..lineTo(points.first.dx, chartHeight)
@@ -755,14 +1012,14 @@ class _WeightLinePainter extends CustomPainter {
           Colors.white.withOpacity(0.0),
         ],
         stops: const [0.0, 0.6, 1.0],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight));
+      ).createShader(
+        Rect.fromLTWH(0, 0, size.width, chartHeight),
+      );
 
     canvas.drawPath(fillPath, fillPaint);
 
-    // main line
     canvas.drawPath(path, linePaint);
 
-    // tooltip interaction
     if (selectedIndex != null &&
         selectedIndex! >= 0 &&
         selectedIndex! < points.length) {
@@ -777,7 +1034,11 @@ class _WeightLinePainter extends CustomPainter {
           ..strokeWidth = 1,
       );
 
-      canvas.drawCircle(p, 5, Paint()..color = Colors.black);
+      canvas.drawCircle(
+        p,
+        5,
+        Paint()..color = Colors.black,
+      );
 
       canvas.drawCircle(
         p,
@@ -800,7 +1061,10 @@ class _WeightLinePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      final offset = Offset(p.dx - textPainter.width / 2, p.dy - 30);
+      final offset = Offset(
+        p.dx - textPainter.width / 2,
+        p.dy - 30,
+      );
 
       final bg = RRect.fromRectAndRadius(
         Rect.fromLTWH(
@@ -812,7 +1076,10 @@ class _WeightLinePainter extends CustomPainter {
         const Radius.circular(8),
       );
 
-      canvas.drawRRect(bg, Paint()..color = Colors.white);
+      canvas.drawRRect(
+        bg,
+        Paint()..color = Colors.white,
+      );
 
       canvas.drawRRect(
         bg,
@@ -825,10 +1092,12 @@ class _WeightLinePainter extends CustomPainter {
       textPainter.paint(canvas, offset);
     }
 
-    // x axis labels
     final months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
 
-    const textStyle = TextStyle(fontSize: 11, color: Colors.black87);
+    const textStyle = TextStyle(
+      fontSize: 11,
+      color: Colors.black87,
+    );
 
     for (int i = 0; i < months.length; i++) {
       final x = horizontalPadding + (i / (months.length - 1)) * chartWidth;
@@ -838,7 +1107,10 @@ class _WeightLinePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      tp.paint(canvas, Offset(x - tp.width / 2, chartHeight + 4));
+      tp.paint(
+        canvas,
+        Offset(x - tp.width / 2, chartHeight + 4),
+      );
     }
   }
 

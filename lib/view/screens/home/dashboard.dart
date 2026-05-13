@@ -4,6 +4,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/services/api_service.dart';
 import 'package:graduation_project/services/food_service.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  DateTime _selectedDate = DateTime.now();
 
   late Future<UserModel?> _userFuture;
   late Future<Map<String, dynamic>> _historyFuture;
@@ -72,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 return const CircleAvatar(
                                   radius: 23.5,
                                   backgroundImage: AssetImage(
-                                    'assets/images/placeholder_profile.png',
+                                    'assets/images/profilee.png',
                                   ),
                                 );
                               },
@@ -91,8 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         fontSize: 18, color: Colors.grey),
                                   );
                                 }
-
-                                // Use the fullName from the database, fallback to "User"
                                 final String displayName =
                                     snapshot.data?.fullName ?? "User";
 
@@ -162,26 +162,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              const DaysOfWeekBar(),
+              FutureBuilder<List<dynamic>>(
+                future: Future.wait([_planFuture, _historyFuture]),
+                builder: (context, snapshot) {
+                  final planData = snapshot.data?[0] ?? {};
+                  final historyData = snapshot.data?[1] ?? {};
+                  final totals = (historyData as Map<String, dynamic>)['totals'] ?? {};
+                  final dailyCal = (planData['calories'] ?? 2400).toDouble();
+                  final consumed = (totals['calories'] ?? 0).toDouble();
+                  return DaysOfWeekBar(
+                    onDateSelected: (date) {
+                      setState(() {
+                        _selectedDate = date;
+                      });
+                    },
+                    selectedDate: _selectedDate,
+                    consumed: consumed,
+                    dailyCal: dailyCal,
+                  );
+                },
+              ),
               const SizedBox(height: 30),
-
-           
 
               SizedBox(
                 height: 380,
-                child: FutureBuilder<Map<String, dynamic>>(
-                  future: _planFuture,
-                  builder: (context, planSnap) {
-                    final plan = planSnap.data ?? {};
-                    final dailyCal = (plan['calories'] ?? plan['daily_calories'] ?? 2400).toDouble();
-                    final consumed = (plan['consumed'] ?? plan['calories_consumed'] ?? 0).toDouble();
-                    final burned = (plan['burned'] ?? plan['calories_burned'] ?? 0).toDouble();
-                    final remaining = (dailyCal - consumed).clamp(0, dailyCal);
+                child: FutureBuilder<List<dynamic>>(
+                  future: Future.wait([_planFuture, _historyFuture]),
+                  builder: (context, snapshot) {
+                    final planData = snapshot.data?[0] ?? {};
+                    final historyData = snapshot.data?[1] ?? {};
+                    final totals = historyData['totals'] ?? {};
+
+                    final dailyCal = (planData['calories'] ?? 2400).toDouble();
+                    final consumed = (totals['calories'] ?? 0).toDouble();
+                    final remaining = (dailyCal - consumed).clamp(0.0, dailyCal);
                     final progress = dailyCal > 0 ? (consumed / dailyCal).clamp(0.0, 1.0) : 0.0;
 
-                    final fats = (plan['fat'] ?? plan['fats'] ?? 0).toDouble();
-                    final protein = (plan['protein'] ?? 0).toDouble();
-                    final carbs = (plan['carbs'] ?? plan['carbohydrates'] ?? 0).toDouble();
+                    final fats = (totals['fats'] ?? 0).toDouble();
+                    final protein = (totals['protein'] ?? 0).toDouble();
+                    final carbs = (totals['carbs'] ?? 0).toDouble();
+
+                    double totalMacros = fats + protein + carbs;
+                    double fatPct = totalMacros > 0 ? fats / totalMacros : 0.0;
+                    double proteinPct = totalMacros > 0 ? protein / totalMacros : 0.0;
+                    double carbsPct = totalMacros > 0 ? carbs / totalMacros : 0.0;
+
+                    final isToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+                    final progressLabel = isToday ? "Today's Progress" : "Progress of day ${_selectedDate.day}";
 
                     return PageView(
                       controller: _pageController,
@@ -192,9 +219,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           size: size,
                           consumed: consumed,
                           dailyCal: dailyCal,
-                          burned: burned,
                           remaining: remaining,
                           progress: progress,
+                          title: progressLabel,
                         ),
                         Container(
                           margin: const EdgeInsets.symmetric(
@@ -234,10 +261,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         radius: 68.5,
                                         lineWidth: 15.0,
                                         percent: 1.0,
-                                        progressColor: const Color(0xFF0000FF),
+                                        progressColor: Colors.blue,
                                         backgroundColor: Colors.transparent,
                                         reverse: true,
-                                        circularStrokeCap: CircularStrokeCap.butt,
                                         center: Text(
                                           "${consumed.toStringAsFixed(0)}\nCalories",
                                           textAlign: TextAlign.center,
@@ -251,32 +277,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                       CircularPercentIndicator(
                                         radius: 68.5,
                                         lineWidth: 15.0,
-                                        percent: 0.41,
-                                        progressColor: Colors.white,
+                                        percent: (proteinPct + fatPct).clamp(0.0, 1.0),
+                                        progressColor: Colors.red,
                                         backgroundColor: Colors.transparent,
                                         reverse: true,
                                       ),
                                       CircularPercentIndicator(
                                         radius: 68.5,
                                         lineWidth: 15.0,
-                                        percent: 0.40,
-                                        progressColor: const Color(0xFFFF0000),
-                                        backgroundColor: Colors.transparent,
-                                        reverse: true,
-                                      ),
-                                      CircularPercentIndicator(
-                                        radius: 68.5,
-                                        lineWidth: 15.0,
-                                        percent: 0.16,
-                                        progressColor: Colors.white,
-                                        backgroundColor: Colors.transparent,
-                                        reverse: true,
-                                      ),
-                                      CircularPercentIndicator(
-                                        radius: 68.5,
-                                        lineWidth: 15.0,
-                                        percent: 0.15,
-                                        progressColor: const Color(0xFFFF9705),
+                                        percent: fatPct.clamp(0.0, 1.0),
+                                        progressColor: Colors.orange,
                                         backgroundColor: Colors.transparent,
                                         reverse: true,
                                       ),
@@ -291,23 +301,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   child: Column(
                                     children: [
-                                      _macroBreakdownLabel(
-                                        Colors.orange,
-                                        "Fats",
-                                        "${fats.toStringAsFixed(0)}",
-                                      ),
+                                      _macroBreakdownLabel(Colors.orange, "Fats", "${fats.toStringAsFixed(0)}g"),
                                       const SizedBox(height: 5),
-                                      _macroBreakdownLabel(
-                                        Colors.red,
-                                        "Protein",
-                                        "${protein.toStringAsFixed(0)}",
-                                      ),
+                                      _macroBreakdownLabel(Colors.red, "Protein", "${protein.toStringAsFixed(0)}g"),
                                       const SizedBox(height: 5),
-                                      _macroBreakdownLabel(
-                                        Colors.blue,
-                                        "Carbs",
-                                        "${carbs.toStringAsFixed(0)}",
-                                      ),
+                                      _macroBreakdownLabel(Colors.blue, "Carbs", "${carbs.toStringAsFixed(0)}g"),
                                     ],
                                   ),
                                 ),
@@ -340,53 +338,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 25),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  "Recently Logged",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 15),
               FutureBuilder<Map<String, dynamic>>(
                 future: _historyFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 350,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
                   final data = snapshot.data ?? {};
-                  // Try to extract meals from various response shapes
-                  final List meals = data['meals'] ?? data['logs'] ?? data['history'] ?? [];
+                  final List meals = data['meals'] ?? data['logs'] ?? [];
 
-                  if (meals.isEmpty) {
-                    return SizedBox(
-                      height: 350,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: 1,
-                        itemBuilder: (context, index) => const FoodCard(),
+                  if (meals.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          "Recently Logged",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 350,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: meals.length > 5 ? 5 : meals.length,
-                      itemBuilder: (context, index) {
-                        final meal = meals[index] as Map<String, dynamic>;
-                        return FoodCard(mealData: meal);
-                      },
-                    ),
+                      const SizedBox(height: 15),
+                      SizedBox(
+                        height: 350,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: meals.length > 5 ? 5 : meals.length,
+                          itemBuilder: (context, index) {
+                            final meal = meals[index] as Map<String, dynamic>;
+                            return FoodCard(mealData: meal);
+                          },
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -418,52 +402,68 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class DaysOfWeekBar extends StatelessWidget {
-  const DaysOfWeekBar({super.key});
+  final Function(DateTime) onDateSelected;
+  final DateTime selectedDate;
+  final double consumed;
+  final double dailyCal;
+
+  const DaysOfWeekBar({
+    super.key,
+    required this.onDateSelected,
+    required this.selectedDate,
+    this.consumed = 0,
+    this.dailyCal = 0,
+  });
+
+  Color _calorieDotColor() {
+    if (dailyCal <= 0 || consumed <= 0) return Colors.grey.shade400;
+    final diff = ((consumed - dailyCal) / dailyCal).abs();
+    if (diff <= 0.05) return Colors.green;
+    if (diff <= 0.15) return Colors.orange;
+    return Colors.red;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    final dates = [11, 12, 13, 14, 15, 16, 17, 18];
-    final bgColors = [
-      const Color(0xFF4CAF50),
-      const Color(0xFFD90C0C),
-      const Color(0xFFFFC107),
-      const Color(0xFFD90C0C),
-      const Color(0xFF4CAF50),
-      const Color(0xFFFFC107),
-      const Color(0xFFD90C0C),
-      const Color(0xFF4CAF50),
-    ];
+    final now = DateTime.now();
+    final List<DateTime> dateRange = List.generate(8, (index) => now.subtract(Duration(days: 7 - index)));
+
+    final days = dateRange.map((d) => DateFormat('E').format(d)).toList();
+    final dates = dateRange.map((d) => d.day).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 7),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(8, (index) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: bgColors[index],
-                child: Text(
-                  dates[index].toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+          final isSelected = DateFormat('yyyy-MM-dd').format(dateRange[index]) == DateFormat('yyyy-MM-dd').format(selectedDate);
+          return GestureDetector(
+            onTap: () => onDateSelected(dateRange[index]),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: isSelected ? _calorieDotColor() : Colors.grey.shade200,
+                  child: Text(
+                    dates[index].toString(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                days[index],
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Text(
+                  days[index],
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         }),
       ),
@@ -475,17 +475,17 @@ class _DailyProgressCard extends StatelessWidget {
   final Size size;
   final double consumed;
   final double dailyCal;
-  final double burned;
   final double remaining;
   final double progress;
+  final String title;
 
   const _DailyProgressCard({
     required this.size,
     required this.consumed,
     required this.dailyCal,
-    required this.burned,
     required this.remaining,
     required this.progress,
+    required this.title,
   });
 
   @override
@@ -511,69 +511,33 @@ class _DailyProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Today's Progress",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Text(
-                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "Getting Started",
-                style: const TextStyle(
-                  color: Color(0xffD90C0C),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "In Progress",
+                style: const TextStyle(color: Color(0xffD90C0C), fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
           ),
           CircularPercentIndicator(
             radius: 64,
             lineWidth: 5,
-            percent: progress.toDouble(),
+            percent: progress.clamp(0.0, 1.0),
             progressColor: const Color(0xffD90C0C),
             backgroundColor: Colors.grey.shade100,
-            circularStrokeCap: CircularStrokeCap.round,
             center: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      "${consumed.toStringAsFixed(0)}",
-                      style: const TextStyle(
-                          fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    "of ${dailyCal.toStringAsFixed(0)}",
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                Text("${consumed.toStringAsFixed(0)}", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                Text("of ${dailyCal.toStringAsFixed(0)}", style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              ProgressItem(
-                img: 'assets/images/bultorone fireee.png',
-                label: "${burned.toStringAsFixed(0)}\nBurned",
-              ),
-              ProgressItem(
-                img: 'assets/images/target.png',
-                label: "${remaining.toStringAsFixed(0)}\nRemaining",
-              ),
-              ProgressItem(
-                img: 'assets/images/chart.png',
-                label: "${(progress * 100).toStringAsFixed(1)}%\nProgress",
-              ),
+              ProgressItem(img: 'assets/images/bultorone fireee.png', label: "${consumed.toStringAsFixed(0)}\nConsumed"),
+              ProgressItem(img: 'assets/images/target.png', label: "${remaining.toStringAsFixed(0)}\nRemaining"),
+              ProgressItem(img: 'assets/images/chart.png', label: "${(progress * 100).toStringAsFixed(1)}%\nProgress"),
             ],
           ),
         ],
@@ -588,15 +552,17 @@ class FoodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = mealData?['food_name'] ?? mealData?['meal_name'] ?? mealData?['name'] ?? "Power Breakfast Bowl";
-    final calories = mealData?['calories'] ?? mealData?['total_calories'] ?? 520;
-    final time = mealData?['logged_at'] ?? mealData?['time'] ?? "8:00am";
-    final proteinVal = mealData?['protein'] ?? mealData?['total_protein'] ?? 30;
-    final carbsVal = mealData?['carbs'] ?? mealData?['total_carbs'] ?? 10;
-    final fatsVal = mealData?['fat'] ?? mealData?['total_fat'] ?? 30;
+    final name = mealData?['food_name'] ?? mealData?['meal_name'] ?? "Meal";
+    final calories = (mealData?['calories'] ?? 0).toDouble();
+    final timestamp = mealData?['logged_at'] ?? mealData?['timestamp'] ?? "";
+    final timeStr = timestamp.isNotEmpty ? DateFormat.jm().format(DateTime.parse(timestamp)) : "Logged";
 
-    // Try to get an image URL from the meal data
-    final imageUrl = mealData?['image_url'] ?? mealData?['food_image_url'];
+    final proteinVal = (mealData?['protein'] ?? 0).toDouble();
+    final carbsVal = (mealData?['carbs'] ?? 0).toDouble();
+    final fatsVal = (mealData?['fats'] ?? 0).toDouble();
+    final totalMacro = proteinVal + carbsVal + fatsVal;
+
+    final imageUrl = mealData?['image_url'];
 
     return Container(
       width: 280,
@@ -605,11 +571,7 @@ class FoodCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: Column(
@@ -619,25 +581,11 @@ class FoodCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
             child: imageUrl != null
                 ? Image.network(
-                    imageUrl.toString().startsWith('http')
-                        ? imageUrl.toString()
-                        : '${ApiService.baseUrl}$imageUrl',
-                    height: 130,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Image.asset(
-                      'assets/images/food log.png',
-                      height: 130,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    imageUrl.toString().startsWith('http') ? imageUrl : '${ApiService.baseUrl}$imageUrl',
+                    height: 130, width: double.infinity, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset('assets/images/food.png', height: 130, width: double.infinity, fit: BoxFit.cover),
                   )
-                : Image.asset(
-                    'assets/images/food log.png',
-                    height: 130,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                : Image.asset('assets/images/food.png', height: 130, width: double.infinity, fit: BoxFit.cover),
           ),
           Padding(
             padding: const EdgeInsets.all(12),
@@ -647,71 +595,30 @@ class FoodCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        "$name",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                    Expanded(child: Text("$name", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
                     Column(
                       children: [
-                        Text(
-                          "${(calories is num) ? calories.toStringAsFixed(0) : calories}",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const Text(
-                          "Calories",
-                          style: TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
+                        Text("${calories.toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        const Text("Calories", style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black)),
                       ],
+                      
                     ),
                   ],
                 ),
-                Text(
-                  "$time",
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(timeStr, style: const TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 15),
                 Row(
                   children: [
-                    _macroCircle(0.7, Colors.red),
+                    _macroCircle(totalMacro > 0 ? proteinVal / totalMacro : 0, Colors.red),
                     const SizedBox(width: 8),
-                    _macroCircle(0.4, Colors.black),
+                    _macroCircle(totalMacro > 0 ? carbsVal / totalMacro : 0, Colors.black),
                     const SizedBox(width: 8),
-                    _macroCircle(0.6, Colors.grey),
+                    _macroCircle(totalMacro > 0 ? fatsVal / totalMacro : 0, Colors.grey),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Text(
-                        "View Details",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(30)),
+                      child: const Text("View Details", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -719,9 +626,9 @@ class FoodCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _macroLabel(Colors.red, "Protein ${proteinVal is num ? '${proteinVal.toStringAsFixed(0)}g' : proteinVal}"),
-                    _macroLabel(Colors.black, "Carbs ${carbsVal is num ? '${carbsVal.toStringAsFixed(0)}g' : carbsVal}"),
-                    _macroLabel(Colors.grey, "Fats ${fatsVal is num ? '${fatsVal.toStringAsFixed(0)}g' : fatsVal}"),
+                    _macroLabel(Colors.red, "Protein ${proteinVal.toStringAsFixed(0)}g"),
+                    _macroLabel(Colors.black, "Carbs ${carbsVal.toStringAsFixed(0)}g"),
+                    _macroLabel(Colors.grey, "Fats ${fatsVal.toStringAsFixed(0)}g"),
                   ],
                 ),
               ],
@@ -734,12 +641,9 @@ class FoodCard extends StatelessWidget {
 
   Widget _macroCircle(double percent, Color color) {
     return CircularPercentIndicator(
-      radius: 16,
-      lineWidth: 5,
-      percent: percent,
-      progressColor: color,
-      backgroundColor: Colors.grey.shade200,
-      circularStrokeCap: CircularStrokeCap.round,
+      radius: 16, lineWidth: 5,
+      percent: percent.clamp(0.0, 1.0),
+      progressColor: color, backgroundColor: Colors.grey.shade200,
     );
   }
 
@@ -748,14 +652,7 @@ class FoodCard extends StatelessWidget {
       children: [
         CircleAvatar(radius: 5, backgroundColor: color),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
+        Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black)),
       ],
     );
   }
@@ -772,11 +669,7 @@ class ProgressItem extends StatelessWidget {
       children: [
         Image.asset(img, height: 22),
         const SizedBox(height: 4),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-        ),
+        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
       ],
     );
   }

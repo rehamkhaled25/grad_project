@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
  
 class ApiService {
-  static const String baseUrl = "http://10.0.2.2:5000";
+  static const String baseUrl = "http://192.168.1.3:5000";
  
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -16,7 +16,7 @@ class ApiService {
     return prefs.getString('auth_token');
   }
  
-  // ✅ NEW: clears the token so the user is fully logged out
+  // Clears the token so the user is fully logged out
   Future<void> deleteToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
@@ -87,7 +87,6 @@ class ApiService {
  
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Handle both { "user": {...} } and direct {...} response shapes
         final userData = data['user'] ?? data;
         return UserModel.fromJson(userData);
       }
@@ -97,28 +96,27 @@ class ApiService {
       return null;
     }
   }
-
+ 
   /// Upload a profile image.
   /// Returns the updated profile_image_url on success, null on failure.
   Future<String?> uploadProfileImage(String imagePath) async {
     final url = Uri.parse('$baseUrl/user/profile/image');
     final token = await getToken();
     if (token == null) return null;
-
+ 
     print("📷 [PROFILE IMAGE]: Uploading to $url");
-
+ 
     try {
       final request = http.MultipartRequest('POST', url)
         ..headers['Authorization'] = 'Bearer $token'
-        ..files
-            .add(await http.MultipartFile.fromPath('image', imagePath));
-
+        ..files.add(await http.MultipartFile.fromPath('image', imagePath));
+ 
       final streamed =
           await request.send().timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamed);
-
+ 
       print("📷 [PROFILE IMAGE]: Status ${response.statusCode}");
-
+ 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['profile_image_url'] as String?;
@@ -127,6 +125,69 @@ class ApiService {
     } catch (e) {
       print("⚠️ [PROFILE IMAGE ERROR]: $e");
       return null;
+    }
+  }
+ 
+  /// Updates the allergies list on the backend by fetching the current profile
+  /// first (to preserve all other fields), then PUTting the full profile back
+  /// with the new allergies list.
+  /// Returns true on success, false on failure.
+  Future<bool> updateAllergies(List<String> allergies) async {
+    final token = await getToken();
+    if (token == null) {
+      print("❌ [UPDATE ALLERGIES] No token found — user is not logged in");
+      return false;
+    }
+ 
+    // Fetch the current profile so we don't overwrite other fields
+    final currentProfile = await getProfile();
+    if (currentProfile == null) {
+      print("❌ [UPDATE ALLERGIES] Could not fetch current profile");
+      return false;
+    }
+ 
+    final url = Uri.parse('$baseUrl/user/profile');
+ 
+    final body = jsonEncode({
+      if ((currentProfile.fullName ?? '').isNotEmpty)
+        "full_name": currentProfile.fullName,
+      "birthdate": currentProfile.birthdate,
+      "gender": currentProfile.gender,
+      "goal": currentProfile.goal,
+      "weight": currentProfile.weight,
+      "height": currentProfile.height,
+      "goal_weight": currentProfile.goalWeight,
+      "allergies": allergies,
+    });
+ 
+    print("🚀 [UPDATE ALLERGIES] Sending PUT to $url");
+    print("   allergies: $allergies");
+ 
+    try {
+      final response = await http
+          .put(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 30));
+ 
+      print("📡 [UPDATE ALLERGIES] Status : ${response.statusCode}");
+      print("📡 [UPDATE ALLERGIES] Body   : ${response.body}");
+ 
+      if (response.statusCode == 200) {
+        print("✅ [UPDATE ALLERGIES] Allergies saved successfully");
+        return true;
+      } else {
+        print("❌ [UPDATE ALLERGIES] Server rejected: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      print("🔥 [UPDATE ALLERGIES] Exception: $e");
+      return false;
     }
   }
 }

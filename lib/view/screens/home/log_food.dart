@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:graduation_project/services/api_service.dart';
+import 'package:intl/intl.dart';
 
 class LogFood extends StatefulWidget {
   const LogFood({super.key});
@@ -15,6 +16,7 @@ class _LogFoodState extends State<LogFood> {
   Map<String, dynamic>? _historyData;
   Map<String, dynamic>? _planData;
   bool _isLoading = true;
+  String? _profileImageUrl;
   DateTime _selectedDate = DateTime.now();
 
   static const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -29,15 +31,20 @@ class _LogFoodState extends State<LogFood> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-      final futures = await Future.wait([
+      final results = await Future.wait([
         FoodService().getFoodHistory().catchError((_) => <String, dynamic>{}),
         FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{}),
+        ApiService().getProfile().catchError((_) => null),
       ]);
+
       if (mounted) {
         setState(() {
-          _historyData = futures[0];
-          _planData = futures[1];
+          _historyData = results[0] as Map<String, dynamic>?;
+          _planData = results[1] as Map<String, dynamic>?;
+          final profile = results[2];
+          if (profile != null) {
+            _profileImageUrl = (profile as dynamic).profileImageUrl as String?;
+          }
           _isLoading = false;
         });
       }
@@ -51,25 +58,24 @@ class _LogFoodState extends State<LogFood> {
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
 
-    // Extract totals from history
     final totals = (_historyData?['totals'] as Map<String, dynamic>?) ?? {};
     final consumed = (totals['calories'] ?? 0).toDouble();
     final dailyCal = (_planData?['calories'] ?? 2400).toDouble();
-    final burned = 0.0; // Backend doesn't track burned yet
-    final remaining = (dailyCal - consumed).clamp(0, dailyCal);
+    final remaining = (dailyCal - consumed).clamp(0.0, dailyCal);
     final progress = dailyCal > 0 ? (consumed / dailyCal).clamp(0.0, 1.0) : 0.0;
 
-    // Extract grouped meals
     final grouped = (_historyData?['grouped'] as Map<String, dynamic>?) ?? {};
     final breakfastList = (grouped['breakfast'] as List?) ?? [];
     final lunchList = (grouped['lunch'] as List?) ?? [];
     final dinnerList = (grouped['dinner'] as List?) ?? [];
     final snackList = (grouped['snack'] as List?) ?? [];
 
-    // Calorie advisories from plan
     final breakfastCal = (dailyCal * 0.3).toInt();
     final lunchCal = (dailyCal * 0.35).toInt();
     final dinnerCal = (dailyCal * 0.25).toInt();
+
+    final bool isToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final String progressTitle = isToday ? "Today's Progress" : "Progress of day ${_selectedDate.day}";
 
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
@@ -85,11 +91,21 @@ class _LogFoodState extends State<LogFood> {
                 children: [
                   Row(
                     children: [
-                      const CircleAvatar(
-                        backgroundImage: AssetImage(
-                          'assets/images/placeholder_profile.png',
-                        ),
-                      ),
+                      _profileImageUrl != null
+                          ? CircleAvatar(
+                              radius: 23.5,
+                              backgroundImage: NetworkImage(
+                                _profileImageUrl!.startsWith('http')
+                                    ? _profileImageUrl!
+                                    : '${ApiService.baseUrl}$_profileImageUrl',
+                              ),
+                            )
+                          : const CircleAvatar(
+                              radius: 23.5,
+                              backgroundImage: AssetImage(
+                                'assets/images/profilee.png',
+                              ),
+                            ),
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
@@ -111,33 +127,37 @@ class _LogFoodState extends State<LogFood> {
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
+                          final isCurrentToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+                          if (isCurrentToday) return; 
                           setState(() {
                             _selectedDate = _selectedDate.add(const Duration(days: 1));
                           });
                           _loadData();
                         },
-                        child: Icon(Icons.arrow_forward_ios, color: const Color(0xffD9D9D9), size: width * 0.04),
+                        child: Icon(
+                          Icons.arrow_forward_ios,
+                          color: isToday
+                              ? const Color(0xFFE8E8E8)
+                              : const Color(0xffD9D9D9),
+                          size: width * 0.04,
+                        ),
                       ),
                       const Spacer(),
                       SizedBox(width: width * 0.1),
                     ],
                   ),
                   const SizedBox(height: 25),
-                  const DaysOfWeekBar(),
+                  DaysOfWeekBar(selectedDate: _selectedDate, consumed: consumed, dailyCal: dailyCal),
                   const SizedBox(height: 25),
-
-                  // Progress card with real data
                   _DailyProgressCard(
                     size: size,
                     consumed: consumed,
                     dailyCal: dailyCal,
-                    burned: burned,
-                    remaining: remaining.toDouble(),
-                    progress: progress.toDouble(),
+                    remaining: remaining,
+                    progress: progress,
+                    title: progressTitle,
                   ),
                   const SizedBox(height: 30),
-
-                  // Meal cards with real logged items
                   _MealCardWithItems(title: "Breakfast", subtitle: "$breakfastCal calories advised", items: breakfastList),
                   const SizedBox(height: 15),
                   _MealCardWithItems(title: "Lunch", subtitle: "$lunchCal calories advised", items: lunchList),
@@ -157,17 +177,17 @@ class _DailyProgressCard extends StatelessWidget {
   final Size size;
   final double consumed;
   final double dailyCal;
-  final double burned;
   final double remaining;
   final double progress;
+  final String title;
 
   const _DailyProgressCard({
     required this.size,
     required this.consumed,
     required this.dailyCal,
-    required this.burned,
     required this.remaining,
     required this.progress,
+    required this.title,
   });
 
   @override
@@ -184,9 +204,9 @@ class _DailyProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Today's Progress", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Text(
-                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "Getting Started",
+                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "In Progress",
                 style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
@@ -224,7 +244,7 @@ class _DailyProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStat('assets/images/flame bta3et saf7et el database.png', "${burned.toStringAsFixed(0)}", "Burned"),
+              _buildStat('assets/images/flame bta3et saf7et el database.png', "${consumed.toStringAsFixed(0)}", "Consumed"),
               _buildStat('assets/images/target.png', "${remaining.toStringAsFixed(0)}", "Remaining"),
               _buildStat('assets/images/chart.png', "${(progress * 100).toStringAsFixed(1)}%", "Progress"),
             ],
@@ -279,7 +299,7 @@ class _MealCardWithItems extends StatelessWidget {
                 Expanded(
                   child: Text(
                     subtitle,
-                    style: const TextStyle(color: Color(0xffB3B3B3), fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color:Color(0xffB3B3B3), fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const AddFoodButton(),
@@ -293,30 +313,25 @@ class _MealCardWithItems extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(
-                            logItem['food_name'] ?? 'Unknown',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          Flexible(
+                            child: Text(
+                              logItem['food_name'] ?? 'Unknown',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xffB3B3B3)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                "${logItem['serving_name'] ?? '1 serving'}",
-                                style: const TextStyle(color: Colors.grey, fontSize: 12),
-                              ),
-                              const SizedBox(width: 10),
-                              Image.asset(
-                                'assets/images/flame bta3et saf7et el database.png',
-                                color: const Color(0xffB3B3B3),
-                                height: 14,
-                              ),
-                              Text(
-                                " ${(logItem['calories'] ?? 0).toStringAsFixed(0)}",
-                                style: const TextStyle(color: Color(0xffB3B3B3), fontSize: 12),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Image.asset(
+                            'assets/images/flame bta3et saf7et el database.png',
+                            color: Color(0xffB3B3B3),
+                            height: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${(logItem['calories'] ?? 0).toStringAsFixed(0)}",
+                            style: const TextStyle(color: Color(0xffB3B3B3), fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -335,17 +350,84 @@ class _MealCardWithItems extends StatelessWidget {
   }
 }
 
+class DaysOfWeekBar extends StatelessWidget {
+  final DateTime selectedDate;
+  final double consumed;
+  final double dailyCal;
+
+  const DaysOfWeekBar({
+    super.key,
+    required this.selectedDate,
+    this.consumed = 0,
+    this.dailyCal = 0,
+  });
+
+  Color _calorieDotColor() {
+    if (dailyCal <= 0 || consumed <= 0) return Colors.grey.shade400;
+    final diff = ((consumed - dailyCal) / dailyCal).abs();
+    if (diff <= 0.05) return Colors.green;
+    if (diff <= 0.15) return Colors.orange;
+    return Colors.red;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final List<DateTime> dateRange = List.generate(8, (index) => now.subtract(Duration(days: 7 - index)));
+
+    final days = dateRange.map((d) => DateFormat('E').format(d)).toList();
+    final dates = dateRange.map((d) => d.day).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(8, (index) {
+          final isSelected = DateFormat('yyyy-MM-dd').format(dateRange[index]) == DateFormat('yyyy-MM-dd').format(selectedDate);
+
+          Color bgColor = Colors.grey.shade300;
+          if (isSelected) {
+            bgColor = _calorieDotColor();
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: bgColor,
+                child: Text(
+                  dates[index].toString(),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                days[index],
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
 class AddFoodButton extends StatelessWidget {
   const AddFoodButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      
-      onTap: () {
-          context.push("/log");
-     
-      },
+      onTap: () => context.push("/log"),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
