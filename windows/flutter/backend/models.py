@@ -77,6 +77,164 @@ class UserPlan(db.Model):
     plan = db.relationship("Plan")
 
 
+# ---------------- UserGoal ----------------
+class UserGoal(db.Model):
+    __tablename__ = "user_goals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
+
+    calories_goal = db.Column(db.Float, nullable=False)
+    protein_goal = db.Column(db.Float, nullable=False)
+    carbs_goal = db.Column(db.Float, nullable=False)
+    fats_goal = db.Column(db.Float, nullable=False)
+    is_custom = db.Column(db.Boolean, default=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    user = db.relationship("User", backref="goal_settings")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "calories_goal": self.calories_goal,
+            "protein_goal": self.protein_goal,
+            "carbs_goal": self.carbs_goal,
+            "fats_goal": self.fats_goal,
+            "is_custom": self.is_custom,
+            "created_at": (
+                self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.created_at
+                else None
+            ),
+            "updated_at": (
+                self.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.updated_at
+                else None
+            ),
+        }
+
+
+# ---------------- NotificationSetting ----------------
+class NotificationSetting(db.Model):
+    __tablename__ = "notification_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
+
+    permission_status = db.Column(db.String(30), default="not_determined")
+    notifications_enabled = db.Column(db.Boolean, default=False)
+    fcm_token = db.Column(db.String(500), nullable=True)
+    meal_reminders = db.Column(db.Boolean, default=True)
+    streak_reminders = db.Column(db.Boolean, default=True)
+    water_reminders = db.Column(db.Boolean, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    user = db.relationship("User", backref="notification_settings")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "permission_status": self.permission_status,
+            "notifications_enabled": self.notifications_enabled,
+            "fcm_token": self.fcm_token,
+            "meal_reminders": self.meal_reminders,
+            "streak_reminders": self.streak_reminders,
+            "water_reminders": self.water_reminders,
+            "created_at": (
+                self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.created_at
+                else None
+            ),
+            "updated_at": (
+                self.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.updated_at
+                else None
+            ),
+        }
+
+
+# ---------------- NotificationLog ----------------
+class NotificationLog(db.Model):
+    __tablename__ = "notification_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    notification_type = db.Column(db.String(50), nullable=True)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="notification_logs")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "body": self.body,
+            "notification_type": self.notification_type,
+            "is_read": self.is_read,
+            "created_at": (
+                self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.created_at
+                else None
+            ),
+        }
+
+
+# ---------------- Payment ----------------
+class Payment(db.Model):
+    __tablename__ = "payments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey("plans.id"), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default="USD")
+    status = db.Column(db.String(30), default="pending")
+    provider = db.Column(db.String(50), default="mock")
+    provider_reference = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    paid_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", backref="payments")
+    plan = db.relationship("Plan")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "plan_id": self.plan_id,
+            "plan": self.plan.to_dict() if self.plan else None,
+            "amount": self.amount,
+            "currency": self.currency,
+            "status": self.status,
+            "provider": self.provider,
+            "provider_reference": self.provider_reference,
+            "created_at": (
+                self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if self.created_at
+                else None
+            ),
+            "paid_at": (
+                self.paid_at.strftime("%Y-%m-%d %H:%M:%S") if self.paid_at else None
+            ),
+        }
+
+
 # ---------------- UserFoodLog ----------------
 class UserFoodLog(db.Model):
     __tablename__ = "user_food_logs"
@@ -98,6 +256,7 @@ class UserFoodLog(db.Model):
     scan_id = db.Column(db.String(120), nullable=True)
     food_item_id = db.Column(db.Integer, nullable=True)
     serving_name = db.Column(db.String(100), nullable=True)
+    image_url = db.Column(db.String(700), nullable=True)
     full_report = db.Column(db.Text, nullable=True)
 
     log_time = db.Column(db.DateTime, default=datetime.utcnow)
@@ -117,6 +276,7 @@ class UserFoodLog(db.Model):
             "scan_id": self.scan_id,
             "food_item_id": self.food_item_id,
             "serving_name": self.serving_name,
+            "image_url": self.image_url,
             "log_time": (
                 self.log_time.strftime("%Y-%m-%d %H:%M:%S") if self.log_time else None
             ),

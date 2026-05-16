@@ -4,12 +4,21 @@ import jwt
 import requests
 import json
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
-from models import Plan, UserPlan, UserFoodLog, FoodScan
+from models import (
+    Plan,
+    UserPlan,
+    UserGoal,
+    NotificationSetting,
+    NotificationLog,
+    Payment,
+    UserFoodLog,
+    FoodScan,
+)
 from extensions import db
 from services.gemini_service import analyze_meal, analyze_food_name
 
@@ -82,6 +91,79 @@ def to_float(value, default=0):
         return default
 
 
+def to_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return default
+
+    if isinstance(value, str):
+        value = value.strip().lower()
+
+        if value in ["true", "1", "yes", "on"]:
+            return True
+
+        if value in ["false", "0", "no", "off"]:
+            return False
+
+    return bool(value)
+
+
+def strict_float(value):
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def calculate_nutrition_from_serving(data):
+    required_fields = [
+        "base_calories",
+        "base_protein",
+        "base_carbs",
+        "base_fats",
+        "base_serving_size",
+        "serving_size",
+    ]
+
+    if any(field not in data for field in required_fields):
+        return None
+
+    base_calories = strict_float(data.get("base_calories"))
+    base_protein = strict_float(data.get("base_protein"))
+    base_carbs = strict_float(data.get("base_carbs"))
+    base_fats = strict_float(data.get("base_fats"))
+    base_serving_size = strict_float(data.get("base_serving_size"))
+    serving_size = strict_float(data.get("serving_size"))
+
+    values = [
+        base_calories,
+        base_protein,
+        base_carbs,
+        base_fats,
+        base_serving_size,
+        serving_size,
+    ]
+
+    if any(value is None for value in values):
+        return None
+
+    if base_serving_size <= 0 or serving_size <= 0:
+        return None
+
+    ratio = serving_size / base_serving_size
+
+    return {
+        "calories": base_calories * ratio,
+        "protein": base_protein * ratio,
+        "carbs": base_carbs * ratio,
+        "fats": base_fats * ratio,
+    }
+
+
 def normalize_meal_type(meal_type):
     allowed = ["breakfast", "lunch", "dinner", "snack"]
 
@@ -129,6 +211,433 @@ def parse_limit(default=20, maximum=50):
     return max(1, min(limit, maximum))
 
 
+def parse_date_param(value):
+    if not value:
+        return date.today(), None, None
+
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date(), None, None
+    except Exception:
+        return None, jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+
+def day_bounds(selected_date):
+    start = datetime.combine(selected_date, datetime.min.time())
+    end = datetime.combine(selected_date, datetime.max.time())
+    return start, end
+
+
+def get_user_calorie_plan(user_id):
+    user_data = (
+        db.session.execute(
+            text("""
+            SELECT weight, height, birthdate, gender, goal, goal_weight
+            FROM users
+            WHERE id = :id
+            LIMIT 1
+        """),
+            {"id": user_id},
+        )
+        .mappings()
+        .first()
+    )
+
+    if not user_data:
+        return None, jsonify({"message": "User not found"}), 404
+
+    required_fields = {
+        "weight": user_data["weight"],
+        "height": user_data["height"],
+        "birthdate": user_data["birthdate"],
+        "gender": user_data["gender"],
+        "goal": user_data["goal"],
+        "goal_weight": user_data["goal_weight"],
+    }
+
+    missing_fields = [
+        field
+        for field, value in required_fields.items()
+        if value is None or value == ""
+    ]
+
+    if missing_fields:
+        return (
+            None,
+            jsonify(
+                {"message": "User profile incomplete", "missing_fields": missing_fields}
+            ),
+            400,
+        )
+
+    birthdate_value = str(user_data["birthdate"])
+
+    if birthdate_value.isdigit() and len(birthdate_value) == 4:
+        birthdate_value = f"{birthdate_value}-01-01"
+
+    birthdate_date = datetime.strptime(birthdate_value, "%Y-%m-%d").date()
+
+    age = (date.today() - birthdate_date).days // 365
+    weight = float(user_data["weight"])
+    height = float(user_data["height"])
+    goal_weight = float(user_data["goal_weight"])
+    gender = user_data["gender"].lower()
+
+    if gender == "male":
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5
+    else:
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161
+
+    maintenance_calories = bmr * 1.35
+    weight_difference = goal_weight - weight
+
+    if weight_difference < 0:
+        goal_direction = "lose_weight"
+        calories = maintenance_calories - 500
+        weekly_change_kg = 0.5
+    elif weight_difference > 0:
+        goal_direction = "gain_weight"
+        calories = maintenance_calories + 400
+        weekly_change_kg = 0.35
+    else:
+        goal_direction = "maintain_weight"
+        calories = maintenance_calories
+        weekly_change_kg = 0
+
+    if gender == "male":
+        calories = max(calories, 1500)
+    else:
+        calories = max(calories, 1200)
+
+    if weekly_change_kg > 0:
+        estimated_weeks = round(abs(weight_difference) / weekly_change_kg)
+    else:
+        estimated_weeks = 0
+
+    protein = int(weight * 1.8)
+    fats = int(calories * 0.25 / 9)
+    carbs = int((calories - (protein * 4) - (fats * 9)) / 4)
+    carbs = max(carbs, 0)
+
+    if goal_direction == "lose_weight":
+        target_summary = (
+            f"Lose {abs(round(weight_difference, 1))} kg to reach {goal_weight} kg"
+        )
+    elif goal_direction == "gain_weight":
+        target_summary = (
+            f"Gain {abs(round(weight_difference, 1))} kg to reach {goal_weight} kg"
+        )
+    else:
+        target_summary = f"Maintain your current weight around {weight} kg"
+
+    return (
+        {
+            "calories": round(calories),
+            "maintenance_calories": round(maintenance_calories),
+            "protein": protein,
+            "fats": fats,
+            "carbs": carbs,
+            "current_weight": weight,
+            "goal_weight": goal_weight,
+            "weight_difference": round(weight_difference, 1),
+            "goal_direction": goal_direction,
+            "estimated_weeks": estimated_weeks,
+            "target_summary": target_summary,
+        },
+        None,
+        None,
+    )
+
+
+def calculated_goals_from_plan(plan):
+    return {
+        "id": None,
+        "user_id": None,
+        "calories_goal": plan["calories"],
+        "protein_goal": plan["protein"],
+        "carbs_goal": plan["carbs"],
+        "fats_goal": plan["fats"],
+        "is_custom": False,
+        "created_at": None,
+        "updated_at": None,
+    }
+
+
+def get_custom_goal(user_id):
+    return UserGoal.query.filter_by(user_id=user_id).first()
+
+
+def get_effective_goals(user_id):
+    custom_goal = get_custom_goal(user_id)
+
+    if custom_goal and custom_goal.is_custom:
+        return custom_goal.to_dict(), None, None
+
+    plan, error_response, status_code = get_user_calorie_plan(user_id)
+
+    if error_response:
+        return None, error_response, status_code
+
+    goals = calculated_goals_from_plan(plan)
+    goals["user_id"] = user_id
+
+    return goals, None, None
+
+
+def get_positive_goal_value(data, field):
+    value = strict_float(data.get(field))
+
+    if value is None or value <= 0:
+        return None
+
+    return value
+
+
+def notification_settings_defaults():
+    return {
+        "permission_status": "not_determined",
+        "notifications_enabled": False,
+        "fcm_token": None,
+        "meal_reminders": True,
+        "streak_reminders": True,
+        "water_reminders": False,
+    }
+
+
+def notification_settings_response(setting, user_id):
+    if setting:
+        return setting.to_dict()
+
+    defaults = notification_settings_defaults()
+    defaults.update(
+        {
+            "id": None,
+            "user_id": user_id,
+            "created_at": None,
+            "updated_at": None,
+        }
+    )
+    return defaults
+
+
+def premium_status_payload(user_id):
+    user_plan = (
+        UserPlan.query.filter_by(user_id=user_id)
+        .order_by(UserPlan.start_date.desc(), UserPlan.id.desc())
+        .first()
+    )
+
+    if not user_plan:
+        return {
+            "is_premium": False,
+            "plan": None,
+            "start_date": None,
+            "status": "free",
+        }
+
+    return {
+        "is_premium": True,
+        "plan": user_plan.plan.to_dict() if user_plan.plan else None,
+        "start_date": (
+            user_plan.start_date.strftime("%Y-%m-%d")
+            if user_plan.start_date
+            else None
+        ),
+        "status": "active",
+    }
+
+
+def get_logs_for_date(user_id, selected_date):
+    start, end = day_bounds(selected_date)
+
+    return (
+        UserFoodLog.query.filter_by(user_id=user_id)
+        .filter(UserFoodLog.log_time >= start, UserFoodLog.log_time <= end)
+        .order_by(UserFoodLog.log_time.desc())
+        .all()
+    )
+
+
+def progress_status(progress_percent):
+    if progress_percent < 75:
+        return "red", "Too Low"
+
+    if progress_percent < 95:
+        return "yellow", "Almost There"
+
+    if progress_percent <= 105:
+        return "green", "On Track"
+
+    if progress_percent <= 115:
+        return "yellow", "Over Goal"
+
+    return "red", "Over Goal"
+
+
+def progress_health_score(progress_percent, has_logs):
+    if not has_logs:
+        return 7
+
+    if 95 <= progress_percent <= 105:
+        return 10
+
+    if 85 <= progress_percent < 95 or 105 < progress_percent <= 110:
+        return 8
+
+    if 70 <= progress_percent < 85 or 110 < progress_percent <= 120:
+        return 6
+
+    return 4
+
+
+def build_day_progress(user_id, selected_date, calories_goal, include_details=False):
+    logs = get_logs_for_date(user_id, selected_date)
+
+    totals = {
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fats": 0,
+    }
+
+    grouped = {
+        "breakfast": [],
+        "lunch": [],
+        "dinner": [],
+        "snack": [],
+    }
+
+    for log in logs:
+        item = food_log_to_response(log)
+        meal_type = normalize_meal_type(log.meal_type)
+        grouped[meal_type].append(item)
+
+        totals["calories"] += log.calories or 0
+        totals["protein"] += log.protein or 0
+        totals["carbs"] += log.carbs or 0
+        totals["fats"] += log.fats or 0
+
+    calories_consumed = round(totals["calories"], 2)
+    progress_percent = (
+        round((calories_consumed / calories_goal) * 100, 2)
+        if calories_goal
+        else 0
+    )
+    remaining = round(calories_goal - calories_consumed, 2)
+    status, message = progress_status(progress_percent)
+
+    response = {
+        "date": selected_date.strftime("%Y-%m-%d"),
+        "calories_goal": calories_goal,
+        "calories_consumed": calories_consumed,
+        "remaining": remaining,
+        "progress_percent": progress_percent,
+        "status": status,
+        "message": message,
+        "health_score": progress_health_score(progress_percent, bool(logs)),
+    }
+
+    if include_details:
+        response["totals"] = {
+            "calories": calories_consumed,
+            "protein": round(totals["protein"], 2),
+            "carbs": round(totals["carbs"], 2),
+            "fats": round(totals["fats"], 2),
+        }
+        response["meals"] = grouped
+        response["recently_logged"] = [food_log_to_response(log) for log in logs]
+
+    return response
+
+
+def get_logged_dates(user_id):
+    logs = (
+        UserFoodLog.query.filter_by(user_id=user_id)
+        .order_by(UserFoodLog.log_time.asc())
+        .all()
+    )
+
+    logged_dates = set()
+
+    for log in logs:
+        if log.log_time:
+            logged_dates.add(log.log_time.date())
+
+    return logged_dates
+
+
+def longest_consecutive_streak(logged_dates):
+    if not logged_dates:
+        return 0
+
+    longest = 0
+    current = 0
+    previous_date = None
+
+    for logged_date in sorted(logged_dates):
+        if previous_date and logged_date == previous_date + timedelta(days=1):
+            current += 1
+        else:
+            current = 1
+
+        longest = max(longest, current)
+        previous_date = logged_date
+
+    return longest
+
+
+def current_streak_status(logged_dates):
+    if not logged_dates:
+        return {
+            "current_streak": 0,
+            "longest_streak": 0,
+            "last_active_date": None,
+            "status": "broken",
+            "logged_today": False,
+        }
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    last_active_date = max(logged_dates)
+    logged_today = today in logged_dates
+
+    if logged_today:
+        streak_end = today
+        status = "active"
+    elif yesterday in logged_dates:
+        streak_end = yesterday
+        status = "active"
+    else:
+        streak_end = None
+        status = "broken"
+
+    current_streak = 0
+
+    if streak_end:
+        cursor = streak_end
+
+        while cursor in logged_dates:
+            current_streak += 1
+            cursor -= timedelta(days=1)
+
+    return {
+        "current_streak": current_streak,
+        "longest_streak": longest_consecutive_streak(logged_dates),
+        "last_active_date": last_active_date.strftime("%Y-%m-%d"),
+        "status": status,
+        "logged_today": logged_today,
+    }
+
+
+def badge_response(key, name, description, earned):
+    return {
+        "key": key,
+        "name": name,
+        "description": description,
+        "earned": bool(earned),
+        "earned_at": None,
+    }
+
+
 # ---------------- Helper: Profile Image ----------------
 def save_profile_image(user_id, image):
     upload_folder = os.path.join(
@@ -155,6 +664,38 @@ def build_profile_image_url(filename):
         return None
 
     return request.host_url.rstrip("/") + f"/user/profile/image/{filename}"
+
+
+def build_food_image_url(image_path):
+    if not image_path:
+        return None
+
+    filename = os.path.basename(image_path)
+    return f"{request.host_url.rstrip('/')}/user/food/image/{filename}"
+
+
+def food_log_image_url(log):
+    if log.image_url:
+        return log.image_url
+
+    if not log.scan_id:
+        return None
+
+    scan = FoodScan.query.filter_by(
+        scan_id=log.scan_id, user_id=log.user_id
+    ).first()
+
+    if not scan:
+        return None
+
+    return build_food_image_url(scan.image_path)
+
+
+def food_log_to_response(log):
+    item = log.to_dict()
+    item["image_url"] = food_log_image_url(log)
+
+    return item
 
 
 # ---------------- USDA FoodData Central Helpers ----------------
@@ -327,14 +868,17 @@ def build_usda_serving_details(food):
     servings = []
 
     if serving_size and serving_unit:
+        serving_grams = (
+            serving_size
+            if str(serving_unit).lower() in ["g", "gram", "grams"]
+            else None
+        )
         servings.append(
             {
                 "serving_name": f"{serving_size} {serving_unit}",
-                "grams": (
-                    serving_size
-                    if str(serving_unit).lower() in ["g", "gram", "grams"]
-                    else None
-                ),
+                "grams": serving_grams,
+                "base_serving_size": serving_grams or serving_size,
+                "serving_size": serving_grams or serving_size,
                 "calories": normalized["calories"],
                 "protein": normalized["protein"],
                 "carbs": normalized["carbs"],
@@ -346,6 +890,8 @@ def build_usda_serving_details(food):
         {
             "serving_name": "100g",
             "grams": 100,
+            "base_serving_size": 100,
+            "serving_size": 100,
             "calories": normalized["calories"],
             "protein": normalized["protein"],
             "carbs": normalized["carbs"],
@@ -544,6 +1090,8 @@ def build_open_food_serving_details(product):
             {
                 "serving_name": normalized["serving_size"],
                 "grams": None,
+                "base_serving_size": None,
+                "serving_size": None,
                 "calories": calories_serving,
                 "protein": protein_serving,
                 "carbs": carbs_serving,
@@ -555,6 +1103,8 @@ def build_open_food_serving_details(product):
         {
             "serving_name": "100g",
             "grams": 100,
+            "base_serving_size": 100,
+            "serving_size": 100,
             "calories": calories_100g,
             "protein": protein_100g,
             "carbs": carbs_100g,
@@ -775,7 +1325,409 @@ def get_profile_image(filename):
     return send_from_directory(upload_folder, filename)
 
 
+@user_bp.route("/food/image/<filename>", methods=["GET"])
+def get_food_image(filename):
+    upload_folder = os.path.join(
+        current_app.root_path,
+        current_app.config.get("UPLOAD_FOLDER", "uploads"),
+    )
+
+    return send_from_directory(upload_folder, filename)
+
+
+# ---------------- Goals ----------------
+@user_bp.route("/goals", methods=["GET"])
+def get_user_goals():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    goals, error_response, status_code = get_effective_goals(user["id"])
+
+    if error_response:
+        return error_response, status_code
+
+    return jsonify(goals), 200
+
+
+@user_bp.route("/goals", methods=["PUT"])
+def update_user_goals():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    data = request.get_json() or {}
+    required_fields = [
+        "calories_goal",
+        "protein_goal",
+        "carbs_goal",
+        "fats_goal",
+    ]
+
+    values = {
+        field: get_positive_goal_value(data, field) for field in required_fields
+    }
+
+    invalid_fields = [field for field, value in values.items() if value is None]
+
+    if invalid_fields:
+        return (
+            jsonify(
+                {
+                    "message": "Goals must be positive numbers",
+                    "invalid_fields": invalid_fields,
+                }
+            ),
+            400,
+        )
+
+    user_goal = get_custom_goal(user["id"])
+
+    if not user_goal:
+        user_goal = UserGoal(user_id=user["id"])
+        db.session.add(user_goal)
+
+    user_goal.calories_goal = values["calories_goal"]
+    user_goal.protein_goal = values["protein_goal"]
+    user_goal.carbs_goal = values["carbs_goal"]
+    user_goal.fats_goal = values["fats_goal"]
+    user_goal.is_custom = True
+    user_goal.updated_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": "Goals updated successfully",
+                "goals": user_goal.to_dict(),
+            }
+        ),
+        200,
+    )
+
+
+# ---------------- Notifications ----------------
+@user_bp.route("/notifications/settings", methods=["GET"])
+def get_notification_settings():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    setting = NotificationSetting.query.filter_by(user_id=user["id"]).first()
+
+    return jsonify(notification_settings_response(setting, user["id"])), 200
+
+
+@user_bp.route("/notifications/settings", methods=["PUT"])
+def update_notification_settings():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    data = request.get_json() or {}
+    allowed_statuses = ["allowed", "denied", "not_determined"]
+    setting = NotificationSetting.query.filter_by(user_id=user["id"]).first()
+
+    if not setting:
+        setting = NotificationSetting(
+            user_id=user["id"], **notification_settings_defaults()
+        )
+        db.session.add(setting)
+
+    if "permission_status" in data:
+        permission_status = str(data.get("permission_status")).strip().lower()
+
+        if permission_status not in allowed_statuses:
+            return (
+                jsonify(
+                    {
+                        "message": "Invalid permission_status",
+                        "allowed_values": allowed_statuses,
+                    }
+                ),
+                400,
+            )
+
+        setting.permission_status = permission_status
+
+    if "notifications_enabled" in data:
+        setting.notifications_enabled = to_bool(data.get("notifications_enabled"))
+
+    if "fcm_token" in data:
+        setting.fcm_token = data.get("fcm_token")
+
+    if "meal_reminders" in data:
+        setting.meal_reminders = to_bool(data.get("meal_reminders"))
+
+    if "streak_reminders" in data:
+        setting.streak_reminders = to_bool(data.get("streak_reminders"))
+
+    if "water_reminders" in data:
+        setting.water_reminders = to_bool(data.get("water_reminders"))
+
+    if setting.permission_status == "denied":
+        setting.notifications_enabled = False
+
+    setting.updated_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": "Notification settings updated successfully",
+                "settings": setting.to_dict(),
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/notifications", methods=["GET"])
+def get_notifications():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    limit = parse_limit(default=50, maximum=100)
+    notifications = (
+        NotificationLog.query.filter_by(user_id=user["id"])
+        .order_by(NotificationLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    notifications_data = [notification.to_dict() for notification in notifications]
+
+    return (
+        jsonify(
+            {
+                "notifications": notifications_data,
+                "count": len(notifications_data),
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/notifications/read/<int:notification_id>", methods=["PUT"])
+def mark_notification_read(notification_id):
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    notification = NotificationLog.query.filter_by(
+        id=notification_id, user_id=user["id"]
+    ).first()
+
+    if not notification:
+        return jsonify({"message": "Notification not found"}), 404
+
+    notification.is_read = True
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": "Notification marked as read",
+                "notification": notification.to_dict(),
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/notifications/test", methods=["POST"])
+def create_test_notification():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    notification = NotificationLog(
+        user_id=user["id"],
+        title="Test Notification",
+        body="This is a test notification for backend/app integration.",
+        notification_type="test",
+        is_read=False,
+    )
+
+    db.session.add(notification)
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": "Test notification created",
+                "notification": notification.to_dict(),
+            }
+        ),
+        201,
+    )
+
+
 # ---------------- Plan Application ----------------
+@user_bp.route("/premium/plans", methods=["GET"])
+def get_premium_plans():
+    plans = Plan.query.order_by(Plan.id.asc()).all()
+    plans_data = [plan.to_dict() for plan in plans]
+
+    return (
+        jsonify(
+            {
+                "plans": plans_data,
+                "count": len(plans_data),
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/premium/status", methods=["GET"])
+def get_premium_status():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    return jsonify(premium_status_payload(user["id"])), 200
+
+
+# ---------------- Payment ----------------
+@user_bp.route("/payment/history", methods=["GET"])
+def get_payment_history():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    payments = (
+        Payment.query.filter_by(user_id=user["id"])
+        .order_by(Payment.created_at.desc())
+        .all()
+    )
+    payments_data = [payment.to_dict() for payment in payments]
+
+    return (
+        jsonify(
+            {
+                "payments": payments_data,
+                "count": len(payments_data),
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/payment/create-session", methods=["POST"])
+def create_payment_session():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    data = request.get_json() or {}
+    plan_id = data.get("plan_id")
+
+    if not plan_id:
+        return jsonify({"message": "plan_id is required"}), 400
+
+    plan = Plan.query.get(plan_id)
+
+    if not plan:
+        return jsonify({"message": "Plan not found"}), 404
+
+    provider_reference = f"mock_{uuid.uuid4()}"
+    currency = str(data.get("currency") or "USD").upper()
+    payment = Payment(
+        user_id=user["id"],
+        plan_id=plan.id,
+        amount=plan.price,
+        currency=currency,
+        status="pending",
+        provider="mock",
+        provider_reference=provider_reference,
+    )
+
+    db.session.add(payment)
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "payment_id": payment.id,
+                "status": payment.status,
+                "amount": payment.amount,
+                "currency": payment.currency,
+                "payment_url": f"mock://payment/{payment.id}",
+                "payment": payment.to_dict(),
+            }
+        ),
+        201,
+    )
+
+
+@user_bp.route("/payment/confirm", methods=["POST"])
+def confirm_payment():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    data = request.get_json() or {}
+    payment_id = data.get("payment_id")
+
+    if not payment_id:
+        return jsonify({"message": "payment_id is required"}), 400
+
+    payment = Payment.query.filter_by(id=payment_id, user_id=user["id"]).first()
+
+    if not payment:
+        return jsonify({"message": "Payment not found"}), 404
+
+    if payment.status != "paid":
+        # Mock payment for graduation demo only; no real gateway is called here.
+        payment.status = "paid"
+        payment.paid_at = datetime.utcnow()
+
+    user_plan = (
+        UserPlan.query.filter_by(user_id=user["id"])
+        .order_by(UserPlan.start_date.desc(), UserPlan.id.desc())
+        .first()
+    )
+
+    if user_plan:
+        user_plan.plan_id = payment.plan_id
+        user_plan.start_date = date.today()
+    else:
+        user_plan = UserPlan(
+            user_id=user["id"],
+            plan_id=payment.plan_id,
+            start_date=date.today(),
+        )
+        db.session.add(user_plan)
+
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "message": "Payment confirmed",
+                "payment": payment.to_dict(),
+                "premium": premium_status_payload(user["id"]),
+            }
+        ),
+        200,
+    )
+
+
 @user_bp.route("/plan/apply", methods=["POST"])
 def apply_plan():
     user, error_response, status_code = get_current_user()
@@ -918,6 +1870,13 @@ def calculate_calories():
     else:
         target_summary = f"Maintain your current weight around {weight} kg"
 
+    effective_goals, goals_error_response, _ = get_effective_goals(user["id"])
+    health_calories_goal = (
+        effective_goals["calories_goal"]
+        if effective_goals and not goals_error_response
+        else round(calories)
+    )
+
     return (
         jsonify(
             {
@@ -926,13 +1885,236 @@ def calculate_calories():
                 "protein": protein,
                 "fats": fats,
                 "carbs": carbs,
-                "health_score": 7,
+                "health_score": build_day_progress(
+                    user["id"], date.today(), health_calories_goal
+                )["health_score"],
                 "current_weight": weight,
                 "goal_weight": goal_weight,
                 "weight_difference": round(weight_difference, 1),
                 "goal_direction": goal_direction,
                 "estimated_weeks": estimated_weeks,
                 "target_summary": target_summary,
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/progress/day", methods=["GET"])
+def get_daily_progress():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    selected_date, error_response, status_code = parse_date_param(
+        request.args.get("date")
+    )
+
+    if error_response:
+        return error_response, status_code
+
+    goals, error_response, status_code = get_effective_goals(user["id"])
+
+    if error_response:
+        return error_response, status_code
+
+    return (
+        jsonify(
+            build_day_progress(
+                user_id=user["id"],
+                selected_date=selected_date,
+                calories_goal=goals["calories_goal"],
+                include_details=True,
+            )
+        ),
+        200,
+    )
+
+
+@user_bp.route("/progress/week", methods=["GET"])
+def get_weekly_progress():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    selected_date, error_response, status_code = parse_date_param(
+        request.args.get("date")
+    )
+
+    if error_response:
+        return error_response, status_code
+
+    goals, error_response, status_code = get_effective_goals(user["id"])
+
+    if error_response:
+        return error_response, status_code
+
+    start_date = selected_date - timedelta(days=6)
+    days = []
+
+    for day_offset in range(7):
+        current_date = start_date + timedelta(days=day_offset)
+        day_progress = build_day_progress(
+            user_id=user["id"],
+            selected_date=current_date,
+            calories_goal=goals["calories_goal"],
+        )
+        day_progress["day_name"] = current_date.strftime("%A")
+        days.append(day_progress)
+
+    return (
+        jsonify(
+            {
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": selected_date.strftime("%Y-%m-%d"),
+                "days": days,
+            }
+        ),
+        200,
+    )
+
+
+@user_bp.route("/streak", methods=["GET"])
+def get_user_streak():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    logged_dates = get_logged_dates(user["id"])
+
+    return jsonify(current_streak_status(logged_dates)), 200
+
+
+@user_bp.route("/badges", methods=["GET"])
+def get_user_badges():
+    user, error_response, status_code = get_current_user()
+
+    if error_response:
+        return error_response, status_code
+
+    user_id = user["id"]
+    logged_dates = get_logged_dates(user_id)
+    streak_data = current_streak_status(logged_dates)
+
+    first_food_log = (
+        UserFoodLog.query.filter_by(user_id=user_id)
+        .order_by(UserFoodLog.log_time.asc())
+        .first()
+    )
+    first_scan = (
+        FoodScan.query.filter_by(user_id=user_id)
+        .order_by(FoodScan.created_at.asc())
+        .first()
+    )
+    profile = (
+        db.session.execute(
+            text("""
+            SELECT weight, height, birthdate, gender, goal, goal_weight
+            FROM users
+            WHERE id = :id
+            LIMIT 1
+        """),
+            {"id": user_id},
+        )
+        .mappings()
+        .first()
+    )
+
+    goal_setter = bool(profile and profile["goal_weight"] is not None)
+    profile_completed = bool(
+        profile
+        and profile["weight"] is not None
+        and profile["height"] is not None
+        and profile["birthdate"] is not None
+        and profile["gender"]
+        and profile["goal"]
+        and profile["goal_weight"] is not None
+    )
+
+    goals, goals_error_response, _ = get_effective_goals(user_id)
+    protein_hero = False
+    calorie_champion = False
+
+    if goals and not goals_error_response:
+        for logged_date in logged_dates:
+            day_progress = build_day_progress(
+                user_id=user_id,
+                selected_date=logged_date,
+                calories_goal=goals["calories_goal"],
+                include_details=True,
+            )
+
+            if day_progress["totals"]["protein"] >= goals["protein_goal"]:
+                protein_hero = True
+
+            if 95 <= day_progress["progress_percent"] <= 105:
+                calorie_champion = True
+
+            if protein_hero and calorie_champion:
+                break
+
+    badges = [
+        badge_response(
+            "first_food_log",
+            "First Food Log",
+            "Logged your first food item",
+            first_food_log is not None,
+        ),
+        badge_response(
+            "first_scan",
+            "First Scan",
+            "Completed your first food scan",
+            first_scan is not None,
+        ),
+        badge_response(
+            "three_day_streak",
+            "3 Day Streak",
+            "Logged food for three days in a row",
+            streak_data["longest_streak"] >= 3,
+        ),
+        badge_response(
+            "seven_day_streak",
+            "7 Day Streak",
+            "Logged food for seven days in a row",
+            streak_data["longest_streak"] >= 7,
+        ),
+        badge_response(
+            "goal_setter",
+            "Goal Setter",
+            "Set your goal weight",
+            goal_setter,
+        ),
+        badge_response(
+            "profile_completed",
+            "Profile Completed",
+            "Completed your health profile",
+            profile_completed,
+        ),
+        badge_response(
+            "protein_hero",
+            "Protein Hero",
+            "Reached your daily protein goal",
+            protein_hero,
+        ),
+        badge_response(
+            "calorie_champion",
+            "Calorie Champion",
+            "Finished a day within your calorie goal range",
+            calorie_champion,
+        ),
+    ]
+
+    earned_count = sum(1 for badge in badges if badge["earned"])
+
+    return (
+        jsonify(
+            {
+                "badges": badges,
+                "earned_count": earned_count,
+                "total_count": len(badges),
             }
         ),
         200,
@@ -954,11 +2136,14 @@ def scan_food():
 
     scan = save_food_scan(user["id"], image)
 
+    scan_data = scan.to_dict()
+    scan_data["image_url"] = build_food_image_url(scan.image_path)
+
     return (
         jsonify(
             {
                 "message": "Image uploaded successfully",
-                "scan": scan.to_dict(),
+                "scan": scan_data,
             }
         ),
         201,
@@ -1006,6 +2191,7 @@ def analyze_food(scan_id):
         "food_name": scan.meal_name,
         "meal_name": scan.meal_name,
         "image_path": scan.image_path,
+        "image_url": build_food_image_url(scan.image_path),
         "calories": scan.calories,
         "protein": scan.protein,
         "carbs": scan.carbs,
@@ -1040,10 +2226,13 @@ def get_food_scan_details(scan_id):
 
     full_report = safe_json_loads(scan.full_report)
 
+    scan_data = scan.to_dict()
+    scan_data["image_url"] = build_food_image_url(scan.image_path)
+
     return (
         jsonify(
             {
-                "scan": scan.to_dict(),
+                "scan": scan_data,
                 "report": full_report,
             }
         ),
@@ -1067,11 +2256,18 @@ def get_recent_food_scans():
         .all()
     )
 
+    scans_data = []
+
+    for scan in scans:
+        scan_data = scan.to_dict()
+        scan_data["image_url"] = build_food_image_url(scan.image_path)
+        scans_data.append(scan_data)
+
     return (
         jsonify(
             {
-                "count": len(scans),
-                "scans": [scan.to_dict() for scan in scans],
+                "count": len(scans_data),
+                "scans": scans_data,
             }
         ),
         200,
@@ -1099,6 +2295,8 @@ def log_food():
     has_direct_nutrition_values = any(
         key in data for key in ["calories", "protein", "carbs", "fats", "fat"]
     )
+    serving_calculation = calculate_nutrition_from_serving(data)
+    meal_type = normalize_meal_type(data.get("meal_type"))
 
     # Case 1: Log from AI image scan
     if scan_id:
@@ -1133,7 +2331,19 @@ def log_food():
         report = data.get("report")
         ai_scan = bool(data.get("ai_scan", False))
 
-    # Case 3: User logs food name only, Gemini estimates values
+    # Case 3: Add food with editable serving size and base nutrition values
+    elif serving_calculation:
+        if not food_name:
+            return jsonify({"message": "food_name is required"}), 400
+
+        calories = serving_calculation["calories"]
+        protein = serving_calculation["protein"]
+        carbs = serving_calculation["carbs"]
+        fats = serving_calculation["fats"]
+        report = data.get("report")
+        ai_scan = bool(data.get("ai_scan", False))
+
+    # Case 4: User logs food name only, Gemini estimates values
     else:
         if not food_name:
             return jsonify({"message": "food_name is required"}), 400
@@ -1164,6 +2374,10 @@ def log_food():
         carbs = report.get("total_carbs", 0)
         fats = report.get("total_fat", 0)
         ai_scan = True
+    image_url = data.get("image_url")
+
+    if scan:
+        image_url = build_food_image_url(scan.image_path)
 
     if isinstance(report, dict):
         full_report = json.dumps(report)
@@ -1180,10 +2394,11 @@ def log_food():
         carbs=to_float(carbs),
         fats=to_float(fats),
         serving_size=to_float(data.get("serving_size"), 1),
-        meal_type=normalize_meal_type(data.get("meal_type")),
+        meal_type=meal_type,
         scan_id=scan_id,
         food_item_id=data.get("food_item_id"),
         serving_name=data.get("serving_name") or str(serving_size_input),
+        image_url=image_url,
         ai_scan=ai_scan,
         full_report=full_report,
         log_time=datetime.utcnow(),
@@ -1196,7 +2411,7 @@ def log_food():
         jsonify(
             {
                 "message": "Food logged successfully",
-                "food_log": log.to_dict(),
+                "food_log": food_log_to_response(log),
                 "report": report,
             }
         ),
@@ -1248,7 +2463,7 @@ def food_history():
     }
 
     for log in logs:
-        item = log.to_dict()
+        item = food_log_to_response(log)
         current_meal_type = log.meal_type or "snack"
 
         if current_meal_type not in grouped:
@@ -1264,7 +2479,7 @@ def food_history():
     return (
         jsonify(
             {
-                "logs": [log.to_dict() for log in logs],
+                "logs": [food_log_to_response(log) for log in logs],
                 "grouped": grouped,
                 "totals": {
                     "calories": round(totals["calories"], 2),
@@ -1287,26 +2502,34 @@ def search_my_meals(user_id, query, limit):
 
     logs = logs_query.order_by(UserFoodLog.log_time.desc()).limit(limit).all()
 
-    return [
-        {
-            "source": "my_meals",
-            "log_id": log.id,
-            "food_name": log.food_name,
-            "calories": log.calories,
-            "protein": log.protein,
-            "carbs": log.carbs,
-            "fats": log.fats,
-            "meal_type": log.meal_type,
-            "serving_size": log.serving_size,
-            "serving_name": log.serving_name,
-            "scan_id": log.scan_id,
-            "ai_scan": log.ai_scan,
-            "log_time": (
-                log.log_time.strftime("%Y-%m-%d %H:%M:%S") if log.log_time else None
-            ),
-        }
-        for log in logs
-    ]
+    results = []
+
+    for log in logs:
+        item = food_log_to_response(log)
+        results.append(
+            {
+                "source": "my_meals",
+                "log_id": log.id,
+                "food_name": log.food_name,
+                "calories": log.calories,
+                "protein": log.protein,
+                "carbs": log.carbs,
+                "fats": log.fats,
+                "meal_type": log.meal_type,
+                "serving_size": log.serving_size,
+                "serving_name": log.serving_name,
+                "scan_id": log.scan_id,
+                "image_url": item.get("image_url"),
+                "ai_scan": log.ai_scan,
+                "log_time": (
+                    log.log_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if log.log_time
+                    else None
+                ),
+            }
+        )
+
+    return results
 
 
 def search_my_foods(user_id, query, limit):
@@ -1323,6 +2546,7 @@ def search_my_foods(user_id, query, limit):
         key = log.food_name.lower().strip()
 
         if key not in unique_foods:
+            item = food_log_to_response(log)
             unique_foods[key] = {
                 "source": "my_foods",
                 "log_id": log.id,
@@ -1333,6 +2557,7 @@ def search_my_foods(user_id, query, limit):
                 "fats": log.fats,
                 "serving_size": log.serving_size,
                 "serving_name": log.serving_name,
+                "image_url": item.get("image_url"),
                 "last_used_at": (
                     log.log_time.strftime("%Y-%m-%d %H:%M:%S") if log.log_time else None
                 ),
@@ -1365,6 +2590,7 @@ def search_saved_scans(user_id, query, limit):
             "carbs": scan.carbs,
             "fats": scan.fat,
             "image_path": scan.image_path,
+            "image_url": build_food_image_url(scan.image_path),
             "health_score": scan.health_score,
             "created_at": (
                 scan.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -1409,26 +2635,29 @@ def search_food():
 
     try:
         if tab == "all":
-            search_query = query or "pancakes"
-
-            usda_response = search_usda_food_data(search_query, limit)
-
-            if not usda_response.get("external_error") and usda_response.get("results"):
-                results = usda_response.get("results", [])
-                external_service = "usda_fdc"
-                external_status_code = usda_response.get("status_code")
-
+            if not query:
+                results = []
+                external_service = None
+                external_status_code = None
             else:
-                # Fallback to Open Food Facts if USDA fails or returns nothing
-                try:
-                    off_results = search_open_food_facts(search_query, limit)
-                    results = off_results
-                    external_service = "open_food_facts"
-                    external_status_code = 200
-                except Exception:
-                    results = []
-                    external_service = "usda_fdc/open_food_facts"
+                usda_response = search_usda_food_data(query, limit)
+
+                if not usda_response.get("external_error") and usda_response.get("results"):
+                    results = usda_response.get("results", [])
+                    external_service = "usda_fdc"
                     external_status_code = usda_response.get("status_code")
+
+                else:
+                    # Fallback to Open Food Facts if USDA fails or returns nothing
+                    try:
+                        off_results = search_open_food_facts(query, limit)
+                        results = off_results
+                        external_service = "open_food_facts"
+                        external_status_code = 200
+                    except Exception:
+                        results = []
+                        external_service = "usda_fdc/open_food_facts"
+                        external_status_code = usda_response.get("status_code")
 
         elif tab == "my_meals":
             results = search_my_meals(user["id"], query, limit)
@@ -1542,12 +2771,15 @@ def get_database_serving_details():
                         "carbs": scan.carbs,
                         "fats": scan.fat,
                         "image_path": scan.image_path,
+                        "image_url": build_food_image_url(scan.image_path),
                         "health_score": scan.health_score,
                     },
                     "servings": [
                         {
                             "serving_name": "1 serving",
                             "grams": None,
+                            "base_serving_size": 1,
+                            "serving_size": 1,
                             "calories": scan.calories,
                             "protein": scan.protein,
                             "carbs": scan.carbs,
@@ -1569,6 +2801,8 @@ def get_database_serving_details():
         if not log:
             return jsonify({"message": "Food log not found"}), 404
 
+        image_url = food_log_image_url(log)
+
         return (
             jsonify(
                 {
@@ -1582,11 +2816,14 @@ def get_database_serving_details():
                         "fats": log.fats,
                         "serving_size": log.serving_size,
                         "serving_name": log.serving_name,
+                        "image_url": image_url,
                     },
                     "servings": [
                         {
                             "serving_name": log.serving_name or "1 serving",
                             "grams": log.serving_size,
+                            "base_serving_size": log.serving_size or 1,
+                            "serving_size": log.serving_size or 1,
                             "calories": log.calories,
                             "protein": log.protein,
                             "carbs": log.carbs,
