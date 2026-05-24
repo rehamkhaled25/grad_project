@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:graduation_project/services/food_service.dart';
+import 'package:intl/intl.dart';
 
 class WeeklyProgress extends StatefulWidget {
   const WeeklyProgress({super.key});
@@ -9,22 +11,69 @@ class WeeklyProgress extends StatefulWidget {
 
 class _WeeklyProgressState extends State<WeeklyProgress> {
   int selectedIndex = 0;
+  bool _isLoading = true;
+  double _goalCal = 2000;
 
-  final List<Map<String, dynamic>> weeklyData = [
-    {"day": "Sun", "date": "Jan 20", "cal": "1850 cal", "diff": "-150 cal", "proc": "93%", "w": 180.0, "c": 0xff43A047},
-    {"day": "Mon", "date": "Jan 21", "cal": "2100 cal", "diff": "+100 cal", "proc": "105%", "w": 210.0, "c": 0xffD90C0C},
-    {"day": "Tue", "date": "Jan 22", "cal": "1850 cal", "diff": "-150 cal", "proc": "93%", "w": 150.0, "c": 0xff43A047},
-    {"day": "Wed", "date": "Jan 23", "cal": "1850 cal", "diff": "-150 cal", "proc": "93%", "w": 150.0, "c": 0xff43A047},
-    {"day": "Thu", "date": "Jan 24", "cal": "1850 cal", "diff": "-150 cal", "proc": "93%", "w": 150.0, "c": 0xff43A047},
-    {"day": "Fri", "date": "Jan 25", "cal": "2200 cal", "diff": "+200 cal", "proc": "110%", "w": 230.0, "c": 0xffD90C0C},
-    {"day": "Sat", "date": "Jan 26", "cal": "1850 cal", "diff": "-150 cal", "proc": "93%", "w": 150.0, "c": 0xffD90C0C},
-  ];
+  List<Map<String, dynamic>> weeklyData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        FoodService().getWeeklyProgress().catchError((_) => <Map<String, dynamic>>[]),
+        FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{}),
+      ]);
+
+      final weekly = results[0] as List<Map<String, dynamic>>;
+      final plan = results[1] as Map<String, dynamic>;
+      _goalCal = (plan['calories'] ?? 2000).toDouble();
+
+      final List<Map<String, dynamic>> data = [];
+      for (final day in weekly) {
+        final dateStr = day['date']?.toString() ?? '';
+        final cal = (day['calories'] ?? 0).toDouble();
+        final diff = cal - _goalCal;
+        final pct = _goalCal > 0 ? (cal / _goalCal * 100) : 0.0;
+        final maxBarWidth = 230.0;
+        final barWidth = (pct / 100.0).clamp(0.0, 1.2) * maxBarWidth;
+
+        DateTime? dt;
+        try { dt = DateTime.parse(dateStr); } catch (_) {}
+
+        data.add({
+          "day": dt != null ? DateFormat('E').format(dt) : '?',
+          "date": dt != null ? DateFormat('MMM d').format(dt) : dateStr,
+          "cal": "${cal.toStringAsFixed(0)} cal",
+          "diff": "${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(0)} cal",
+          "proc": "${pct.toStringAsFixed(0)}%",
+          "w": barWidth,
+          "c": diff > 0 ? 0xffD90C0C : 0xff43A047,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          weeklyData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
-      body: SafeArea(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          : SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -50,7 +99,7 @@ class _WeeklyProgressState extends State<WeeklyProgress> {
                     children: [
                       CircleAvatar(radius: 3.335, backgroundColor: Color(0xff43A047)),
                       Text(
-                        "  Jan 20-Jan 26, 2026",
+                        "  This Week",
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xff9291A5)),
                       )
                     ],
@@ -68,12 +117,12 @@ class _WeeklyProgressState extends State<WeeklyProgress> {
                     children: [
                       Image.asset('assets/images/spiral.png', color: Colors.black,),
                       const SizedBox(width: 10),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text("Daily Goal", style: TextStyle(color: Color(0xff706B6B), fontSize: 10, fontWeight: FontWeight.w600)),
-                          Text("2,000 cal", style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text("${_goalCal.toStringAsFixed(0)} cal", style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600)),
                         ],
                       )
                     ],

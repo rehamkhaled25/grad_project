@@ -1,90 +1,134 @@
 import 'package:flutter/material.dart';
+import 'package:graduation_project/services/food_service.dart';
 
-class BadgesScreen extends StatelessWidget {
+class BadgesScreen extends StatefulWidget {
   const BadgesScreen({super.key});
 
   @override
+  State<BadgesScreen> createState() => _BadgesScreenState();
+}
+
+class _BadgesScreenState extends State<BadgesScreen> {
+  List<Map<String, dynamic>> _badges = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBadges();
+  }
+
+  Future<void> _loadBadges() async {
+    try {
+      final badges = await FoodService().getBadges();
+      if (mounted) {
+        setState(() {
+          _badges = badges;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  IconData _iconFromString(String iconName) {
+    switch (iconName) {
+      case 'rocket_launch':
+        return Icons.rocket_launch;
+      case 'access_time':
+        return Icons.access_time;
+      case 'menu_book':
+        return Icons.menu_book;
+      case 'auto_awesome':
+        return Icons.auto_awesome;
+      case 'flag':
+        return Icons.flag;
+      case 'shield':
+        return Icons.shield;
+      case 'local_fire_department':
+        return Icons.local_fire_department;
+      case 'eco':
+        return Icons.eco;
+      case 'bubble_chart':
+        return Icons.bubble_chart;
+      default:
+        return Icons.emoji_events;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final featured = _badges.where((b) => b['category'] == 'featured').toList();
+    final weekly = _badges.where((b) => b['category'] == 'weekly').toList();
+
     return Scaffold(
       backgroundColor: const Color(0xffF3F3F3),
       appBar: AppBar(
         backgroundColor: const Color(0xffF3F3F3),
         elevation: 0,
-        leading: const Icon(Icons.arrow_back, color: Colors.black),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           "Badges",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            const Text(
-              "Featured",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListView(
+                children: [
+                  const Text(
+                    "Featured",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                    children: featured
+                        .map((b) => BadgeItem(
+                              icon: _iconFromString(b['icon'] ?? ''),
+                              title: b['title'] ?? '',
+                              isLocked: !(b['is_earned'] ?? false),
+                              isNew: b['is_new'] ?? false,
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    "Weekly Achievements",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                    children: weekly
+                        .map((b) => BadgeItem(
+                              icon: _iconFromString(b['icon'] ?? ''),
+                              title: b['title'] ?? '',
+                              isLocked: !(b['is_earned'] ?? false),
+                              isDiamond: true,
+                              notificationCount: b['level'] ?? 0,
+                            ))
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.85,
-              children: const [
-                BadgeItem(icon: Icons.rocket_launch, title: "Active\nStarter"),
-                BadgeItem(icon: Icons.access_time, title: "High\nAchiever"),
-                BadgeItem(icon: Icons.menu_book, title: "Eager\nLearner", isLocked: true),
-                BadgeItem(icon: Icons.auto_awesome, title: "Serious\nLearner", isLocked: true),
-                BadgeItem(icon: Icons.flag, title: "Confident\nReader", isNew: true),
-                BadgeItem(icon: Icons.shield, title: "Error\nPolice"),
-              ],
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              "Weekly Achievements",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.85,
-              children: const [
-                BadgeItem(
-                  icon: Icons.local_fire_department,
-                  title: "Hot Week",
-                  notificationCount: 1,
-                  isDiamond: true,
-                ),
-                BadgeItem(
-                  icon: Icons.eco,
-                  title: "Super Week",
-                  notificationCount: 2,
-                  isDiamond: true,
-                ),
-                BadgeItem(
-                  icon: Icons.local_fire_department,
-                  title: "Super Week",
-                  isLocked: true,
-                  notificationCount: 3,
-                  isDiamond: true,
-                ),
-                BadgeItem(
-                  icon: Icons.bubble_chart,
-                  title: "Super Week",
-                  notificationCount: 4,
-                  isDiamond: true,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,52 +1,139 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class PremiumPlanScreen extends StatelessWidget {
+class PremiumPlanScreen extends StatefulWidget {
   const PremiumPlanScreen({super.key});
+
+  @override
+  State<PremiumPlanScreen> createState() => _PremiumPlanScreenState();
+}
+
+class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
+  bool _isSubscribed = false;
+  String _planName = 'Premium';
+  String _dueDate = '';
+  bool _isLoading = true;
+
+  // Hardcoded plan list matching backend Plan model
+  static const List<Map<String, dynamic>> availablePlans = [
+    {
+      'id': 1,
+      'name': 'Monthly Premium',
+      'price': 9.99,
+      'period': 'month',
+      'benefits': [
+        'Unlimited meal plans',
+        'Advanced analytics',
+        'Custom macro tracking',
+        'Priority support',
+        'Ad-free experience',
+      ],
+    },
+    {
+      'id': 2,
+      'name': 'Yearly Premium',
+      'price': 25.99,
+      'period': 'year',
+      'benefits': [
+        'Unlimited meal plans',
+        'Advanced analytics',
+        'Custom macro tracking',
+        'Priority support',
+        'Ad-free experience',
+        '2 months free',
+      ],
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPremiumStatus();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isSubscribed = prefs.getBool('premium_active') ?? false;
+        _planName = prefs.getString('premium_plan_name') ?? 'Premium';
+        _dueDate = prefs.getString('premium_due_date') ?? '';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF4F4F4), 
+      backgroundColor: const Color(0xffF4F4F4),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
         title: const Text(
           'Your Premium',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600,fontSize: 17),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 17),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SubscriptionStatusCard(),
-            const SizedBox(height: 30),
-            const Text(
-              'Your Benefits',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,color: Colors.black),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SubscriptionStatusCard(
+                    isSubscribed: _isSubscribed,
+                    planName: _planName,
+                    dueDate: _dueDate,
+                  ),
+                  const SizedBox(height: 30),
+                  if (_isSubscribed) ...[
+                    const Text(
+                      'Your Benefits',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    const SizedBox(height: 12),
+                    const _BenefitsContainer(),
+                  ] else ...[
+                    const Text(
+                      'Choose a Plan',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    const SizedBox(height: 16),
+                    ...availablePlans.map((plan) => _PlanCard(
+                          plan: plan,
+                          onSelect: () {
+                            context.push('/paymentApplication', extra: plan);
+                          },
+                        )),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            const BenefitsContainer(),
-          ],
-        ),
-      ),
     );
   }
 }
 
+class _SubscriptionStatusCard extends StatelessWidget {
+  final bool isSubscribed;
+  final String planName;
+  final String dueDate;
 
-class SubscriptionStatusCard extends StatelessWidget {
-  const SubscriptionStatusCard({super.key});
+  const _SubscriptionStatusCard({
+    required this.isSubscribed,
+    required this.planName,
+    required this.dueDate,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-      
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
@@ -59,23 +146,23 @@ class SubscriptionStatusCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Image(image: AssetImage('assets/images/tiny_avocado.png'),),
+                  const Image(image: AssetImage('assets/images/tiny_avocado.png')),
                   const SizedBox(width: 5),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 20,),
-                      const Text(
-                        'Premium',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,color: Colors.black),
-                      ),
-                      SizedBox(height: 5,),
+                      const SizedBox(height: 20),
                       Text(
-                        'SUBSCRIBED',
+                        planName,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        isSubscribed ? 'SUBSCRIBED' : 'NOT SUBSCRIBED',
                         style: TextStyle(
-                          color: Color(0xffD90C0C),
+                          color: isSubscribed ? const Color(0xffD90C0C) : Colors.grey,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14
+                          fontSize: 14,
                         ),
                       ),
                     ],
@@ -83,23 +170,20 @@ class SubscriptionStatusCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 40),
-              const Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  'DUE 25/6/2026',
-                  style: TextStyle(color: Color(0xffD9D9D9), fontSize: 12,fontWeight: FontWeight.bold),
+              if (dueDate.isNotEmpty)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'DUE $dueDate',
+                    style: const TextStyle(color: Color(0xffD9D9D9), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
-       
         Positioned(
-        
           left: 0,
-          
           child: Container(
-          
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: const BoxDecoration(
               color: Color(0xffD90C0C),
@@ -108,9 +192,9 @@ class SubscriptionStatusCard extends StatelessWidget {
                 bottomRight: Radius.circular(10),
               ),
             ),
-            child: const Text(
-              'Subscription',
-              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+            child: Text(
+              isSubscribed ? 'Subscription' : 'Free Plan',
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -119,9 +203,8 @@ class SubscriptionStatusCard extends StatelessWidget {
   }
 }
 
-
-class BenefitsContainer extends StatelessWidget {
-  const BenefitsContainer({super.key});
+class _BenefitsContainer extends StatelessWidget {
+  const _BenefitsContainer();
 
   @override
   Widget build(BuildContext context) {
@@ -132,33 +215,23 @@ class BenefitsContainer extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          BenefitItem(text: 'unlimited meal plan'),
-          BenefitItem(text: 'advanced analytic'),
-          BenefitItem(text: 'custom macro tracking'),
-          BenefitItem(text: 'priority support'),
-          BenefitItem(text: 'Ad-free experience'),
-          SizedBox(height: 24),
-          Text(
-            'Price: 25.99',
-            style: TextStyle(
-              color: Color(0xffD90C0C),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+        children: [
+          _BenefitItem(text: 'Unlimited meal plans'),
+          _BenefitItem(text: 'Advanced analytics'),
+          _BenefitItem(text: 'Custom macro tracking'),
+          _BenefitItem(text: 'Priority support'),
+          _BenefitItem(text: 'Ad-free experience'),
         ],
       ),
     );
   }
 }
 
-
-class BenefitItem extends StatelessWidget {
+class _BenefitItem extends StatelessWidget {
   final String text;
-  const BenefitItem({super.key, required this.text});
+  const _BenefitItem({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -166,11 +239,85 @@ class BenefitItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
         children: [
-          Image(image: AssetImage('assets/images/check.png'),),
+          const Image(image: AssetImage('assets/images/check.png')),
           const SizedBox(width: 12),
           Text(
             text,
             style: const TextStyle(color: Colors.black, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanCard extends StatelessWidget {
+  final Map<String, dynamic> plan;
+  final VoidCallback onSelect;
+
+  const _PlanCard({required this.plan, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final benefits = plan['benefits'] as List? ?? [];
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            plan['name'] ?? '',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...benefits.map((b) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, size: 16, color: Color(0xffD90C0C)),
+                    const SizedBox(width: 8),
+                    Text(b.toString(), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                  ],
+                ),
+              )),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$${plan['price']}/${plan['period']}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xffD90C0C),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: onSelect,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                ),
+                child: const Text("Subscribe", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         ],
       ),

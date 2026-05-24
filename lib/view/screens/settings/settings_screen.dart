@@ -110,8 +110,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildTile(
                           context,
                           Icons.track_changes,
-                          'My Target',
-                          onTap: () {},
+                          'My Goals',
+                          onTap: () => context.push('/goals'),
                         ),
                         _buildTile(
                           context,

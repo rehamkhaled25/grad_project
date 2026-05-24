@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
-import 'package:graduation_project/view/custom%20_widget/payment_options.dart';
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
+import 'package:graduation_project/view/custom _widget/payment_options.dart';
 
 class PaymentApplication extends StatelessWidget {
-  const PaymentApplication({super.key});
+  final Map<String, dynamic>? planData;
+  const PaymentApplication({super.key, this.planData});
 
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
+
+    final planName = planData?['name'] ?? 'Premium Plan';
+    final price = planData?['price'] ?? 50.98;
 
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
@@ -41,7 +45,35 @@ class PaymentApplication extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: screenHeight * 0.04),
+              SizedBox(height: screenHeight * 0.03),
+
+              // Show selected plan info
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.workspace_premium, color: Color(0xffD90C0C), size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        planName,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Text(
+                      "\$${price is num ? price.toStringAsFixed(2) : price}",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xffD90C0C)),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: screenHeight * 0.03),
 
               const Padding(
                 padding: EdgeInsets.only(left: 10),
@@ -92,12 +124,12 @@ class PaymentApplication extends StatelessWidget {
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Row(
-                      children: const [
+                      children: [
                         Text(
-                          "\$50.98",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          "\$${price is num ? price.toStringAsFixed(2) : price}",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
-                        Text(
+                        const Text(
                           " USD",
                           style: TextStyle(
                             fontSize: 16,
@@ -116,13 +148,10 @@ class PaymentApplication extends StatelessWidget {
              
               ContinueButton(
                 onPressed: () {
-                  context.push("/creditCardInfo");
+                  context.push("/creditCardInfo", extra: planData);
                 },
                 txt: "Confirm Order",
               ),
-              
-            
-              // SizedBox(height: screenHeight * 0.04),
             ],
           ),
         ),

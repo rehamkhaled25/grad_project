@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<UserModel?> _userFuture;
   late Future<Map<String, dynamic>> _historyFuture;
   late Future<Map<String, dynamic>> _planFuture;
+  late Future<Map<String, dynamic>> _streakFuture;
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _userFuture = ApiService().getProfile();
     _historyFuture = FoodService().getFoodHistory().catchError((_) => <String, dynamic>{});
     _planFuture = FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{});
+    _streakFuture = FoodService().getStreak().catchError((_) => <String, dynamic>{});
   }
 
   @override
@@ -136,24 +138,32 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(right: 15),
-                          child: Row(
-                            children: [
-                              InkWell(
+                          child: FutureBuilder<Map<String, dynamic>>(
+                            future: _streakFuture,
+                            builder: (context, snap) {
+                              final streakCount = snap.data?['streak_count'] ?? 0;
+                              final isActive = snap.data?['is_active'] ?? false;
+                              return InkWell(
                                 onTap: () => context.push('/streak'),
-                                child: Image.asset(
-                                  'assets/images/streak.png',
-                                  height: 18,
+                                child: Row(
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/streak.png',
+                                      height: 18,
+                                      color: isActive ? null : const Color(0xffD9D9D9),
+                                    ),
+                                    Text(
+                                      " $streakCount",
+                                      style: TextStyle(
+                                        color: isActive ? const Color(0xffD90C0C) : const Color(0xffD9D9D9),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const Text(
-                                " 48",
-                                style: TextStyle(
-                                  color: Color(0xffD9D9D9),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -167,7 +177,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, snapshot) {
                   final planData = snapshot.data?[0] ?? {};
                   final historyData = snapshot.data?[1] ?? {};
-                  final totals = (historyData as Map<String, dynamic>)['totals'] ?? {};
+                  final totals = historyData is Map && (historyData as Map).containsKey('totals') && historyData['totals'] is Map
+                      ? Map<String, dynamic>.from(historyData['totals'])
+                      : <String, dynamic>{};
                   final dailyCal = (planData['calories'] ?? 2400).toDouble();
                   final consumed = (totals['calories'] ?? 0).toDouble();
                   return DaysOfWeekBar(
@@ -365,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           physics: const BouncingScrollPhysics(),
                           itemCount: meals.length > 5 ? 5 : meals.length,
                           itemBuilder: (context, index) {
-                            final meal = meals[index] as Map<String, dynamic>;
+                            final meal = meals[index] is Map ? Map<String, dynamic>.from(meals[index] as Map) : <String, dynamic>{};
                             return FoodCard(mealData: meal);
                           },
                         ),

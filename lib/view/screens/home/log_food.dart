@@ -31,16 +31,17 @@ class _LogFoodState extends State<LogFood> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final results = await Future.wait([
-        FoodService().getFoodHistory().catchError((_) => <String, dynamic>{}),
+        FoodService().getFoodHistory(date: dateStr).catchError((_) => <String, dynamic>{}),
         FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{}),
         ApiService().getProfile().catchError((_) => null),
       ]);
 
       if (mounted) {
         setState(() {
-          _historyData = results[0] as Map<String, dynamic>?;
-          _planData = results[1] as Map<String, dynamic>?;
+          _historyData = results[0] is Map ? Map<String, dynamic>.from(results[0] as Map) : null;
+          _planData = results[1] is Map ? Map<String, dynamic>.from(results[1] as Map) : null;
           final profile = results[2];
           if (profile != null) {
             _profileImageUrl = (profile as dynamic).profileImageUrl as String?;
@@ -58,13 +59,13 @@ class _LogFoodState extends State<LogFood> {
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
 
-    final totals = (_historyData?['totals'] as Map<String, dynamic>?) ?? {};
+    final totals = _historyData?['totals'] is Map ? Map<String, dynamic>.from(_historyData!['totals']) : <String, dynamic>{};
     final consumed = (totals['calories'] ?? 0).toDouble();
     final dailyCal = (_planData?['calories'] ?? 2400).toDouble();
     final remaining = (dailyCal - consumed).clamp(0.0, dailyCal);
     final progress = dailyCal > 0 ? (consumed / dailyCal).clamp(0.0, 1.0) : 0.0;
 
-    final grouped = (_historyData?['grouped'] as Map<String, dynamic>?) ?? {};
+    final grouped = _historyData?['grouped'] is Map ? Map<String, dynamic>.from(_historyData!['grouped']) : <String, dynamic>{};
     final breakfastList = (grouped['breakfast'] as List?) ?? [];
     final lunchList = (grouped['lunch'] as List?) ?? [];
     final dinnerList = (grouped['dinner'] as List?) ?? [];

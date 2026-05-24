@@ -105,21 +105,21 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
       print("🔍 [SERVING] HTTP status = ${response.statusCode}");
  
       if (response.statusCode == 200) {
-        final data = json.decode(response.body) as Map<String, dynamic>;
+        final data = Map<String, dynamic>.from(json.decode(response.body));
  
-        final nf = data['nutrition_facts'] as Map<String, dynamic>?;
-        final ld = data['log_details'] as Map<String, dynamic>?;
+        final nf = data['nutrition_facts'] is Map ? Map<String, dynamic>.from(data['nutrition_facts']) : null;
+        final ld = data['log_details'] is Map ? Map<String, dynamic>.from(data['log_details']) : null;
  
         print("🔍 [SERVING] nutrition_facts keys = ${nf?.keys.toList()}");
         print("🔍 [SERVING] nutrition_facts full = $nf");
  
         setState(() {
-          foodData       = data['food'] as Map<String, dynamic>?;
+          foodData       = data['food'] is Map ? Map<String, dynamic>.from(data['food']) : null;
           servings       = (data['servings'] as List?) ?? [];
           nutritionFacts = nf;
           logDetails     = ld;
           if (servings.isNotEmpty) {
-            selectedServing = servings[0] as Map<String, dynamic>;
+            selectedServing = Map<String, dynamic>.from(servings[0] as Map);
           }
           isLoading = false;
         });

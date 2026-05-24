@@ -15,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profileData;
   Map<String, dynamic>? _planData;
+  Map<String, dynamic>? _streakData;
   bool _isLoading = true;
  
   // Allergies state
@@ -37,8 +38,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final profile = await ApiService().getProfile();
       Map<String, dynamic>? plan;
+      Map<String, dynamic>? streak;
       try {
         plan = await FoodService().getCaloriePlan();
+      } catch (_) {}
+      try {
+        streak = await FoodService().getStreak();
       } catch (_) {}
  
       if (mounted) {
@@ -59,6 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _allergies = List<String>.from(profile.allergies ?? []);
           }
           _planData = plan;
+          _streakData = streak;
           _isLoading = false;
         });
       }
@@ -190,6 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildHeader(context, scaleFactor),
                     _buildStatsCards(scaleFactor),
                     _buildEditProfileButton(context, scaleFactor),
+                    _buildBadgesButton(context, scaleFactor),
                     _buildBodyStatsCard(scaleFactor),
                     _buildWeightProgressCard(scaleFactor),
                     _buildDailyGoalsCard(scaleFactor),
@@ -328,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: _buildStatCard(
-                      '24',
+                      '${_streakData?['total_days_logged'] ?? 0}',
                       'Days Logged',
                       Icons.water_drop_outlined,
                       const Color(0xFFF1F0F0),
@@ -339,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 SizedBox(width: 12 * scale),
                 Expanded(
                   child: _buildStatCard(
-                      '18',
+                      '${_streakData?['longest_streak'] ?? 0}',
                       'Best Streak',
                       Icons.emoji_events,
                       const Color(0xFFFFE2E2),
@@ -468,6 +475,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
  
+  Widget _buildBadgesButton(BuildContext context, double scale) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24 * scale),
+      child: GestureDetector(
+        onTap: () => context.push('/badges'),
+        child: Container(
+          width: 238 * scale,
+          height: 42 * scale,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12 * scale),
+            border: Border.all(color: Colors.black, width: 1.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.emoji_events_outlined,
+                  color: Colors.black, size: 20 * scale),
+              SizedBox(width: 8 * scale),
+              Text('View Badges',
+                  style: TextStyle(
+                      fontFamily: 'Figtree',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16 * scale,
+                      color: Colors.black)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBodyStatsCard(double scale) {
     return Padding(
       padding:
@@ -986,7 +1025,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             SizedBox(height: 16 * scale),
             GestureDetector(
-              onTap: () => context.push('/subscription'),
+              onTap: () => context.push('/premiumPlan'),
               child: Container(
                 width: double.infinity,
                 height: 33 * scale,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -23,6 +24,36 @@ class _NotificationsSettingsScreenState
   bool _discountAvailable = false;
   bool _paymentRequest = true;
 
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _generalNotification = prefs.getBool('notif_general') ?? true;
+        _sound = prefs.getBool('notif_sound') ?? true;
+        _vibrate = prefs.getBool('notif_vibrate') ?? false;
+        _appUpdates = prefs.getBool('notif_app_updates') ?? true;
+        _billReminder = prefs.getBool('notif_bill_reminder') ?? true;
+        _promotion = prefs.getBool('notif_promotion') ?? false;
+        _discountAvailable = prefs.getBool('notif_discount') ?? false;
+        _paymentRequest = prefs.getBool('notif_payment') ?? true;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,7 +66,7 @@ class _NotificationsSettingsScreenState
           icon: const Icon(
             Icons.arrow_back,
             color: Colors.black,
-          ), // 👈 Wrap with Icon widget
+          ),
         ),
         title: const Text(
           'Notifications',
@@ -44,159 +75,153 @@ class _NotificationsSettingsScreenState
         centerTitle: true,
         elevation: 0,
       ),
-      body: Container(
-        color: Colors.white,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Common Section
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          : Container(
+              color: Colors.white,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Common',
-                      style: TextStyle(
-                        fontSize: 16, // Slightly larger
-                        fontWeight: FontWeight.bold, // Bold
-                        color: Colors.black87, // Darker color
-                        letterSpacing: 0.5, // Optional: adds slight spacing
-                      ),
+                  // Common Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 12),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Common',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _buildSwitchTile(
+                          title: 'General Notification',
+                          value: _generalNotification,
+                          onChanged: (value) {
+                            setState(() => _generalNotification = value);
+                            _savePreference('notif_general', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Sound',
+                          value: _sound,
+                          onChanged: (value) {
+                            setState(() => _sound = value);
+                            _savePreference('notif_sound', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Vibrate',
+                          value: _vibrate,
+                          onChanged: (value) {
+                            setState(() => _vibrate = value);
+                            _savePreference('notif_vibrate', value);
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  _buildSwitchTile(
-                    title: 'General Notification',
-                    value: _generalNotification,
-                    onChanged: (value) {
-                      setState(() {
-                        _generalNotification = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Sound',
-                    value: _sound,
-                    onChanged: (value) {
-                      setState(() {
-                        _sound = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Vibrate',
-                    value: _vibrate,
-                    onChanged: (value) {
-                      setState(() {
-                        _vibrate = value;
-                      });
-                    },
+
+                  const SizedBox(height: 24),
+
+                  // System & Services Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 12),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'System & Services',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _buildSwitchTile(
+                          title: 'App Updates',
+                          value: _appUpdates,
+                          onChanged: (value) {
+                            setState(() => _appUpdates = value);
+                            _savePreference('notif_app_updates', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Bill Reminder',
+                          value: _billReminder,
+                          onChanged: (value) {
+                            setState(() => _billReminder = value);
+                            _savePreference('notif_bill_reminder', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Promotion',
+                          value: _promotion,
+                          onChanged: (value) {
+                            setState(() => _promotion = value);
+                            _savePreference('notif_promotion', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Discount Available',
+                          value: _discountAvailable,
+                          onChanged: (value) {
+                            setState(() => _discountAvailable = value);
+                            _savePreference('notif_discount', value);
+                          },
+                        ),
+                        _buildSwitchTile(
+                          title: 'Payment Request',
+                          value: _paymentRequest,
+                          onChanged: (value) {
+                            setState(() => _paymentRequest = value);
+                            _savePreference('notif_payment', value);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // System & Services Section
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'System & Services',
-                      style: TextStyle(
-                        fontSize: 16, // Slightly larger
-                        fontWeight: FontWeight.bold, // Bold
-                        color: Colors.black87, // Darker color
-                        letterSpacing: 0.5, // Optional: adds slight spacing
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _buildSwitchTile(
-                    title: 'App Updates',
-                    value: _appUpdates,
-                    onChanged: (value) {
-                      setState(() {
-                        _appUpdates = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Bill Reminder',
-                    value: _billReminder,
-                    onChanged: (value) {
-                      setState(() {
-                        _billReminder = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Promotion',
-                    value: _promotion,
-                    onChanged: (value) {
-                      setState(() {
-                        _promotion = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Discount Available',
-                    value: _discountAvailable,
-                    onChanged: (value) {
-                      setState(() {
-                        _discountAvailable = value;
-                      });
-                    },
-                  ),
-                  _buildSwitchTile(
-                    title: 'Payment Request',
-                    value: _paymentRequest,
-                    onChanged: (value) {
-                      setState(() {
-                        _paymentRequest = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -207,18 +232,18 @@ class _NotificationsSettingsScreenState
   }) {
     return SwitchTheme(
       data: SwitchThemeData(
-        thumbColor: MaterialStateProperty.resolveWith<Color>((states) {
+        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
           return Colors.white;
         }),
-        trackColor: MaterialStateProperty.resolveWith<Color>((states) {
-          if (states.contains(MaterialState.selected)) {
+        trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+          if (states.contains(WidgetState.selected)) {
             return Colors.black;
           }
           return Colors.grey.shade200;
         }),
-        trackOutlineColor: MaterialStateProperty.all(
+        trackOutlineColor: WidgetStateProperty.all(
           Colors.transparent,
-        ), // 🔥 removes border
+        ),
       ),
       child: SwitchListTile(
         title: Text(

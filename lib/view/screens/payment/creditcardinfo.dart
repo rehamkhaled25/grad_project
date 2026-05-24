@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
-import 'package:graduation_project/view/custom%20_widget/payment_options.dart';
+import 'package:graduation_project/view/custom _widget/continue_button.dart';
+import 'package:graduation_project/view/custom _widget/payment_options.dart';
+import 'package:graduation_project/services/food_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class Creditcardinfo extends StatefulWidget {
-  const Creditcardinfo({super.key});
+  final Map<String, dynamic>? planData;
+  const Creditcardinfo({super.key, this.planData});
 
   @override
   State<Creditcardinfo> createState() => _CreditcardinfoState();
@@ -12,6 +16,94 @@ class Creditcardinfo extends StatefulWidget {
 
 class _CreditcardinfoState extends State<Creditcardinfo> {
   bool isSaved = false;
+  bool _isProcessing = false;
+
+  Future<void> _processPayment() async {
+    setState(() => _isProcessing = true);
+
+    try {
+      final planId = widget.planData?['id'] ?? 1;
+      final planName = widget.planData?['name'] ?? 'Premium';
+
+      // Try to call backend plan/apply endpoint
+      try {
+        await FoodService().applyPlan(planId);
+      } catch (_) {
+        // If backend doesn't have the plan, just save locally
+      }
+
+      // Save premium status locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('premium_active', true);
+      await prefs.setString('premium_plan_name', planName);
+
+      // Set due date to 1 month/year from now
+      final period = widget.planData?['period'] ?? 'month';
+      final now = DateTime.now();
+      final dueDate = period == 'year'
+          ? DateTime(now.year + 1, now.month, now.day)
+          : DateTime(now.year, now.month + 1, now.day);
+      await prefs.setString('premium_due_date', DateFormat('d/M/yyyy').format(dueDate));
+
+      if (!mounted) return;
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xffD90C0C), size: 64),
+              const SizedBox(height: 16),
+              const Text(
+                "Payment Successful!",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "You're now subscribed to $planName",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.black54, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.go("/home");
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text("Go to Home", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("❌ Payment failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +171,7 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                       img: "assets/images/mastercard-full-svgrepo-com 1.png",
                     ),
                   ),
-                  SizedBox(width: 12), // Consistent spacing
+                  SizedBox(width: 12),
                   Expanded(
                     child: custom_image_holder(
                       img: 'assets/images/paypal-svgrepo-com 1.png',
@@ -100,7 +192,6 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 ],
               ),
 
-              // RESPONSIVE ROW END
               SizedBox(height: screenHeight * 0.07),
               const Text(
                 "Card Number",
@@ -180,12 +271,14 @@ class _CreditcardinfoState extends State<Creditcardinfo> {
                 ],
               ),
               SizedBox(height: screenHeight * 0.04),
-              ContinueButton(
-                onPressed: () {
-                  context.go("/home");
-                },
-                txt: "Save",
-              ),
+              _isProcessing
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.black),
+                    )
+                  : ContinueButton(
+                      onPressed: _processPayment,
+                      txt: "Save & Pay",
+                    ),
             ],
           ),
         ),

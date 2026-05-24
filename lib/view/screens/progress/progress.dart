@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:graduation_project/services/food_service.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({Key? key}) : super(key: key);
@@ -11,12 +12,17 @@ class _ProgressPageState extends State<ProgressPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  final List<double> values = [0.4, 0.6, 0.3, 0.5, 0.85, 0.4, 0.2];
+  List<double> values = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   final List<String> days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-  double get average => values.reduce((a, b) => a + b) / values.length;
+  double get average => values.every((v) => v == 0) ? 0 : values.reduce((a, b) => a + b) / values.length;
 
   int _currentIndex = 2;
+
+  // Dynamic data
+  String _caloriesText = '...';
+  String _streakText = '...';
+  String _activeText = '...';
 
   @override
   void initState() {
@@ -24,7 +30,45 @@ class _ProgressPageState extends State<ProgressPage>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..forward();
+    );
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        FoodService().getWeeklyProgress().catchError((_) => <Map<String, dynamic>>[]),
+        FoodService().getDailyProgress().catchError((_) => <String, dynamic>{}),
+        FoodService().getStreak().catchError((_) => <String, dynamic>{}),
+      ]);
+
+      final weekly = results[0] as List<Map<String, dynamic>>;
+      final daily = results[1] as Map<String, dynamic>;
+      final streak = results[2] as Map<String, dynamic>;
+
+      final goalCal = ((daily['goals'] as Map?)?['calories'] ?? 2400).toDouble();
+      final consumedCal = ((daily['consumed'] as Map?)?['calories'] ?? 0).toDouble();
+
+      if (mounted) {
+        setState(() {
+          // Weekly chart values (as ratios of goal)
+          if (weekly.isNotEmpty && goalCal > 0) {
+            values = weekly.map<double>((d) {
+              final cal = (d['calories'] ?? 0).toDouble();
+              return (cal / goalCal).clamp(0.0, 1.0);
+            }).toList();
+          }
+
+          _caloriesText = consumedCal.toStringAsFixed(0);
+          _streakText = '${streak['streak_count'] ?? 0} days';
+          _activeText = '${streak['total_days_logged'] ?? 0} days';
+        });
+
+        _controller.forward();
+      }
+    } catch (_) {
+      if (mounted) _controller.forward();
+    }
   }
 
   @override
@@ -342,14 +386,14 @@ class _ProgressPageState extends State<ProgressPage>
               children: [
                 Expanded(
                     child: _stat(
-                        Icons.eco_outlined, '1978', 'Calories', Colors.red)),
+                        Icons.eco_outlined, _caloriesText, 'Calories', Colors.red)),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _stat(Icons.local_fire_department_outlined, '7 days',
+                    child: _stat(Icons.local_fire_department_outlined, _streakText,
                         'Streak', Colors.orange)),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _stat(Icons.monitor_heart_outlined, '42 days',
+                    child: _stat(Icons.monitor_heart_outlined, _activeText,
                         'Active', Colors.blueGrey)),
               ],
             ),

@@ -353,6 +353,8 @@ import 'package:graduation_project/view/screens/splash/splash.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/home/scanner.dart';
 import 'package:graduation_project/view/screens/streak/streak_screen.dart';
+import 'package:graduation_project/view/screens/settings/goals_screen.dart';
+import 'package:graduation_project/view/screens/plan/premium_plan.dart';
  
 // Simple in-memory auth state — splash screen sets this on startup
 class AuthState {
@@ -393,7 +395,7 @@ abstract class AppRouter {
       // Only block /home and app routes from unauthenticated users
       final protectedRoutes = ['/home', '/log_food', '/progress', '/settings',
         '/profile', '/notifications', '/notificationsScreen', '/foodScanner',
-        '/log', '/streak', '/weeklyBreakdownScreen'];
+        '/log', '/streak', '/weeklyBreakdownScreen', '/goals', '/premiumPlan'];
  
       if (protectedRoutes.contains(location) && !AuthState.isLoggedIn) {
         return '/login';
@@ -515,7 +517,10 @@ abstract class AppRouter {
       GoRoute(
         path: '/paymentApplication',
         name: 'payment_application',
-        builder: (context, state) => PaymentApplication(),
+        builder: (context, state) {
+          final planData = state.extra as Map<String, dynamic>?;
+          return PaymentApplication(planData: planData);
+        },
       ),
          GoRoute(
         path: '/badges',
@@ -525,7 +530,10 @@ abstract class AppRouter {
       GoRoute(
         path: '/creditCardInfo',
         name: 'creditCardInfo',
-        builder: (context, state) => const Creditcardinfo(),
+        builder: (context, state) {
+          final planData = state.extra as Map<String, dynamic>?;
+          return Creditcardinfo(planData: planData);
+        },
       ),
       GoRoute(
         path: '/subscription',
@@ -572,6 +580,16 @@ abstract class AppRouter {
         name: 'streak',
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: StreakScreen()),
+      ),
+      GoRoute(
+        path: '/goals',
+        name: 'goals',
+        builder: (context, state) => const GoalsScreen(),
+      ),
+      GoRoute(
+        path: '/premiumPlan',
+        name: 'premiumPlan',
+        builder: (context, state) => const PremiumPlanScreen(),
       ),
  
       ShellRoute(
