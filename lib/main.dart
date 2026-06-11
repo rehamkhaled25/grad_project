@@ -17,6 +17,7 @@ import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage
 import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
 import 'package:graduation_project/view/screens/payment/creditcardinfo.dart';
 import 'package:graduation_project/view/screens/payment/payment_application.dart';
+import 'package:graduation_project/view/screens/settings/edit_goal.dart';
 import 'package:graduation_project/view/screens/plan/plan.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
 import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
@@ -31,25 +32,7 @@ import 'firebase_options.dart';
 
 // Future<void> 
 main()  {
-  // WidgetsFlutterBinding.ensureInitialized();
-
-  // await dotenv.load(fileName: ".env");
-
-  // final String androidApiKey = dotenv.get(
-  //   'FIREBASE_ANDROID_API_KEY',
-  //   fallback: '',
-  // );
-
-  // final FirebaseOptions customizedOptions = FirebaseOptions(
-  //   apiKey: androidApiKey,
-  //   appId: DefaultFirebaseOptions.currentPlatform.appId,
-  //   messagingSenderId: DefaultFirebaseOptions.currentPlatform.messagingSenderId,
-  //   projectId: DefaultFirebaseOptions.currentPlatform.projectId,
-  //   storageBucket: DefaultFirebaseOptions.currentPlatform.storageBucket,
-  //   iosBundleId: DefaultFirebaseOptions.currentPlatform.iosBundleId, 
-  // );
-
-  // await Firebase.initializeApp(options: customizedOptions);
+ 
 
   runApp(const GraduationProjectApp());
 }
@@ -63,7 +46,7 @@ class GraduationProjectApp extends StatelessWidget {
       title: 'Nutra',
 
       routerConfig: AppRouter.router,
-      // // home:DatabaseSearch() ,
+      // home: EditGoalPage(),
 
 
       debugShowCheckedModeBanner: false,

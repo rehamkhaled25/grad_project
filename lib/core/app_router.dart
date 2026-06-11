@@ -349,12 +349,15 @@ import 'package:graduation_project/view/screens/progress/progress.dart';
 import 'package:graduation_project/view/screens/progress/weekly_breakdown_screen.dart';
 import 'package:graduation_project/view/screens/progress/weekly_progress.dart';
 import 'package:graduation_project/view/screens/settings/settings_screen.dart';
+import 'package:graduation_project/view/screens/settings/edit_goal.dart';
+import 'package:graduation_project/view/screens/settings/target.dart';
 import 'package:graduation_project/view/screens/splash/splash.dart';
 import 'package:graduation_project/view/screens/onboarding/trialsubscriptionpage.dart';
 import 'package:graduation_project/view/screens/home/scanner.dart';
 import 'package:graduation_project/view/screens/streak/streak_screen.dart';
 import 'package:graduation_project/view/screens/settings/goals_screen.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
+import 'package:graduation_project/view/screens/database/servings_database.dart';
  
 // Simple in-memory auth state — splash screen sets this on startup
 class AuthState {
@@ -395,7 +398,8 @@ abstract class AppRouter {
       // Only block /home and app routes from unauthenticated users
       final protectedRoutes = ['/home', '/log_food', '/progress', '/settings',
         '/profile', '/notifications', '/notificationsScreen', '/foodScanner',
-        '/log', '/streak', '/weeklyBreakdownScreen', '/goals', '/premiumPlan'];
+        '/log', '/streak', '/weeklyBreakdownScreen', '/goals', '/premiumPlan',
+        '/editGoal', '/myTarget', '/servingsDatabase'];
  
       if (protectedRoutes.contains(location) && !AuthState.isLoggedIn) {
         return '/login';
@@ -511,8 +515,10 @@ abstract class AppRouter {
       GoRoute(
         path: '/trialSubscriptionPage',
         name: 'trial_subscription_page',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: TrialSubscriptionPage()),
+        pageBuilder: (context, state) {
+          final planData = state.extra as Map<String, dynamic>?;
+          return NoTransitionPage(child: TrialSubscriptionPage(initialPlanData: planData));
+        },
       ),
       GoRoute(
         path: '/paymentApplication',
@@ -521,11 +527,6 @@ abstract class AppRouter {
           final planData = state.extra as Map<String, dynamic>?;
           return PaymentApplication(planData: planData);
         },
-      ),
-         GoRoute(
-        path: '/badges',
-        name: 'badges',
-        builder: (context, state) => BadgesScreen(),
       ),
       GoRoute(
         path: '/creditCardInfo',
@@ -560,8 +561,10 @@ abstract class AppRouter {
       GoRoute(
         path: '/foodScanner',
         name: 'food_scanner',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: FoodScannerScreen()),
+        pageBuilder: (context, state) {
+          final mealType = state.extra as String?;
+          return NoTransitionPage(child: FoodScannerScreen(mealType: mealType));
+        },
       ),
       GoRoute(
         path: '/weeklyBreakdownScreen',
@@ -572,8 +575,10 @@ abstract class AppRouter {
       GoRoute(
         path: '/log',
         name: 'log',
-        pageBuilder: (context, state) =>
-            const NoTransitionPage(child: DatabaseSearch()),
+        pageBuilder: (context, state) {
+            final mealType = state.extra as String?;
+            return NoTransitionPage(child: DatabaseSearch(mealType: mealType));
+        },
       ),
       GoRoute(
         path: '/streak',
@@ -585,6 +590,21 @@ abstract class AppRouter {
         path: '/goals',
         name: 'goals',
         builder: (context, state) => const GoalsScreen(),
+      ),
+      GoRoute(
+        path: '/editGoal',
+        name: 'editGoal',
+        builder: (context, state) => const EditGoalPage(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        name: 'edit-profile',
+        builder: (context, state) => const EditGoalPage(),
+      ),
+      GoRoute(
+        path: '/myTarget',
+        name: 'myTarget',
+        builder: (context, state) => const MyTargetScreen(),
       ),
       GoRoute(
         path: '/premiumPlan',
@@ -620,6 +640,31 @@ abstract class AppRouter {
             name: 'settings',
             pageBuilder: (context, state) =>
                 NoTransitionPage(child: SettingsScreen()),
+          ),
+          GoRoute(
+            path: '/badges',
+            name: 'badges',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: BadgesScreen()),
+          ),
+          GoRoute(
+            path: '/servingsDatabase',
+            name: 'servingsDatabase',
+            pageBuilder: (context, state) {
+              final args = state.extra as Map<String, dynamic>;
+              return NoTransitionPage(
+                child: ServingsDatabase(
+                  source: args['source'] as String,
+                  fdcId: args['fdcId'] as String?,
+                  barcode: args['barcode'] as String?,
+                  scanId: args['scanId'] as String?,
+                  logId: args['logId'] as String?,
+                  mealType: args['mealType'] as String?,
+                  imageUrl: args['imageUrl'] as String?,
+                  item: args['item'] as Map<String, dynamic>?,
+                ),
+              );
+            },
           ),
         ],
       ),

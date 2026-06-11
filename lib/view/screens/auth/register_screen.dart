@@ -7,6 +7,7 @@ import 'package:graduation_project/models/user_model.dart';
 import 'package:graduation_project/services/api_service.dart';
 import 'package:graduation_project/services/onboarding_service.dart';
 import 'package:graduation_project/view/custom _widget/custom_input_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
  
 class RegisterScreen extends StatefulWidget {
   // The full UserModel collected during onboarding is passed in here from AllSet
@@ -85,6 +86,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Save the token returned by the register endpoint
       final data = jsonDecode(response.body);
       await _authService.saveToken(data['token']);
+
+      // Save current user email to SharedPreferences!
+      final emailVal = emailController.text.trim().toLowerCase();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('current_user_email', emailVal);
  
       // ── STEP 2: Save onboarding data if we have it ────────────────────────
       // widget.userModel holds everything collected from the onboarding screens

@@ -222,7 +222,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         selectedIndex = 0;
       } else if (location.startsWith('/log_food')) {
         selectedIndex = 1;
-      } else if (location.startsWith('/progress')) {
+      } else if (location.startsWith('/progress') || location.startsWith('/badges')) {
         selectedIndex = 2;
       } else if (location.startsWith('/settings')) {
         selectedIndex = 3;
@@ -237,7 +237,8 @@ class _BottomNavBarState extends State<BottomNavBar> {
   }
 
   void _onItemTapped(int index) {
-    if (selectedIndex != index) {
+    final currentLoc = GoRouter.of(context).routeInformationProvider.value.uri.toString();
+    if (selectedIndex != index || currentLoc != _routes[index]) {
       setState(() {
         selectedIndex = index;
       });

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/services/food_service.dart';
+import 'package:graduation_project/services/api_service.dart';
+import 'package:graduation_project/models/user_model.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+import 'package:go_router/go_router.dart';
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({Key? key}) : super(key: key);
@@ -24,6 +28,14 @@ class _ProgressPageState extends State<ProgressPage>
   String _streakText = '...';
   String _activeText = '...';
 
+  // Dynamic weight data
+  double _currentWeight = 170.0;
+  double _startWeight = 180.0;
+  double _goalWeight = 160.0;
+  List<Map<String, dynamic>> _weightLogs = [];
+  int selectedSegmentIndex = 1; // Default to '1M' (index 1)
+  String _userGoal = '';
+
   @override
   void initState() {
     super.initState();
@@ -40,18 +52,21 @@ class _ProgressPageState extends State<ProgressPage>
         FoodService().getWeeklyProgress().catchError((_) => <Map<String, dynamic>>[]),
         FoodService().getDailyProgress().catchError((_) => <String, dynamic>{}),
         FoodService().getStreak().catchError((_) => <String, dynamic>{}),
+        ApiService().getProfile().catchError((_) => null),
+        ApiService().getWeightHistory().catchError((_) => <Map<String, dynamic>>[]),
       ]);
 
       final weekly = results[0] as List<Map<String, dynamic>>;
       final daily = results[1] as Map<String, dynamic>;
       final streak = results[2] as Map<String, dynamic>;
+      final profile = results[3] as UserModel?;
+      final weightLogs = results[4] as List<Map<String, dynamic>>;
 
       final goalCal = ((daily['goals'] as Map?)?['calories'] ?? 2400).toDouble();
       final consumedCal = ((daily['consumed'] as Map?)?['calories'] ?? 0).toDouble();
 
       if (mounted) {
         setState(() {
-          // Weekly chart values (as ratios of goal)
           if (weekly.isNotEmpty && goalCal > 0) {
             values = weekly.map<double>((d) {
               final cal = (d['calories'] ?? 0).toDouble();
@@ -62,6 +77,23 @@ class _ProgressPageState extends State<ProgressPage>
           _caloriesText = consumedCal.toStringAsFixed(0);
           _streakText = '${streak['streak_count'] ?? 0} days';
           _activeText = '${streak['total_days_logged'] ?? 0} days';
+
+          _weightLogs = weightLogs;
+
+          if (profile != null) {
+            _currentWeight = (profile.weight as num?)?.toDouble() ?? 170.0;
+            _goalWeight = (profile.goalWeight as num?)?.toDouble() ?? 160.0;
+            _userGoal = profile.goal ?? '';
+          }
+
+          if (_weightLogs.isNotEmpty) {
+            _startWeight = (_weightLogs.last['weight'] as num).toDouble();
+            if (profile != null && profile.weight == null) {
+              _currentWeight = (_weightLogs.first['weight'] as num).toDouble();
+            }
+          } else {
+            _startWeight = _currentWeight;
+          }
         });
 
         _controller.forward();
@@ -77,149 +109,401 @@ class _ProgressPageState extends State<ProgressPage>
     super.dispose();
   }
 
+  // Helper date formatter
+  String _formatLogDate(String dateStr) {
+    try {
+      final parsed = DateTime.parse(dateStr);
+      return DateFormat('MMM d, yyyy').format(parsed);
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredWeightLogs {
+    if (_weightLogs.isEmpty) {
+      return [];
+    }
+
+    final now = DateTime.now();
+    DateTime cutoff;
+    switch (selectedSegmentIndex) {
+      case 0: // 1W
+        cutoff = DateTime(now.year, now.month, now.day - 7);
+        break;
+      case 1: // 1M
+        cutoff = DateTime(now.year, now.month - 1, now.day);
+        break;
+      case 2: // 6M
+        cutoff = DateTime(now.year, now.month - 6, now.day);
+        break;
+      case 3: // 1Y
+        cutoff = DateTime(now.year - 1, now.month, now.day);
+        break;
+      default: // ALL
+        cutoff = DateTime(2000);
+        break;
+    }
+
+    final filtered = _weightLogs.where((log) {
+      try {
+        final d = DateTime.parse(log['log_date'].toString());
+        return d.isAfter(cutoff) || d.isAtSameMomentAs(cutoff);
+      } catch (_) {
+        return true;
+      }
+    }).toList();
+
+    filtered.sort((a, b) {
+      return a['log_date'].toString().compareTo(b['log_date'].toString());
+    });
+
+    return filtered;
+  }
+
+  List<double> get _filteredWeights {
+    final logs = _filteredWeightLogs;
+    if (logs.isEmpty) {
+      return [_currentWeight];
+    }
+    return logs.map<double>((log) => (log['weight'] as num).toDouble()).toList();
+  }
+
+  List<String> get _chartLabels {
+    final now = DateTime.now();
+    switch (selectedSegmentIndex) {
+      case 0: // 1W
+        return List.generate(7, (i) {
+          final d = now.subtract(Duration(days: 6 - i));
+          return DateFormat('E').format(d);
+        });
+      case 1: // 1M
+        final start = DateTime(now.year, now.month - 1, now.day);
+        return List.generate(4, (i) {
+          final d = i == 3 ? now : start.add(Duration(days: i * 10));
+          return DateFormat('d/M').format(d);
+        });
+      case 2: // 6M
+        return List.generate(6, (i) {
+          final d = DateTime(now.year, now.month - (5 - i), 1);
+          return DateFormat('MMM').format(d);
+        });
+      case 3: // 1Y
+        return List.generate(12, (i) {
+          final d = DateTime(now.year, now.month - (11 - i), 1);
+          return DateFormat('MMM').format(d);
+        });
+      default: // ALL
+        return List.generate(6, (i) {
+          final d = DateTime(now.year, now.month - (5 - i), 1);
+          return DateFormat('MMM').format(d);
+        });
+    }
+  }
+
+  Widget _buildPeriodSummary() {
+    final logs = _filteredWeightLogs;
+    if (logs.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+        child: Text(
+          "Plan: ${_formatGoal(_userGoal)} | No weight logs in this period.",
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black54),
+        ),
+      );
+    }
+
+    final double startW = (logs.first['weight'] as num).toDouble();
+    final double endW = (logs.last['weight'] as num).toDouble();
+    final double diff = endW - startW;
+
+    String statusText = "";
+    Color statusColor = Colors.black87;
+
+    final goalLower = _userGoal.toLowerCase();
+    if (goalLower.contains('lose')) {
+      if (diff < 0) {
+        statusText = "Good progress! You lost ${diff.abs().toStringAsFixed(1)} kg";
+        statusColor = Colors.green;
+      } else if (diff > 0) {
+        statusText = "Needs improvement. You gained ${diff.abs().toStringAsFixed(1)} kg";
+        statusColor = Colors.orange;
+      } else {
+        statusText = "Stable weight";
+        statusColor = Colors.blueGrey;
+      }
+    } else if (goalLower.contains('gain')) {
+      if (diff > 0) {
+        statusText = "Good progress! You gained ${diff.abs().toStringAsFixed(1)} kg";
+        statusColor = Colors.green;
+      } else if (diff < 0) {
+        statusText = "Needs improvement. You lost ${diff.abs().toStringAsFixed(1)} kg";
+        statusColor = Colors.orange;
+      } else {
+        statusText = "Stable weight";
+        statusColor = Colors.blueGrey;
+      }
+    } else {
+      if (diff.abs() <= 1.0) {
+        statusText = "Good progress! Maintained weight within 1.0 kg (change: ${diff.toStringAsFixed(1)} kg)";
+        statusColor = Colors.green;
+      } else {
+        statusText = "Weight shifted by ${diff.toStringAsFixed(1)} kg";
+        statusColor = Colors.orange;
+      }
+    }
+
+    if (logs.length < 2) {
+      return Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black12,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black26),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.black54, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Plan: ${_formatGoal(_userGoal)} | Log at least twice to track period progress.",
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10, bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            statusColor == Colors.green ? Icons.check_circle_outline : Icons.info_outline,
+            color: statusColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                children: [
+                  const TextSpan(text: "Plan: ", style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: "${_formatGoal(_userGoal)} | "),
+                  const TextSpan(text: "Progress: ", style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatGoal(String goal) {
+    if (goal.isEmpty) return "N/A";
+    final g = goal.replaceAll('_', ' ').toLowerCase();
+    if (g.contains('lose')) return "Lose Weight";
+    if (g.contains('gain')) return "Gain Weight";
+    if (g.contains('maintain')) return "Maintain Weight";
+    return g[0].toUpperCase() + g.substring(1);
+  }
+
+  double get _progressToGoal {
+    if (_startWeight == _goalWeight) return 0.5;
+    final progress = (_startWeight - _currentWeight) / (_startWeight - _goalWeight);
+    return progress.clamp(0.0, 1.0);
+  }
+
   // --- دالة إظهار الـ Dialog لإضافة وزن جديد ---
   void _showAddWeightDialog(BuildContext context) {
+    final TextEditingController weightController = TextEditingController();
+    DateTime selectedLogDate = DateTime.now();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24), // حواف دائرية للبوب أب
-          ),
-          backgroundColor: Colors.white,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // عشان البوب أب تاخد مساحة المحتوى بس
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // الهيدر (العنوان + علامة X)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: Colors.white,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Add Weight Log',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(Icons.close, size: 20),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(color: Color(0xFFEEEEEE), thickness: 1),
+                    const SizedBox(height: 16),
                     const Text(
-                      'Add Weight Log',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      'Weight (kg/lbs)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: weightController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your weight',
+                        hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+                        filled: true,
+                        fillColor: const Color(0xFFF5F5F5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
+                      keyboardType: TextInputType.number,
                     ),
-                    InkWell(
-                      onTap: () => Navigator.pop(context), // لقفل البوب أب
-                      child: const Icon(Icons.close, size: 20),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Date',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-                const Divider(color: Color(0xFFEEEEEE), thickness: 1), // الخط الفاصل
-                const SizedBox(height: 16),
-
-                // إدخال الوزن
-                const Text(
-                  'Weight (kg/lbs)',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Enter your weight',
-                    hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
-                    filled: true,
-                    fillColor: const Color(0xFFF5F5F5), // لون رمادي فاتح
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-
-                const SizedBox(height: 20),
-
-                // إدخال التاريخ
-                const Text(
-                  'Date',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '02/24/26',
-                        style: TextStyle(color: Colors.black54, fontSize: 13),
-                      ),
-                      Icon(Icons.calendar_today_outlined, size: 16, color: Colors.black),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // زراير Cancel و Save
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: selectedLogDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Colors.black,
+                                  onPrimary: Colors.white,
+                                  onSurface: Colors.black,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (date != null) {
+                          setDialogState(() {
+                            selectedLogDate = date;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              DateFormat('MM/dd/yy').format(selectedLogDate),
+                              style: const TextStyle(color: Colors.black54, fontSize: 13),
                             ),
-                          ),
+                            const Icon(Icons.calendar_today_outlined, size: 16, color: Colors.black),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () {
-                          // هنا ممكن تحط الكود اللي بيحفظ الداتا بعدين
-                          Navigator.pop(context);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111111),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => Navigator.pop(context),
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Save Log',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F5F5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final text = weightController.text.trim();
+                              if (text.isEmpty) return;
+                              final parsedWeight = double.tryParse(text);
+                              if (parsedWeight == null) return;
+                              
+                              final success = await ApiService().logWeight(
+                                parsedWeight,
+                                DateFormat('yyyy-MM-dd').format(selectedLogDate),
+                              );
+                              if (success) {
+                                Navigator.pop(context);
+                                _loadData();
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF111111),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'Save Log',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -243,7 +527,7 @@ class _ProgressPageState extends State<ProgressPage>
                     alignment: Alignment.centerLeft,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () {},
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
                   const Text(
@@ -293,20 +577,20 @@ class _ProgressPageState extends State<ProgressPage>
                         ],
                       ),
                       const SizedBox(height: 8),
-                      const Row(
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            '170',
-                            style: TextStyle(
+                            _currentWeight.toStringAsFixed(0),
+                            style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(width: 4),
-                          Text(
-                            'lbs',
+                          const SizedBox(width: 4),
+                          const Text(
+                            'kg',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.black54,
@@ -316,24 +600,24 @@ class _ProgressPageState extends State<ProgressPage>
                       ),
                       const SizedBox(height: 6),
                       RichText(
-                        text: const TextSpan(
-                          style: TextStyle(fontSize: 12),
+                        text: TextSpan(
+                          style: const TextStyle(fontSize: 12),
                           children: [
-                            TextSpan(
+                            const TextSpan(
                               text: 'Start: ',
                               style: TextStyle(color: Colors.black54),
                             ),
                             TextSpan(
-                              text: '180  ',
-                              style: TextStyle(color: Colors.black87),
+                              text: '${_startWeight.toStringAsFixed(0)}  ',
+                              style: const TextStyle(color: Colors.black87),
                             ),
-                            TextSpan(
+                            const TextSpan(
                               text: 'Goal: ',
                               style: TextStyle(color: Colors.black54),
                             ),
                             TextSpan(
-                              text: '160',
-                              style: TextStyle(color: Colors.black87),
+                              text: _goalWeight.toStringAsFixed(0),
+                              style: const TextStyle(color: Colors.black87),
                             ),
                           ],
                         ),
@@ -346,28 +630,38 @@ class _ProgressPageState extends State<ProgressPage>
                       const SizedBox(height: 6),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: const LinearProgressIndicator(
-                          value: 0.5,
+                        child: LinearProgressIndicator(
+                          value: _progressToGoal,
                           minHeight: 10,
-                          backgroundColor: Color(0xFFE0E0E0),
+                          backgroundColor: const Color(0xFFE0E0E0),
                           valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.black),
+                          const AlwaysStoppedAnimation<Color>(Colors.black),
                         ),
                       ),
                     ],
                   ),
-                  const Positioned(
+                  Positioned(
                     top: 0,
                     right: 0,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _Label(),
-                        SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${(_currentWeight - _goalWeight).abs().toStringAsFixed(0)} kg to go',
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          '10 lbs lost',
+                          '${(_startWeight - _currentWeight).abs().toStringAsFixed(0)} kg ${_currentWeight <= _startWeight ? 'lost' : 'gained'}',
                           style: TextStyle(
-                            color: Colors.green,
+                            color: _currentWeight <= _startWeight ? Colors.green : Colors.orange,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -526,7 +820,9 @@ class _ProgressPageState extends State<ProgressPage>
                 Align(
                   alignment: Alignment.centerRight,
                   child: InkWell(
-                    onTap: () {},
+                    onTap: () {
+                      context.push('/badges');
+                    },
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -563,16 +859,19 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Weekly Calories',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
-              Text(
-                'Details >',
-                style: TextStyle(color: Colors.black45, fontSize: 12),
+              GestureDetector(
+                onTap: () => context.push('/weeklyBreakdownScreen'),
+                child: const Text(
+                  'Details >',
+                  style: TextStyle(color: Colors.black45, fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -643,14 +942,10 @@ class _ProgressPageState extends State<ProgressPage>
   }
 
   Widget _weightJourneyCard() {
-    final data = <double>[
-      175, 175, 173, 173, 170, 170, 165, 171, 169, 169.1
-    ];
     final segments = ['1W', '1M', '6M', '1Y', 'ALL'];
-    const selected = 4;
 
     return Container(
-      height: 300,
+      height: 350,
       padding: const EdgeInsets.all(16),
       decoration: _box(),
       child: Column(
@@ -669,20 +964,27 @@ class _ProgressPageState extends State<ProgressPage>
             ),
             child: Row(
               children: List.generate(segments.length, (i) {
-                final active = i == selected;
+                final active = i == selectedSegmentIndex;
                 return Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: active ? Colors.black : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Text(
-                        segments[i],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: active ? Colors.white : Colors.black54,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedSegmentIndex = i;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: active ? Colors.black : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Text(
+                          segments[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: active ? Colors.white : Colors.black54,
+                          ),
                         ),
                       ),
                     ),
@@ -691,24 +993,19 @@ class _ProgressPageState extends State<ProgressPage>
               }),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+          _buildPeriodSummary(),
+          const SizedBox(height: 10),
           Expanded(
-            child: _InteractiveWeightChart(data: data),
+            child: _InteractiveWeightChart(data: _filteredWeights, labels: _chartLabels),
           ),
         ],
       ),
     );
   }
 
-  // ضفنا هنا BuildContext عشان نستخدمه في الـ Dialog
   Widget _weightLogCard(BuildContext context) {
-    final logs = [
-      {'date': 'Mar 1, 2025', 'weight': '70kg'},
-      {'date': 'Feb 15, 2025', 'weight': '75kg'},
-      {'date': 'Jan 31, 2025', 'weight': '76kg'},
-      {'date': 'Jan 24, 2025', 'weight': '77kg'},
-      {'date': 'Jan 1, 2025', 'weight': '80kg'},
-    ];
+    final displayLogs = _weightLogs.take(5).toList();
 
     const dotSize = 12.0;
     const lineX = 22.0;
@@ -731,9 +1028,8 @@ class _ProgressPageState extends State<ProgressPage>
                 ),
               ),
 
-              // --- تعديل زرار Add ---
               InkWell(
-                onTap: () => _showAddWeightDialog(context), // استدعاء دالة الـ Popup
+                onTap: () => _showAddWeightDialog(context),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -762,69 +1058,86 @@ class _ProgressPageState extends State<ProgressPage>
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: logs.length * rowHeight,
-            child: Stack(
-              children: [
-                Positioned(
-                  left: lineX + dotSize / 2 - 1,
-                  top: rowHeight / 2,
-                  bottom: rowHeight / 2,
-                  child: Container(
-                    width: 2,
-                    color: Colors.black,
-                  ),
+          if (displayLogs.isEmpty)
+            const SizedBox(
+              height: rowHeight,
+              child: Center(
+                child: Text(
+                  'No weight logs yet. Click Add to log your weight!',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
-                Column(
-                  children: List.generate(logs.length, (i) {
-                    return SizedBox(
-                      height: rowHeight,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(width: lineX),
-                          Container(
-                            width: dotSize,
-                            height: dotSize,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              logs[i]['date']!,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
+              ),
+            )
+          else
+            SizedBox(
+              height: displayLogs.length * rowHeight,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: lineX + dotSize / 2 - 1,
+                    top: rowHeight / 2,
+                    bottom: rowHeight / 2,
+                    child: Container(
+                      width: 2,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Column(
+                    children: List.generate(displayLogs.length, (i) {
+                      final log = displayLogs[i];
+                      final dateVal = _formatLogDate(log['log_date'].toString());
+                      final weightVal = "${(log['weight'] as num).toStringAsFixed(1)} kg";
+
+                      return SizedBox(
+                        height: rowHeight,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SizedBox(width: lineX),
+                            Container(
+                              width: dotSize,
+                              height: dotSize,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
                               ),
                             ),
-                          ),
-                          SizedBox(
-                            width: 52,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 14),
-                                child: Text(
-                                  logs[i]['weight']!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                dateVal,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 65,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 14),
+                                  child: Text(
+                                    weightVal,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ],
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -916,8 +1229,9 @@ class _AvgLinePainter extends CustomPainter {
 
 class _InteractiveWeightChart extends StatefulWidget {
   final List<double> data;
+  final List<String> labels;
 
-  const _InteractiveWeightChart({required this.data});
+  const _InteractiveWeightChart({required this.data, required this.labels});
 
   @override
   State<_InteractiveWeightChart> createState() =>
@@ -936,6 +1250,7 @@ class _InteractiveWeightChartState extends State<_InteractiveWeightChart> {
       child: CustomPaint(
         painter: _WeightLinePainter(
           data: widget.data,
+          labels: widget.labels,
           selectedIndex: selectedIndex,
         ),
         child: Container(),
@@ -956,10 +1271,12 @@ class _InteractiveWeightChartState extends State<_InteractiveWeightChart> {
 
 class _WeightLinePainter extends CustomPainter {
   final List<double> data;
+  final List<String> labels;
   final int? selectedIndex;
 
   _WeightLinePainter({
     required this.data,
+    required this.labels,
     this.selectedIndex,
   });
 
@@ -978,10 +1295,19 @@ class _WeightLinePainter extends CustomPainter {
       ..color = Colors.black12
       ..strokeWidth = 1;
 
-    const minWeight = 160.0;
-    const maxWeight = 180.0;
+    double minWeight = data.isNotEmpty ? data.reduce((a, b) => a < b ? a : b) : 160.0;
+    double maxWeight = data.isNotEmpty ? data.reduce((a, b) => a > b ? a : b) : 180.0;
 
-    double norm(double v) => (v - minWeight) / (maxWeight - minWeight);
+    if (minWeight == maxWeight) {
+      minWeight = minWeight - 10.0;
+      maxWeight = maxWeight + 10.0;
+    } else {
+      final diff = maxWeight - minWeight;
+      minWeight = minWeight - diff * 0.1;
+      maxWeight = maxWeight + diff * 0.1;
+    }
+
+    double norm(double v) => (maxWeight - minWeight > 0) ? (v - minWeight) / (maxWeight - minWeight) : 0.5;
 
     const horizontalPadding = 28.0;
     const bottomPadding = 22.0;
@@ -1011,16 +1337,43 @@ class _WeightLinePainter extends CustomPainter {
       axisPaint,
     );
 
+    if (data.isEmpty) {
+      final textPainter = TextPainter(
+        text: const TextSpan(
+          text: 'No logged weight data yet',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      textPainter.paint(
+        canvas,
+        Offset(
+          size.width / 2 - textPainter.width / 2,
+          chartHeight / 2 - textPainter.height / 2,
+        ),
+      );
+      return;
+    }
+
     final points = <Offset>[];
 
     for (int i = 0; i < data.length; i++) {
-      final x = horizontalPadding + (i / (data.length - 1)) * chartWidth;
+      final x = data.length == 1
+          ? horizontalPadding + chartWidth / 2
+          : horizontalPadding + (i / (data.length - 1)) * chartWidth;
       final y = chartHeight - (norm(data[i]) * chartHeight);
       points.add(Offset(x, y));
     }
 
     final path = Path();
-    path.moveTo(points.first.dx, points.first.dy);
+    if (points.isNotEmpty) {
+      path.moveTo(points.first.dx, points.first.dy);
+    }
 
     for (int i = 0; i < points.length - 1; i++) {
       final p0 = i > 0 ? points[i - 1] : points[i];
@@ -1063,6 +1416,10 @@ class _WeightLinePainter extends CustomPainter {
     canvas.drawPath(fillPath, fillPaint);
 
     canvas.drawPath(path, linePaint);
+
+    if (data.length == 1 && points.isNotEmpty) {
+      canvas.drawCircle(points.first, 6, Paint()..color = Colors.black);
+    }
 
     if (selectedIndex != null &&
         selectedIndex! >= 0 &&
@@ -1136,18 +1493,18 @@ class _WeightLinePainter extends CustomPainter {
       textPainter.paint(canvas, offset);
     }
 
-    final months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    final labelsCount = labels.length;
 
     const textStyle = TextStyle(
       fontSize: 11,
       color: Colors.black87,
     );
 
-    for (int i = 0; i < months.length; i++) {
-      final x = horizontalPadding + (i / (months.length - 1)) * chartWidth;
+    for (int i = 0; i < labelsCount; i++) {
+      final x = horizontalPadding + (labelsCount > 1 ? (i / (labelsCount - 1)) * chartWidth : 0.0);
 
       final tp = TextPainter(
-        text: TextSpan(text: months[i], style: textStyle),
+        text: TextSpan(text: labels[i], style: textStyle),
         textDirection: TextDirection.ltr,
       )..layout();
 
@@ -1161,6 +1518,7 @@ class _WeightLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _WeightLinePainter oldDelegate) {
     return oldDelegate.data != data ||
+        oldDelegate.labels != labels ||
         oldDelegate.selectedIndex != selectedIndex;
   }
 }

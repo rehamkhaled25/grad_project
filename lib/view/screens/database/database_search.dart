@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:graduation_project/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
 
 import 'dart:async';
 
 import 'package:graduation_project/view/screens/database/servings_database.dart';
  
 class DatabaseSearch extends StatefulWidget {
-  const DatabaseSearch({super.key});
+  final String? mealType;
+  const DatabaseSearch({super.key, this.mealType});
  
   @override
   State<DatabaseSearch> createState() => _DatabaseSearchState();
@@ -22,15 +25,13 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
   bool _isLoading = false;
   Timer? _debounce;
  
-  final List<String> _tabLabels = ["All", "My meals", "My foods", "Saved Scans"];
-  final List<String> _tabKeys  = ["all", "my_meals", "my_foods", "saved_scans"];
+  final List<String> _tabLabels = ["All", "My foods", "Saved Scans"];
+  final List<String> _tabKeys  = ["all", "my_foods", "saved_scans"];
  
   @override
   void initState() {
     super.initState();
-    if (selectedTabIndex != 0) {
-      _performSearch('');
-    }
+    _performSearch('');
   }
  
   @override
@@ -48,21 +49,17 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
   }
  
   Future<void> _performSearch(String query) async {
-    if (query.isEmpty && _tabKeys[selectedTabIndex] == "all") {
-      setState(() {
-        _results  = [];
-        _isLoading = false;
-      });
-      return;
-    }
  
     setState(() => _isLoading = true);
     try {
       final tab      = _tabKeys[selectedTabIndex];
       final response = await _foodService.searchFood(query, tab: tab);
       final List rawResults = response['results'] ?? [];
+      
+      List<Map<String, dynamic>> parsedResults = rawResults.cast<Map<String, dynamic>>();
+
       setState(() {
-        _results   = rawResults.cast<Map<String, dynamic>>();
+        _results   = parsedResults;
         _isLoading = false;
       });
     } catch (e) {
@@ -104,7 +101,20 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                       ),
                       IconButton(
                         padding: const EdgeInsets.symmetric(horizontal: 25),
-                        onPressed: () => context.push('/foodScanner'),
+                        onPressed: () async {
+                          final prefs = await SharedPreferences.getInstance();
+                          final email = await ApiService().getCurrentUserEmail() ?? '';
+                          final prefix = email.isNotEmpty ? '${email}_' : '';
+                          final isSubscribed = prefs.getBool('${prefix}premium_active') ?? false;
+                          if (isSubscribed) {
+                            context.push('/foodScanner', extra: widget.mealType);
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const Cameraaiupgrade()),
+                            );
+                          }
+                        },
                         icon: Image.asset("assets/images/scan_ic.png"),
                       ),
                     ],
@@ -173,6 +183,7 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                     child: _FoodItemCard(
                       item: item,
                       currentTab: _tabKeys[selectedTabIndex],
+                      mealType: widget.mealType,
                     ),
                   );
                 },
@@ -210,8 +221,9 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
 class _FoodItemCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final String currentTab; // tells us which source to pass
+  final String? mealType;
  
-  const _FoodItemCard({required this.item, required this.currentTab});
+  const _FoodItemCard({required this.item, required this.currentTab, this.mealType});
  
   /// Map the search tab to the source string the serving endpoint expects.
   String get _source {
@@ -231,26 +243,47 @@ class _FoodItemCard extends StatelessWidget {
     }
   }
  
+  String? _getResolvedImageUrl(String name) {
+    final rawUrl = item['image_url'] ?? item['image_path'];
+    if (rawUrl == null || rawUrl.toString().trim().isEmpty || rawUrl.toString().trim() == 'null') return null;
+
+    final urlStr = rawUrl.toString().trim();
+    if (urlStr.startsWith('http')) return urlStr;
+
+    if (urlStr.contains('\\') || urlStr.contains('/')) {
+      final filename = urlStr.split('/').last.split('\\').last;
+      return '${ApiService.baseUrl}/user/food/scans/image/$filename';
+    }
+
+    final base = ApiService.baseUrl.endsWith('/')
+        ? ApiService.baseUrl
+        : '${ApiService.baseUrl}/';
+    final path = urlStr.startsWith('/') ? urlStr.substring(1) : urlStr;
+    return '$base$path';
+  }
+
   @override
   Widget build(BuildContext context) {
     final name      = item['food_name'] ?? item['meal_name'] ?? 'Unknown';
     final calories  = item['calories'] ?? 0;
-    final imageUrl  = item['image_url'];
+    final resolvedUrl = _getResolvedImageUrl(name);
+    final fallbackUrl = 'https://loremflickr.com/150/150/food,${Uri.encodeComponent(name)}?lock=${name.hashCode.abs()}';
  
     return GestureDetector(
       onTap: () {
         // ── THE FIX: navigate to ServingsDatabase, not the old _ServingsFromSearch ──
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ServingsDatabase(
-              source:  _source,
-              fdcId:   item['fdc_id']?.toString(),
-              barcode: item['barcode']?.toString(),
-              scanId:  item['scan_id']?.toString(),
-              logId:   item['log_id']?.toString(),
-            ),
-          ),
+        context.push(
+          '/servingsDatabase',
+          extra: {
+            'source':  _source,
+            'fdcId':   item['fdc_id']?.toString(),
+            'barcode': item['barcode']?.toString(),
+            'scanId':  item['scan_id']?.toString(),
+            'logId':   item['log_id']?.toString() ?? item['id']?.toString(),
+            'mealType': mealType,
+            'imageUrl': resolvedUrl ?? fallbackUrl,
+            'item': item,
+          },
         );
       },
       child: Padding(
@@ -266,25 +299,19 @@ class _FoodItemCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 10, right: 20),
             child: Row(
               children: [
-                if (imageUrl != null && imageUrl.toString().isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      imageUrl.toString().startsWith('http')
-                          ? imageUrl.toString()
-                          : '${ApiService.baseUrl}$imageUrl',
-                      width: 46,
-                      height: 46,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.asset(
-                          'assets/images/pancakes.png',
-                          width: 46,
-                          height: 46),
-                    ),
-                  )
-                else
-                  Image.asset('assets/images/pancakes.png',
-                      width: 46, height: 46),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    resolvedUrl ?? fallbackUrl,
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                        'assets/images/food_placeholder.png',
+                        width: 46,
+                        height: 46),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

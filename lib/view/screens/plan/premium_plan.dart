@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:graduation_project/services/api_service.dart';
 
 class PremiumPlanScreen extends StatefulWidget {
   const PremiumPlanScreen({super.key});
@@ -54,11 +55,13 @@ class _PremiumPlanScreenState extends State<PremiumPlanScreen> {
 
   Future<void> _loadPremiumStatus() async {
     final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
     if (mounted) {
       setState(() {
-        _isSubscribed = prefs.getBool('premium_active') ?? false;
-        _planName = prefs.getString('premium_plan_name') ?? 'Premium';
-        _dueDate = prefs.getString('premium_due_date') ?? '';
+        _isSubscribed = prefs.getBool('${prefix}premium_active') ?? false;
+        _planName = prefs.getString('${prefix}premium_plan_name') ?? 'Premium';
+        _dueDate = prefs.getString('${prefix}premium_due_date') ?? '';
         _isLoading = false;
       });
     }
@@ -287,9 +290,9 @@ class _PlanCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, size: 16, color: Color(0xffD90C0C)),
+                    const Icon(Icons.check, size: 16, color: Colors.grey),
                     const SizedBox(width: 8),
-                    Text(b.toString(), style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                    Text(b.toString(), style: const TextStyle(fontSize: 11, color: Colors.black)),
                   ],
                 ),
               )),

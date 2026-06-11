@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:graduation_project/services/food_service.dart';
 
 class BadgesScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class BadgesScreen extends StatefulWidget {
 class _BadgesScreenState extends State<BadgesScreen> {
   List<Map<String, dynamic>> _badges = [];
   bool _isLoading = true;
+  int _streakCount = 0;
 
   @override
   void initState() {
@@ -20,10 +22,13 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
   Future<void> _loadBadges() async {
     try {
+      final streak = await FoodService().getStreak().catchError((_) => <String, dynamic>{});
+      final streakCount = (streak['streak_count'] ?? 0) as int;
       final badges = await FoodService().getBadges();
       if (mounted) {
         setState(() {
           _badges = badges;
+          _streakCount = streakCount;
           _isLoading = false;
         });
       }
@@ -69,7 +74,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
         title: const Text(
           "Badges",
@@ -100,6 +105,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
                               title: b['title'] ?? '',
                               isLocked: !(b['is_earned'] ?? false),
                               isNew: b['is_new'] ?? false,
+                              streakCount: _streakCount,
                             ))
                         .toList(),
                   ),
@@ -123,6 +129,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
                               isLocked: !(b['is_earned'] ?? false),
                               isDiamond: true,
                               notificationCount: b['level'] ?? 0,
+                              streakCount: _streakCount,
                             ))
                         .toList(),
                   ),
@@ -140,6 +147,7 @@ class BadgeItem extends StatelessWidget {
   final bool isNew;
   final int notificationCount;
   final bool isDiamond;
+  final int streakCount;
 
   const BadgeItem({
     super.key,
@@ -149,6 +157,7 @@ class BadgeItem extends StatelessWidget {
     this.isNew = false,
     this.notificationCount = 0,
     this.isDiamond = false,
+    required this.streakCount,
   });
 
   @override
@@ -156,7 +165,6 @@ class BadgeItem extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -171,10 +179,14 @@ class BadgeItem extends StatelessWidget {
                 child: Container(
                   width: 55,
                   height: 55,
-                  color: isLocked ? Colors.grey.shade300 : Colors.black,
+                  color: isLocked
+                      ? Colors.grey.shade300
+                      : (streakCount % 5 == 0 && streakCount > 0)
+                          ? Colors.black
+                          : Colors.grey,
                   child: Icon(
                     icon,
-                    color: isLocked ? Colors.white : Colors.white,
+                    color: Colors.white,
                     size: 26,
                   ),
                 ),
@@ -193,15 +205,14 @@ class BadgeItem extends StatelessWidget {
           ),
         ),
 
-
         if (isNew)
           Positioned(
             top: 10,
-            right: 10,
+            right: 3,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xffE23337),
+                color: const Color.fromARGB(255, 135, 24, 24),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text(
@@ -211,10 +222,9 @@ class BadgeItem extends StatelessWidget {
             ),
           ),
 
-
         if (notificationCount > 0)
           Positioned(
-            right: -10,
+            right: -3,
             top: 0,
             bottom: 0,
             child: Center(
@@ -222,7 +232,7 @@ class BadgeItem extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: const Color(0xffE23337),
+                  color: isLocked ? Colors.grey : Colors.red,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
@@ -254,13 +264,11 @@ class HexagonClipper extends CustomClipper<Path> {
     final h = size.height;
 
     if (isDiamond) {
-
       path.moveTo(w * 0.5, 0);
       path.lineTo(w, h * 0.5);
       path.lineTo(w * 0.5, h);
       path.lineTo(0, h * 0.5);
     } else {
-
       path.moveTo(w * 0.5, 0);
       path.lineTo(w, h * 0.25);
       path.lineTo(w, h * 0.75);

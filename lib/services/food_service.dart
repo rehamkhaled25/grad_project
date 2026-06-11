@@ -47,15 +47,17 @@ class FoodService {
 
   /// Analyze a previously scanned food image.
   /// Returns the full JSON response body with nutrition data.
-  Future<Map<String, dynamic>> analyzeFood(String scanId) async {
+  Future<Map<String, dynamic>> analyzeFood(String scanId, {String? context}) async {
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");
 
     final url = Uri.parse('$baseUrl/user/food/analyze/$scanId');
     print("🔬 [ANALYZE]: POST $url");
 
+    final body = context != null ? jsonEncode({"context": context}) : null;
+
     final response = await http
-        .post(url, headers: _authHeaders(token))
+        .post(url, headers: _authHeaders(token), body: body)
         .timeout(const Duration(seconds: 60));
 
     print("🔬 [ANALYZE]: Status ${response.statusCode}");
@@ -88,16 +90,22 @@ class FoodService {
 
   // ─── FOOD LOG ────────────────────────────────────────────────────────
 
-  /// Log food. Supports three modes:
-  /// - By scan_id: `{"scan_id": "..."}`
-  /// - By name (AI): `{"food_name": "..."}`
-  /// - Manual: `{"food_name": "...", "calories": ..., "protein": ..., ...}`
+  /// Log food to the backend.
+  ///
+  /// The [data] map must contain at minimum `food_name` and the nutritional
+  /// values (`calories`, `protein`, `carbs`, `fats`).
+  ///
+  /// Include `meal_type` (breakfast/lunch/dinner/snack) in [data] so the
+  /// backend stores the entry in the correct meal bucket.
+  ///
+  /// Include `image_url` in [data] if you want the image to persist and
+  /// show up in the dashboard / My Meals / My Foods tabs.
   Future<Map<String, dynamic>> logFood(Map<String, dynamic> data) async {
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");
 
     final url = Uri.parse('$baseUrl/user/food/log');
-    print("📝 [LOG]: POST $url");
+    print("📝 [LOG]: POST $url  meal_type=${data['meal_type']}");
 
     final response = await http
         .post(url,
@@ -141,11 +149,16 @@ class FoodService {
 
   /// Search food database.
   /// [tab] can be: 'all', 'my_meals', 'my_foods', 'saved_scans'
-  Future<Map<String, dynamic>> searchFood(String query, {String tab = 'all'}) async {
+  /// [query] empty string is fine — for my_meals/my_foods/saved_scans the
+  /// backend returns all recent entries when query is empty.
+  Future<Map<String, dynamic>> searchFood(String query,
+      {String tab = 'all'}) async {
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");
 
-    final url = Uri.parse('$baseUrl/user/food/search?query=$query&tab=$tab');
+    final encodedQuery = Uri.encodeQueryComponent(query.trim());
+    final url =
+        Uri.parse('$baseUrl/user/food/search?query=$encodedQuery&tab=$tab');
     print("🔍 [SEARCH]: GET $url");
 
     final response = await http
@@ -153,7 +166,11 @@ class FoodService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(jsonDecode(response.body));
+      final data = Map<String, dynamic>.from(jsonDecode(response.body));
+      final List rawResults = data['results'] ?? [];
+      final enriched = await _enrichLogsWithImages(rawResults);
+      data['results'] = enriched;
+      return data;
     } else {
       final body = jsonDecode(response.body);
       throw Exception(
@@ -203,23 +220,43 @@ class FoodService {
   /// Get the user's calorie plan.
   /// May return `missing_fields` if the profile is incomplete.
   Future<Map<String, dynamic>> getCaloriePlan() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+    final double? overrideCalories = prefs.getDouble('${prefix}plan_calories');
+    final double? overrideProtein = prefs.getDouble('${prefix}plan_protein');
+    final double? overrideFats = prefs.getDouble('${prefix}plan_fats');
+    final double? overrideCarbs = prefs.getDouble('${prefix}plan_carbs');
+
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");
 
     final url = Uri.parse('$baseUrl/user/plan/calories');
     print("🎯 [PLAN]: GET $url");
 
-    final response = await http
-        .get(url, headers: _authHeaders(token))
-        .timeout(const Duration(seconds: 10));
+    Map<String, dynamic> planData = {};
+    try {
+      final response = await http
+          .get(url, headers: _authHeaders(token))
+          .timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(jsonDecode(response.body));
-    } else {
-      final body = jsonDecode(response.body);
-      throw Exception(
-          body['message'] ?? body['error'] ?? 'Failed to get plan');
+      if (response.statusCode == 200) {
+        planData = Map<String, dynamic>.from(jsonDecode(response.body));
+      } else {
+        final body = jsonDecode(response.body);
+        throw Exception(
+            body['message'] ?? body['error'] ?? 'Failed to get plan');
+      }
+    } catch (e) {
+      print("🎯 [PLAN]: Error loading plan from backend: $e");
     }
+
+    if (overrideCalories != null) planData['calories'] = overrideCalories;
+    if (overrideProtein != null) planData['protein'] = overrideProtein;
+    if (overrideFats != null) planData['fats'] = overrideFats;
+    if (overrideCarbs != null) planData['carbs'] = overrideCarbs;
+
+    return planData;
   }
 
   // ─── PLAN APPLY (Premium / Mock Payment) ─────────────────────────────
@@ -248,12 +285,325 @@ class FoodService {
     }
   }
 
+  // ─── IMAGE ENRICHMENT HELPERS ────────────────────────────────────────
+
+  /// Fetches the publicly accessible image URL for a given scan_id.
+  /// The backend returns image_path (a filesystem path). We derive the
+  /// served URL from the filename using /user/food/scans/image/<filename>.
+  Future<String?> getScanImageUrl(String scanId) async {
+    try {
+      final scanData = await getScan(scanId);
+
+      // Prefer image_url if the backend already sends a full URL
+      final imageUrl = scanData['scan']?['image_url']?.toString() ??
+          scanData['image_url']?.toString();
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        return imageUrl.startsWith('http') ? imageUrl : '$baseUrl/$imageUrl';
+      }
+
+      // Fallback: derive URL from image_path (strip to filename only)
+      final imagePath = scanData['scan']?['image_path']?.toString() ??
+          scanData['image_path']?.toString();
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final filename = imagePath.split('/').last.split('\\').last;
+        return '$baseUrl/user/food/scans/image/$filename';
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Takes a raw list of log-entry maps and returns them enriched with
+  /// an `image_url` field wherever possible:
+  ///   - Scan-based logs:  fetched via getScanImageUrl(scan_id)
+  ///   - Database logs:    the `image_url` key already present is used as-is
+  Future<List<Map<String, dynamic>>> _enrichLogsWithImages(
+      List<dynamic> rawLogs) async {
+    final futures = rawLogs.map((raw) async {
+      final log = Map<String, dynamic>.from(raw as Map);
+
+      // 1. Check if it already has a usable image URL
+      final existing = log['image_url']?.toString() ?? '';
+      if (existing.isNotEmpty && existing != 'null') {
+        log['image_url'] = existing.startsWith('http')
+            ? existing
+            : '$baseUrl/${existing.startsWith('/') ? existing.substring(1) : existing}';
+        return log;
+      }
+
+      // 2. Check if it carries a raw image_path in the database
+      final rawPath = log['image_path']?.toString() ?? '';
+      if (rawPath.isNotEmpty && rawPath != 'null') {
+        if (rawPath.startsWith('http')) {
+          log['image_url'] = rawPath;
+        } else if (rawPath.contains('\\') || rawPath.contains('/')) {
+          final filename = rawPath.split('/').last.split('\\').last;
+          log['image_url'] = '$baseUrl/user/food/scans/image/$filename';
+        } else {
+          log['image_url'] = '$baseUrl/${rawPath.startsWith('/') ? rawPath.substring(1) : rawPath}';
+        }
+        return log;
+      }
+
+      // 3. Try to get the image from the linked scan if scan_id is present
+      final scanId = log['scan_id']?.toString() ?? '';
+      if (scanId.isNotEmpty && scanId != 'null') {
+        final url = await getScanImageUrl(scanId);
+        if (url != null) {
+          log['image_url'] = url;
+          return log;
+        }
+      }
+
+      // 4. Fallback: if it's a saved scan and has no scan_id field, but the entry itself is a scan
+      final isSavedScan = log['fdc_id'] == null && log['barcode'] == null && log['meal_type'] == null;
+      if (isSavedScan) {
+        final logId = log['id']?.toString() ?? '';
+        if (logId.isNotEmpty && logId != 'null') {
+          final url = await getScanImageUrl(logId);
+          if (url != null) log['image_url'] = url;
+        }
+      }
+
+      return log;
+    });
+
+    return Future.wait(futures);
+  }
+
+  /// Enriches every meal list inside a grouped map (breakfast/lunch/dinner/snack).
+  Future<Map<String, dynamic>> _enrichGroupedWithImages(
+      Map<String, dynamic> grouped) async {
+    final result = <String, dynamic>{};
+    for (final entry in grouped.entries) {
+      result[entry.key] = (entry.value is List)
+          ? await _enrichLogsWithImages(entry.value as List)
+          : entry.value;
+    }
+    return result;
+  }
+
+  // ─── DAY PROGRESS ────────────────────────────────────────────────────
+
+  /// Fetch progress for a single day from GET /user/progress/day?date=YYYY-MM-DD.
+  /// Falls back to composing from food history + calorie plan if the dedicated
+  /// endpoint doesn't exist yet on the backend.
+  ///
+  /// Returns a map with keys:
+  ///   date, calories, protein, carbs, fats,
+  ///   goal_calories, goal_protein, goal_carbs, goal_fats,
+  ///   progress (0.0–uncapped), has_data (bool), meals (List), grouped (Map)
+  Future<Map<String, dynamic>> getDayProgress(String date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+    final double? overrideCalories = prefs.getDouble('${prefix}plan_calories');
+    final double? overrideProtein = prefs.getDouble('${prefix}plan_protein');
+    final double? overrideFats = prefs.getDouble('${prefix}plan_fats');
+    final double? overrideCarbs = prefs.getDouble('${prefix}plan_carbs');
+
+    final token = await _getToken();
+    if (token == null) throw Exception("Not authenticated");
+
+    // ── Try the dedicated endpoint first ──────────────────────────────
+    try {
+      final url = Uri.parse('$baseUrl/user/progress/day?date=$date');
+      print("📅 [DAY PROGRESS]: GET $url");
+
+      final response = await http
+          .get(url, headers: _authHeaders(token))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = Map<String, dynamic>.from(jsonDecode(response.body));
+        final goalCalories = overrideCalories ?? (data['goal_calories'] ?? 2400).toDouble();
+        final consumed =
+            (data['calories'] ?? data['total_calories'] ?? 0).toDouble();
+        final hasData = consumed > 0 || data['has_data'] == true;
+
+        final rawLogs = (data['meals'] ?? data['logs'] ?? []) as List;
+        final enrichedLogs = await _enrichLogsWithImages(rawLogs);
+
+        final rawGrouped = data['grouped'] is Map
+            ? Map<String, dynamic>.from(data['grouped'] as Map)
+            : <String, dynamic>{};
+        final enrichedGrouped = await _enrichGroupedWithImages(rawGrouped);
+
+        // progress is uncapped — let the UI decide how to display >1.0
+        final progress = goalCalories > 0 ? consumed / goalCalories : 0.0;
+
+        return {
+          'date': date,
+          'calories': consumed,
+          'protein': (data['protein'] ?? data['total_protein'] ?? 0).toDouble(),
+          'carbs': (data['carbs'] ?? data['total_carbs'] ?? 0).toDouble(),
+          'fats': (data['fats'] ?? data['total_fat'] ?? 0).toDouble(),
+          'goal_calories': goalCalories,
+          'goal_protein': overrideProtein ?? (data['goal_protein'] ?? 120).toDouble(),
+          'goal_carbs': overrideCarbs ?? (data['goal_carbs'] ?? 250).toDouble(),
+          'goal_fats': overrideFats ?? (data['goal_fats'] ?? 60).toDouble(),
+          'progress': progress,
+          'has_data': hasData,
+          'meals': enrichedLogs,
+          'logs': enrichedLogs,
+          'grouped': enrichedGrouped,
+        };
+      }
+    } catch (_) {
+      // Fall through to the composed approach below
+    }
+
+    // ── Fallback: compose from existing endpoints ─────────────────────
+    print("📅 [DAY PROGRESS]: Falling back to history + plan for $date");
+
+    final results = await Future.wait([
+      getFoodHistory(date: date).catchError((_) => <String, dynamic>{}),
+      getCaloriePlan().catchError((_) => <String, dynamic>{}),
+    ]);
+
+    final history = results[0] as Map<String, dynamic>;
+    final plan = results[1] as Map<String, dynamic>;
+
+    final totals = history['totals'] is Map
+        ? Map<String, dynamic>.from(history['totals'])
+        : <String, dynamic>{};
+
+    final goalCalories = overrideCalories ?? (plan['calories'] ?? 2400).toDouble();
+    final goalProtein = overrideProtein ?? (plan['protein'] ?? 120).toDouble();
+    final goalCarbs = overrideCarbs ?? (plan['carbs'] ?? 250).toDouble();
+    final goalFats = overrideFats ?? (plan['fats'] ?? 60).toDouble();
+
+    final calories = (totals['calories'] ?? 0).toDouble();
+    final protein = (totals['protein'] ?? 0).toDouble();
+    final carbs = (totals['carbs'] ?? 0).toDouble();
+    final fats = (totals['fats'] ?? 0).toDouble();
+
+    final rawLogs = history['logs'] is List ? history['logs'] as List : [];
+    final enrichedLogs = await _enrichLogsWithImages(rawLogs);
+
+    final rawGrouped = history['grouped'] is Map
+        ? Map<String, dynamic>.from(history['grouped'] as Map)
+        : <String, dynamic>{};
+    final enrichedGrouped = await _enrichGroupedWithImages(rawGrouped);
+
+    final hasData = enrichedLogs.isNotEmpty || calories > 0;
+
+    // progress is uncapped — calories can legitimately exceed the goal
+    final progress = goalCalories > 0 ? calories / goalCalories : 0.0;
+
+    return {
+      'date': date,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fats': fats,
+      'goal_calories': goalCalories,
+      'goal_protein': goalProtein,
+      'goal_carbs': goalCarbs,
+      'goal_fats': goalFats,
+      'progress': progress,
+      'has_data': hasData,
+      'meals': enrichedLogs,
+      'logs': enrichedLogs,
+      'grouped': enrichedGrouped,
+    };
+  }
+
+  // ─── WEEK PROGRESS ───────────────────────────────────────────────────
+
+  /// Fetch progress for the last 8 days (to match the week bar) from
+  /// GET /user/progress/week. Falls back to parallel per-day calls.
+  ///
+  /// Returns a list of day maps (same shape as [getDayProgress]).
+  Future<List<Map<String, dynamic>>> getWeekProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+    final double? overrideCalories = prefs.getDouble('${prefix}plan_calories');
+
+    final token = await _getToken();
+    if (token == null) throw Exception("Not authenticated");
+
+    // ── Try dedicated endpoint first ──────────────────────────────────
+    try {
+      final url = Uri.parse('$baseUrl/user/progress/week');
+      print("📆 [WEEK PROGRESS]: GET $url");
+
+      final response = await http
+          .get(url, headers: _authHeaders(token))
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final raw = jsonDecode(response.body);
+        // Expect either a List or {"days": [...]}
+        final List rawList = raw is List
+            ? raw
+            : (raw['days'] ?? raw['week'] ?? []) as List;
+
+        return rawList.map<Map<String, dynamic>>((item) {
+          final m = Map<String, dynamic>.from(item);
+          final goalCalories = overrideCalories ?? (m['goal_calories'] ?? 2400).toDouble();
+          final calories =
+              (m['calories'] ?? m['total_calories'] ?? 0).toDouble();
+          final logs = m['meals'] ?? m['logs'] ?? [];
+          final hasData = (logs is List && logs.isNotEmpty) || calories > 0;
+          final progress =
+              goalCalories > 0 ? calories / goalCalories : 0.0;
+          return {
+            'date': m['date']?.toString() ?? '',
+            'calories': calories,
+            'protein': (m['protein'] ?? 0).toDouble(),
+            'carbs': (m['carbs'] ?? 0).toDouble(),
+            'fats': (m['fats'] ?? 0).toDouble(),
+            'goal_calories': goalCalories,
+            'progress': progress,
+            'has_data': hasData,
+            'meals': logs,
+            'grouped': m['grouped'] ?? {},
+          };
+        }).toList();
+      }
+    } catch (_) {
+      // Fall through to composed approach
+    }
+
+    // ── Fallback: parallel per-day calls ─────────────────────────────
+    print("📆 [WEEK PROGRESS]: Falling back to per-day calls");
+
+    final now = DateTime.now();
+    // Build 8-day range matching the UI bar (7 days ago → today)
+    final dates = List.generate(
+      8,
+      (i) => now.subtract(Duration(days: 7 - i)),
+    );
+
+    final futures = dates.map((d) {
+      final dateStr = "${d.year.toString().padLeft(4, '0')}-"
+          "${d.month.toString().padLeft(2, '0')}-"
+          "${d.day.toString().padLeft(2, '0')}";
+      return getDayProgress(dateStr).catchError((_) => {
+            'date': dateStr,
+            'calories': 0.0,
+            'protein': 0.0,
+            'carbs': 0.0,
+            'fats': 0.0,
+            'goal_calories': 2400.0,
+            'progress': 0.0,
+            'has_data': false,
+            'meals': <dynamic>[],
+            'logs': <dynamic>[],
+            'grouped': <String, dynamic>{},
+          });
+    });
+
+    return Future.wait(futures);
+  }
+
   // ─── DAILY PROGRESS (computed from history + plan) ───────────────────
 
   /// Get daily progress: consumed totals vs goals for a given date.
   Future<Map<String, dynamic>> getDailyProgress({String? date}) async {
-    final dateStr = date ??
-        DateTime.now().toIso8601String().substring(0, 10);
+    final dateStr =
+        date ?? DateTime.now().toIso8601String().substring(0, 10);
 
     final results = await Future.wait([
       getFoodHistory(date: dateStr).catchError((_) => <String, dynamic>{}),
@@ -262,7 +612,9 @@ class FoodService {
 
     final history = results[0] as Map<String, dynamic>;
     final plan = results[1] as Map<String, dynamic>;
-    final totals = history['totals'] is Map ? Map<String, dynamic>.from(history['totals']) : <String, dynamic>{};
+    final totals = history['totals'] is Map
+        ? Map<String, dynamic>.from(history['totals'])
+        : <String, dynamic>{};
 
     final goalCalories = (plan['calories'] ?? 2400).toDouble();
     final goalProtein = (plan['protein'] ?? 120).toDouble();
@@ -280,7 +632,6 @@ class FoodService {
     final carbRatio = goalCarbs > 0 ? consumedCarbs / goalCarbs : 0.0;
     final fatRatio = goalFats > 0 ? consumedFats / goalFats : 0.0;
 
-    // Score based on how close to targets (1.0 = perfect)
     double avgDeviation = 0;
     int count = 0;
     for (final ratio in [calRatio, protRatio, carbRatio, fatRatio]) {
@@ -291,7 +642,6 @@ class FoodService {
     }
     avgDeviation = count > 0 ? avgDeviation / count : 1.0;
 
-    // Convert to 0-10 score (lower deviation = higher score)
     int healthScore = ((1.0 - avgDeviation.clamp(0.0, 1.0)) * 10).round();
     healthScore = healthScore.clamp(0, 10);
 
@@ -309,7 +659,8 @@ class FoodService {
         'carbs': goalCarbs,
         'fats': goalFats,
       },
-      'progress': goalCalories > 0 ? (consumed / goalCalories).clamp(0.0, 1.0) : 0.0,
+      // uncapped so the caller can show >100%
+      'progress': goalCalories > 0 ? consumed / goalCalories : 0.0,
       'health_score': healthScore,
       'grouped': history['grouped'] ?? {},
       'logs': history['logs'] ?? [],
@@ -327,7 +678,9 @@ class FoodService {
       futures.add(
         getFoodHistory(date: dateStr)
             .then((data) {
-              final totals = data['totals'] is Map ? Map<String, dynamic>.from(data['totals']) : <String, dynamic>{};
+              final totals = data['totals'] is Map
+                  ? Map<String, dynamic>.from(data['totals'])
+                  : <String, dynamic>{};
               return {
                 'date': dateStr,
                 'calories': (totals['calories'] ?? 0).toDouble(),
@@ -354,7 +707,6 @@ class FoodService {
   // ─── STREAK (computed from food history) ─────────────────────────────
 
   /// Calculate streak from food history.
-  /// Checks last 90 days for consecutive days with logged food.
   Future<Map<String, dynamic>> getStreak() async {
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");
@@ -362,9 +714,6 @@ class FoodService {
     final now = DateTime.now();
     final Set<String> loggedDates = {};
 
-    // Fetch last 90 days of history to find logged dates
-    // We'll batch by fetching all history without date filter
-    // and extracting unique dates from log_time
     try {
       final history = await getFoodHistory();
       final logs = (history['logs'] as List?) ?? [];
@@ -377,7 +726,6 @@ class FoodService {
       }
     } catch (_) {}
 
-    // Calculate current streak
     int currentStreak = 0;
     for (int i = 0; i < 365; i++) {
       final date = now.subtract(Duration(days: i));
@@ -385,12 +733,10 @@ class FoodService {
       if (loggedDates.contains(dateStr)) {
         currentStreak++;
       } else if (i > 0) {
-        // Skip today if no food logged yet
         break;
       }
     }
 
-    // Calculate longest streak
     int longestStreak = 0;
     int tempStreak = 0;
     final sortedDates = loggedDates.toList()..sort();
@@ -423,9 +769,9 @@ class FoodService {
 
   // ─── BADGES (computed client-side) ───────────────────────────────────
 
-  /// Compute badges based on user activity.
   Future<List<Map<String, dynamic>>> getBadges() async {
-    final streak = await getStreak().catchError((_) => <String, dynamic>{});
+    final streak =
+        await getStreak().catchError((_) => <String, dynamic>{});
     final streakCount = (streak['streak_count'] ?? 0) as int;
     final totalDays = (streak['total_days_logged'] ?? 0) as int;
 
@@ -519,7 +865,6 @@ class FoodService {
 
   // ─── RECENT SCANS ───────────────────────────────────────────────────
 
-  /// Get recent food scans.
   Future<Map<String, dynamic>> getRecentScans({int limit = 20}) async {
     final token = await _getToken();
     if (token == null) throw Exception("Not authenticated");

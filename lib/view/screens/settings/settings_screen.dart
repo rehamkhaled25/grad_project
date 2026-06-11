@@ -64,9 +64,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Profile Section
                   SettingsContainer(
                     child: ListTile(
+                      onTap: () => context.push('/profile'),
                       leading: CircleAvatar(
                         radius: 25,
                         backgroundImage: _user?.profileImageUrl != null
@@ -111,20 +111,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context,
                           Icons.track_changes,
                           'My Goals',
-                          onTap: () => context.push('/goals'),
+                          onTap: () async {
+                            await context.push('/editGoal');
+                            _loadProfile();
+                          },
                         ),
                         _buildTile(
                           context,
                           Icons.energy_savings_leaf,
                           'Your Premium',
-                          onTap: () => context.push('/profile'),
+                          onTap: () => context.push('/premiumPlan'),
                         ),
                         _buildTile(
                           context,
-                          Icons.notifications_none,
-                          'Notifications',
+                          Icons.gps_fixed,
+                          'Target',
                           isLast: true,
-                          onTap: () => context.push('/notifications'),
+                          onTap: () => context.push('/myTarget'),
                         ),
                       ],
                     ),
@@ -198,7 +201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Log Out'),
+          title: const Text('log out'),
           content: const Text('Are you sure you want to log out?'),
           actions: [
             TextButton(

@@ -193,6 +193,18 @@ class _DailyProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color progressColor = Colors.grey.shade400;
+    if (dailyCal > 0 && consumed > 0) {
+      final diff = ((consumed - dailyCal) / dailyCal).abs();
+      if (diff <= 0.05) {
+        progressColor = Colors.green;
+      } else if (diff <= 0.15) {
+        progressColor = Colors.orange;
+      } else {
+        progressColor = Colors.red;
+      }
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(25),
@@ -208,7 +220,7 @@ class _DailyProgressCard extends StatelessWidget {
               Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Text(
                 progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "In Progress",
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),
@@ -223,7 +235,7 @@ class _DailyProgressCard extends StatelessWidget {
                   value: progress,
                   strokeWidth: 5,
                   backgroundColor: const Color(0xffEEEEEE),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xffD90C0C)),
+                  valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                 ),
               ),
               Column(
@@ -303,7 +315,7 @@ class _MealCardWithItems extends StatelessWidget {
                     style: const TextStyle(color:Color(0xffB3B3B3), fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
-                const AddFoodButton(),
+                AddFoodButton(mealType: title.toLowerCase()),
               ],
             )
           else
@@ -343,7 +355,7 @@ class _MealCardWithItems extends StatelessWidget {
             }).toList(),
           if (items.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Align(alignment: Alignment.centerRight, child: AddFoodButton()),
+            Align(alignment: Alignment.centerRight, child: AddFoodButton(mealType: title.toLowerCase())),
           ],
         ],
       ),
@@ -423,12 +435,13 @@ class DaysOfWeekBar extends StatelessWidget {
 }
 
 class AddFoodButton extends StatelessWidget {
-  const AddFoodButton({super.key});
+  final String? mealType;
+  const AddFoodButton({super.key, this.mealType});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push("/log"),
+      onTap: () => context.push("/log", extra: mealType),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(

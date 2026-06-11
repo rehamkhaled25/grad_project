@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class Cameraaiupgrade extends StatelessWidget {
   const Cameraaiupgrade({super.key});
@@ -98,7 +99,12 @@ class Cameraaiupgrade extends StatelessWidget {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Navigate to premium page
+                          context.push('/paymentApplication', extra: {
+                            'id': 1,
+                            'name': 'Monthly Premium',
+                            'price': 9.99,
+                            'period': 'month',
+                          });
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD90C0C),

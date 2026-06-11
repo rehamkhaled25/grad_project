@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
  
 class ApiService {
-  // static const String baseUrl = "http://192.168.1.3:5000";
-  static const String baseUrl = "http://10.0.2.2:5000"; 
+  static const String baseUrl = "http://192.168.1.6:5000";
+  // static const String baseUrl = "http://10.0.2.2:5000"; 
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
@@ -20,6 +20,20 @@ class ApiService {
   Future<void> deleteToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    await prefs.remove('current_user_email');
+  }
+ 
+  Future<String?> getCurrentUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? email = prefs.getString('current_user_email');
+    if (email == null || email.isEmpty) {
+      final profile = await getProfile();
+      if (profile != null && profile.email != null) {
+        email = profile.email!.toLowerCase();
+        await prefs.setString('current_user_email', email);
+      }
+    }
+    return email;
   }
  
   Future<http.Response> register(UserModel user) async {
@@ -61,6 +75,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await saveToken(data['token']);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user_email', email.toLowerCase());
       }
       return response;
     } catch (e) {
@@ -88,7 +104,12 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final userData = data['user'] ?? data;
-        return UserModel.fromJson(userData);
+        final user = UserModel.fromJson(userData);
+        if (user.email != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('current_user_email', user.email!.toLowerCase());
+        }
+        return user;
       }
       return null;
     } catch (e) {
@@ -188,6 +209,113 @@ class ApiService {
     } catch (e) {
       print("🔥 [UPDATE ALLERGIES] Exception: $e");
       return false;
+    }
+  }
+
+  Future<bool> updateProfileGoal(String goal, {double? goalWeight}) async {
+    final token = await getToken();
+    if (token == null) {
+      print("❌ [UPDATE GOAL] No token found");
+      return false;
+    }
+
+    final currentProfile = await getProfile();
+    if (currentProfile == null) {
+      print("❌ [UPDATE GOAL] Could not fetch current profile");
+      return false;
+    }
+
+    final url = Uri.parse('$baseUrl/user/profile');
+    final body = jsonEncode({
+      if ((currentProfile.fullName ?? '').isNotEmpty)
+        "full_name": currentProfile.fullName,
+      "birthdate": currentProfile.birthdate,
+      "gender": currentProfile.gender,
+      "goal": goal,
+      "weight": currentProfile.weight,
+      "height": currentProfile.height,
+      "goal_weight": goalWeight ?? currentProfile.goalWeight,
+      "allergies": currentProfile.allergies,
+    });
+
+    print("🚀 [UPDATE GOAL] Sending PUT to $url with goal: $goal");
+
+    try {
+      final response = await http
+          .put(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        print("✅ [UPDATE GOAL] Goal saved successfully");
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("🔥 [UPDATE GOAL] Exception: $e");
+      return false;
+    }
+  }
+
+  Future<bool> logWeight(double weight, String date) async {
+    final token = await getToken();
+    if (token == null) return false;
+
+    final url = Uri.parse('$baseUrl/user/weight/log');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode({
+              "weight": weight,
+              "date": date,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("Error logging weight: $e");
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getWeightHistory() async {
+    final token = await getToken();
+    if (token == null) return [];
+
+    final url = Uri.parse('$baseUrl/user/weight/history');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List rawLogs = data['logs'] ?? [];
+        return rawLogs.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print("Error fetching weight history: $e");
+      return [];
     }
   }
 }

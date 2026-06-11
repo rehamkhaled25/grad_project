@@ -212,7 +212,7 @@ class _PlanState extends State<Plan> {
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: pageWidth * 0.002, vertical: 20),
                                 child: ContinueButton(
-                                  onPressed: () => context.go('/trialSubscriptionPage'),
+                                  onPressed: () => context.push('/trialSubscriptionPage'),
                                   txt: "Let's get started!!",
                                 ),
                               ),

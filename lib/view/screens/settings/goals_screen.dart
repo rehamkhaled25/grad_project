@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:graduation_project/services/food_service.dart';
+import 'package:graduation_project/services/api_service.dart';
+import 'package:graduation_project/services/onboarding_service.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -42,19 +43,23 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Future<void> _loadGoals() async {
     try {
-      // First get the backend-computed plan as defaults
-      final plan = await FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{});
-      _planCalories = (plan['calories'] ?? 2400).toDouble();
-      _planProtein = (plan['protein'] ?? 120).toDouble();
-      _planCarbs = (plan['carbs'] ?? 250).toDouble();
-      _planFats = (plan['fats'] ?? 60).toDouble();
+      // First get the backend-computed plan as defaults (raw backend calculations)
+      final plan = await OnboardingService().getCalculatedPlan();
+      if (plan != null) {
+        _planCalories = plan.calories.toDouble();
+        _planProtein = plan.protein.toDouble();
+        _planCarbs = plan.carbs.toDouble();
+        _planFats = plan.fats.toDouble();
+      }
 
       // Then check if user has custom overrides in SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      final customCalories = prefs.getDouble('goal_calories');
-      final customProtein = prefs.getDouble('goal_protein');
-      final customCarbs = prefs.getDouble('goal_carbs');
-      final customFats = prefs.getDouble('goal_fats');
+      final email = await ApiService().getCurrentUserEmail() ?? '';
+      final prefix = email.isNotEmpty ? '${email}_' : '';
+      final customCalories = prefs.getDouble('${prefix}plan_calories');
+      final customProtein = prefs.getDouble('${prefix}plan_protein');
+      final customCarbs = prefs.getDouble('${prefix}plan_carbs');
+      final customFats = prefs.getDouble('${prefix}plan_fats');
 
       if (mounted) {
         setState(() {
@@ -83,15 +88,17 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final email = await ApiService().getCurrentUserEmail() ?? '';
+      final prefix = email.isNotEmpty ? '${email}_' : '';
       final calories = double.tryParse(_calorieController.text) ?? _planCalories;
       final protein = double.tryParse(_proteinController.text) ?? _planProtein;
       final carbs = double.tryParse(_carbsController.text) ?? _planCarbs;
       final fats = double.tryParse(_fatsController.text) ?? _planFats;
 
-      await prefs.setDouble('goal_calories', calories);
-      await prefs.setDouble('goal_protein', protein);
-      await prefs.setDouble('goal_carbs', carbs);
-      await prefs.setDouble('goal_fats', fats);
+      await prefs.setDouble('${prefix}plan_calories', calories);
+      await prefs.setDouble('${prefix}plan_protein', protein);
+      await prefs.setDouble('${prefix}plan_carbs', carbs);
+      await prefs.setDouble('${prefix}plan_fats', fats);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,10 +126,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   Future<void> _resetToDefaults() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('goal_calories');
-    await prefs.remove('goal_protein');
-    await prefs.remove('goal_carbs');
-    await prefs.remove('goal_fats');
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+    await prefs.remove('${prefix}plan_calories');
+    await prefs.remove('${prefix}plan_protein');
+    await prefs.remove('${prefix}plan_carbs');
+    await prefs.remove('${prefix}plan_fats');
 
     setState(() {
       _calorieController.text = _planCalories.toStringAsFixed(0);

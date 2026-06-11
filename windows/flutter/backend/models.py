@@ -98,6 +98,7 @@ class UserFoodLog(db.Model):
     scan_id = db.Column(db.String(120), nullable=True)
     food_item_id = db.Column(db.Integer, nullable=True)
     serving_name = db.Column(db.String(100), nullable=True)
+    image_url = db.Column(db.String(500), nullable=True)
     full_report = db.Column(db.Text, nullable=True)
 
     log_time = db.Column(db.DateTime, default=datetime.utcnow)
@@ -117,6 +118,7 @@ class UserFoodLog(db.Model):
             "scan_id": self.scan_id,
             "food_item_id": self.food_item_id,
             "serving_name": self.serving_name,
+            "image_url": self.image_url,
             "log_time": (
                 self.log_time.strftime("%Y-%m-%d %H:%M:%S") if self.log_time else None
             ),
@@ -248,3 +250,24 @@ class FoodServing(db.Model):
             "carbs": self.carbs,
             "fats": self.fats,
         }
+
+
+# ---------------- UserWeightLog ----------------
+class UserWeightLog(db.Model):
+    __tablename__ = "user_weight_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    weight = db.Column(db.Float, nullable=False)
+    log_date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "weight": self.weight,
+            "log_date": self.log_date.strftime("%Y-%m-%d"),
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None
+        }
+

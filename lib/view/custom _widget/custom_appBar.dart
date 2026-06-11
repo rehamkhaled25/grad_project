@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   final int currentStep;
@@ -30,7 +31,13 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             if (showBackButton)
               GestureDetector(
-                onTap: () => Navigator.maybePop(context),
+                onTap: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    Navigator.maybePop(context);
+                  }
+                },
                 child: Icon(
                   Icons.arrow_back,
                   color: Colors.black,

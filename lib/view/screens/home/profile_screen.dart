@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:graduation_project/services/api_service.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
  
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,10 +19,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _planData;
   Map<String, dynamic>? _streakData;
   bool _isLoading = true;
+  bool _isPremium = false;
  
   // Allergies state
   List<String> _allergies = [];
   final TextEditingController _customAllergyController = TextEditingController();
+  List<Map<String, dynamic>> _weightLogs = [];
+ 
+  List<double> get _filteredWeights {
+    if (_weightLogs.isEmpty) {
+      return [175.0, 175.0, 173.0, 173.0, 170.0, 170.0, 165.0, 171.0, 169.0, 169.1];
+    }
+    final sorted = List<Map<String, dynamic>>.from(_weightLogs);
+    sorted.sort((a, b) => a['log_date'].toString().compareTo(b['log_date'].toString()));
+    final lastEntries = sorted.length > 6 ? sorted.sublist(sorted.length - 6) : sorted;
+    return lastEntries.map<double>((log) => (log['weight'] as num).toDouble()).toList();
+  }
+
+  List<String> get _weightLabels {
+    if (_weightLogs.isEmpty) {
+      return ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+    }
+    final sorted = List<Map<String, dynamic>>.from(_weightLogs);
+    sorted.sort((a, b) => a['log_date'].toString().compareTo(b['log_date'].toString()));
+    final lastEntries = sorted.length > 6 ? sorted.sublist(sorted.length - 6) : sorted;
+    return lastEntries.map<String>((log) {
+      try {
+        final parsed = DateTime.parse(log['log_date'].toString());
+        return DateFormat('MMM d').format(parsed);
+      } catch (_) {
+        return log['log_date'].toString();
+      }
+    }).toList();
+  }
  
   @override
   void initState() {
@@ -39,11 +70,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final profile = await ApiService().getProfile();
       Map<String, dynamic>? plan;
       Map<String, dynamic>? streak;
+      List<Map<String, dynamic>> weightLogs = [];
+      bool isSub = false;
       try {
         plan = await FoodService().getCaloriePlan();
       } catch (_) {}
       try {
         streak = await FoodService().getStreak();
+      } catch (_) {}
+      try {
+        weightLogs = await ApiService().getWeightHistory();
+      } catch (_) {}
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final email = await ApiService().getCurrentUserEmail() ?? '';
+        final prefix = email.isNotEmpty ? '${email}_' : '';
+        isSub = prefs.getBool('${prefix}premium_active') ?? false;
       } catch (_) {}
  
       if (mounted) {
@@ -65,6 +107,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
           _planData = plan;
           _streakData = streak;
+          _weightLogs = weightLogs;
+          _isPremium = isSub;
           _isLoading = false;
         });
       }
@@ -243,7 +287,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => context.push('/settings'),
+                  onTap: () async {
+                    await context.push('/settings');
+                    _loadData();
+                  },
                   child: Icon(Icons.settings_outlined,
                       color: const Color(0xFFF8F9FD), size: 22 * scale),
                 ),
@@ -450,7 +497,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 24 * scale, vertical: 20),
       child: GestureDetector(
-        onTap: () => context.push('/edit-profile'),
+        onTap: () async {
+          await context.push('/edit-profile');
+          _loadData();
+        },
         child: Container(
           width: 238 * scale,
           height: 42 * scale,
@@ -662,11 +712,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               height: 120 * scale,
               width: double.infinity,
               margin: EdgeInsets.symmetric(vertical: 8 * scale),
-              child: CustomPaint(painter: _WeightChartPainter()),
+              child: CustomPaint(painter: _WeightChartPainter(weights: _filteredWeights)),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
+              children: _weightLabels
                   .map((month) => Text(month,
                       style: TextStyle(
                           fontFamily: 'Poppins',
@@ -1025,17 +1075,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             SizedBox(height: 16 * scale),
             GestureDetector(
-              onTap: () => context.push('/premiumPlan'),
+              onTap: _isPremium
+                  ? null
+                  : () => context.push('/trialSubscriptionPage', extra: {
+                        'id': 1,
+                        'name': 'Monthly Premium',
+                        'price': 9.99,
+                        'period': 'month',
+                      }),
               child: Container(
                 width: double.infinity,
                 height: 33 * scale,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD90C0C),
+                  color: _isPremium ? Colors.grey : const Color(0xFFD90C0C),
                   borderRadius: BorderRadius.circular(13 * scale),
                 ),
                 child: Center(
                   child: Text(
-                    'Upgrade to premium',
+                    _isPremium ? 'Premium Active' : 'Upgrade to premium',
                     style: TextStyle(
                       fontFamily: 'SF Pro',
                       fontWeight: FontWeight.w700,
@@ -1156,6 +1213,9 @@ class _AllergyPopup extends StatelessWidget {
 //  Weight chart painter (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 class _WeightChartPainter extends CustomPainter {
+  final List<double> weights;
+  _WeightChartPainter({required this.weights});
+
   @override
   void paint(Canvas canvas, Size size) {
     final gridPaint = Paint()
@@ -1168,14 +1228,27 @@ class _WeightChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
  
-    final points = [
-      Offset(0, size.height * 0.6),
-      Offset(size.width * 0.2, size.height * 0.5),
-      Offset(size.width * 0.4, size.height * 0.55),
-      Offset(size.width * 0.6, size.height * 0.35),
-      Offset(size.width * 0.8, size.height * 0.45),
-      Offset(size.width, size.height * 0.4),
-    ];
+    if (weights.isEmpty) return;
+
+    double minW = weights.reduce((a, b) => a < b ? a : b);
+    double maxW = weights.reduce((a, b) => a > b ? a : b);
+
+    if (minW == maxW) {
+      minW = minW - 10.0;
+      maxW = maxW + 10.0;
+    } else {
+      final diff = maxW - minW;
+      minW = minW - diff * 0.15;
+      maxW = maxW + diff * 0.15;
+    }
+
+    final points = <Offset>[];
+    for (int i = 0; i < weights.length; i++) {
+      final x = weights.length > 1 ? (i / (weights.length - 1)) * size.width : 0.0;
+      final norm = (maxW - minW > 0) ? (weights[i] - minW) / (maxW - minW) : 0.5;
+      final y = size.height - (norm * size.height);
+      points.add(Offset(x, y));
+    }
  
     final fillPath = Path()..moveTo(points.first.dx, points.first.dy);
     for (int i = 1; i < points.length; i++) {
@@ -1223,5 +1296,6 @@ class _WeightChartPainter extends CustomPainter {
   }
  
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WeightChartPainter oldDelegate) =>
+      oldDelegate.weights != weights;
 }

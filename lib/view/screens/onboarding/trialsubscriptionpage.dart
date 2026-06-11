@@ -4,14 +4,28 @@ import 'package:graduation_project/core/app_router.dart';
 import 'package:graduation_project/view/custom%20_widget/continue_button.dart';
 
 class TrialSubscriptionPage extends StatefulWidget {
-  const TrialSubscriptionPage({super.key});
+  final Map<String, dynamic>? initialPlanData;
+  const TrialSubscriptionPage({super.key, this.initialPlanData});
 
   @override
   State<TrialSubscriptionPage> createState() => _TrialSubscriptionPageState();
 }
 
 class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
-  int selectedPlanIndex = -1;
+  int selectedPlanIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPlanData != null) {
+      final id = widget.initialPlanData!['id'];
+      if (id == 2) {
+        selectedPlanIndex = 1;
+      } else {
+        selectedPlanIndex = 0;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,20 +44,36 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         const SizedBox(height: 20),
-                        GestureDetector(
-                          onTap: () {
-                            context.go("/home");
-                          },
-                          child: const Text(
-                            "skip",
-                            textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: 14,
-                              decoration: TextDecoration.underline,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.black,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.arrow_back, color: Colors.black),
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/onboardingPlan');
+                                }
+                              },
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: () {
+                                context.go("/home");
+                              },
+                              child: const Text(
+                                "skip",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  decoration: TextDecoration.underline,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const Center(
                           child: Text(
@@ -92,8 +122,8 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                         ),
                         const SizedBox(height: 40),
                         PlanCard(
-                          title: "1 Month",
-                          price: "\$8.00 / MO",
+                          title: "Monthly Premium",
+                          price: "\$9.99 / MO",
                           isPopular: false,
                           isSelected: selectedPlanIndex == 0,
                           onTap: () {
@@ -104,10 +134,10 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                         ),
                         const SizedBox(height: 30),
                         PlanCard(
-                          title: "12 Month",
-                          price: "\$4.99 / MO",
-                          oldPrice: "\$95.88",
-                          newPrice: "\$59.99",
+                          title: "Yearly Premium",
+                          price: "\$2.17 / MO",
+                          oldPrice: "\$119.88",
+                          newPrice: "\$25.99",
                           isPopular: true,
                           isSelected: selectedPlanIndex == 1,
                           onTap: () {
@@ -121,7 +151,20 @@ class _TrialSubscriptionPageState extends State<TrialSubscriptionPage> {
                           onPressed: () {
                             AuthState.finishedOnboarding = true;
                             AuthState.isLoggedIn = true;
-                            context.go('/paymentApplication');
+                            final selectedPlan = selectedPlanIndex == 1
+                                ? {
+                                    'id': 2,
+                                    'name': 'Yearly Premium',
+                                    'price': 25.99,
+                                    'period': 'year',
+                                  }
+                                : {
+                                    'id': 1,
+                                    'name': 'Monthly Premium',
+                                    'price': 9.99,
+                                    'period': 'month',
+                                  };
+                            context.push('/paymentApplication', extra: selectedPlan);
                           },
                           txt: "Continue",
                         ),

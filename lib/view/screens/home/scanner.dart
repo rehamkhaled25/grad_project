@@ -1,13 +1,20 @@
 import 'dart:io'; // required for File
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:graduation_project/models/food_model.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:graduation_project/view/meal_prompts/fix_results.dart';
+import 'package:graduation_project/view/meal_prompts/hidden.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:go_router/go_router.dart';
+import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
+import 'package:graduation_project/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FoodScannerScreen extends StatefulWidget {
-  const FoodScannerScreen({super.key});
+  final String? mealType;
+  const FoodScannerScreen({super.key, this.mealType});
 
   @override
   State<FoodScannerScreen> createState() => _FoodScannerScreenState();
@@ -20,6 +27,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   bool _isAnalyzing = false;
   final ImagePicker _picker = ImagePicker();
   final FoodService _foodService = FoodService();
+  bool _isPremium = false;
+  final TextEditingController _barcodeController = TextEditingController();
+  Timer? _popupTimer;
 
   // Stores the path of the last captured/picked image
   String? _currentImagePath;
@@ -27,7 +37,34 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPremiumStatus();
     _initializeCamera();
+    _popupTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierColor: Colors.black54,
+          builder: (context) => const HiddenIngredientsPage(),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _popupTimer?.cancel();
+    _controller?.dispose();
+    _barcodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+    setState(() {
+      _isPremium = prefs.getBool('${prefix}premium_active') ?? false;
+    });
   }
 
   Future<void> _initializeCamera() async {
@@ -120,17 +157,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => _NutritionResultSheet(
         report: report,
-        imagePath: _currentImagePath, // pass the stored image path
+        imagePath: _currentImagePath,
         scanId: scanId,
+        mealType: widget.mealType,
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -147,42 +181,44 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
         children: [
           Positioned.fill(child: CameraPreview(_controller!)),
 
-          // Semi-transparent overlay with cut-out frame effect
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.3),
-              BlendMode.srcOut,
-            ),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(color: Colors.transparent),
-                ),
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 100),
-                    height: 280,
-                    width: 280,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(20),
+          if (_activeMode != "Barcode") ...[
+            // Semi-transparent overlay with cut-out frame effect
+            ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.3),
+                BlendMode.srcOut,
+              ),
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                  ),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 100),
+                      height: 280,
+                      width: 280,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Scanner frame corners
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 100),
-              height: 280,
-              width: 280,
-              child: CustomPaint(painter: ScannerFramePainter()),
+            // Scanner frame corners
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 100),
+                height: 280,
+                width: 280,
+                child: CustomPaint(painter: ScannerFramePainter()),
+              ),
             ),
-          ),
+          ],
 
           // Top bar
           Positioned(
@@ -213,6 +249,19 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             ),
           ),
 
+          // Barcode search overlay
+          if (_activeMode == "Barcode")
+            Positioned.fill(
+              child: Container(
+                color: Colors.black87,
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: _buildBarcodeSearchCard(),
+                  ),
+                ),
+              ),
+            ),
+
           // Bottom controls
           Positioned(
             bottom: 0,
@@ -235,27 +284,28 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  GestureDetector(
-                    onTap: _onCapture,
-                    child: Container(
-                      height: 80,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                      ),
-                      child: Center(
-                        child: Container(
-                          height: 65,
-                          width: 65,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
+                  if (_activeMode != "Barcode")
+                    GestureDetector(
+                      onTap: _onCapture,
+                      child: Container(
+                        height: 80,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                        ),
+                        child: Center(
+                          child: Container(
+                            height: 65,
+                            width: 65,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -278,10 +328,30 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     bool isActive = _activeMode == label;
     return GestureDetector(
       onTap: () {
-        if (label == "Gallery") {
-          _pickFromGallery();
+        if (label == "Search") {
+          if (GoRouter.of(context).canPop()) {
+            context.pop();
+          } else {
+            context.push('/log', extra: widget.mealType);
+          }
         } else {
-          setState(() => _activeMode = label);
+          if (!_isPremium) {
+            context.push('/trialSubscriptionPage', extra: {
+              'id': 1,
+              'name': 'Monthly Premium',
+              'price': 9.99,
+              'period': 'month',
+            }).then((_) => _loadPremiumStatus());
+            return;
+          }
+
+          if (label == "Gallery") {
+            _pickFromGallery();
+          } else {
+            setState(() {
+              _activeMode = label;
+            });
+          }
         }
       },
       child: Container(
@@ -309,6 +379,164 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       ),
     );
   }
+
+  Widget _buildBarcodeSearchCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD90C0C),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.barcode_reader, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Barcode Search',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Enter a code to fetch nutrition info',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _barcodeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Enter barcode number...',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD90C0C)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Quick Test Presets:',
+            style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildPresetChip('Nutella', '3017620422003'),
+              _buildPresetChip('Coca Cola', '5449000000996'),
+              _buildPresetChip('USDA Product', '004800120120'),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                final code = _barcodeController.text.trim();
+                final cleanCode = code.replaceAll(RegExp(r'\D'), '');
+                if (cleanCode.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid barcode'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+                context.push(
+                  '/servingsDatabase',
+                  extra: {
+                    'source': 'open_food_facts',
+                    'barcode': cleanCode,
+                    'mealType': widget.mealType,
+                  },
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD90C0C),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Search Product',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresetChip(String label, String code) {
+    return ActionChip(
+      backgroundColor: Colors.white.withOpacity(0.08),
+      side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+      onPressed: () {
+        _barcodeController.text = code;
+        context.push(
+          '/servingsDatabase',
+          extra: {
+            'source': 'open_food_facts',
+            'barcode': code,
+            'mealType': widget.mealType,
+          },
+        );
+      },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -318,8 +546,14 @@ class _NutritionResultSheet extends StatefulWidget {
   final NutritionReport report;
   final String? imagePath;
   final String? scanId;
+  final String? mealType;
 
-  const _NutritionResultSheet({required this.report, this.imagePath, this.scanId});
+  const _NutritionResultSheet({
+    required this.report,
+    this.imagePath,
+    this.scanId,
+    this.mealType,
+  });
 
   @override
   State<_NutritionResultSheet> createState() => _NutritionResultSheetState();
@@ -347,6 +581,9 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
       if (widget.scanId != null) {
         data['scan_id'] = widget.scanId;
         data['quantity'] = _quantity;
+        if (widget.mealType != null) {
+          data['meal_type'] = widget.mealType;
+        }
       } else {
         data['food_name'] = widget.report.mealName;
         data['calories'] = scaledCalories;
@@ -354,6 +591,9 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
         data['carbs'] = scaledCarbs;
         data['fat'] = scaledFat;
         data['quantity'] = _quantity;
+        if (widget.mealType != null) {
+          data['meal_type'] = widget.mealType;
+        }
       }
 
       await _foodService.logFood(data);

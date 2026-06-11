@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:graduation_project/services/api_service.dart';
 import 'package:graduation_project/services/food_service.dart';
+import 'package:go_router/go_router.dart';
  
 class ServingsDatabase extends StatefulWidget {
   final String source;
@@ -11,6 +12,9 @@ class ServingsDatabase extends StatefulWidget {
   final String? fdcId;
   final String? scanId;
   final String? logId;
+  final String? mealType;
+  final String? imageUrl;
+  final Map<String, dynamic>? item;
  
   const ServingsDatabase({
     super.key,
@@ -19,6 +23,9 @@ class ServingsDatabase extends StatefulWidget {
     this.fdcId,
     this.scanId,
     this.logId,
+    this.mealType,
+    this.imageUrl,
+    this.item,
   });
  
   @override
@@ -35,9 +42,24 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
   String? errorMessage;
   int servingCount = 1;
  
-  // ── Used to show "Add food" button only when the user scrolls down ──
-  final ScrollController _scrollController = ScrollController();
-  bool _showAddButton = false;
+  // Helper to resolve images properly
+  String? _getResolvedImageUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.toString().trim().isEmpty || rawUrl.toString().trim() == 'null') return null;
+
+    final urlStr = rawUrl.toString().trim();
+    if (urlStr.startsWith('http')) return urlStr;
+
+    if (urlStr.contains('\\') || urlStr.contains('/')) {
+      final filename = urlStr.split('/').last.split('\\').last;
+      return '${ApiService.baseUrl}/user/food/scans/image/$filename';
+    }
+
+    final base = ApiService.baseUrl.endsWith('/')
+        ? ApiService.baseUrl
+        : '${ApiService.baseUrl}/';
+    final path = urlStr.startsWith('/') ? urlStr.substring(1) : urlStr;
+    return '$base$path';
+  }
  
   // ── Used to call the log endpoint ──
   final FoodService _foodService = FoodService();
@@ -47,19 +69,10 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
   void initState() {
     super.initState();
     _fetchFoodDetails();
- 
-    // Listen to scroll position: show button after user scrolls 80px
-    _scrollController.addListener(() {
-      final shouldShow = _scrollController.offset > 80;
-      if (shouldShow != _showAddButton) {
-        setState(() => _showAddButton = shouldShow);
-      }
-    });
   }
  
   @override
   void dispose() {
-    _scrollController.dispose();
     super.dispose();
   }
  
@@ -68,22 +81,60 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     return prefs.getString('auth_token');
   }
  
+  void _usePassedItemData() {
+    setState(() {
+      foodData = widget.item;
+      servings = [
+        {
+          "serving_name": widget.item!['serving_name'] ?? widget.item!['serving_size'] ?? '1 serving',
+          "grams": double.tryParse(widget.item!['serving_size']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '100') ?? 100.0,
+          "calories": widget.item!['calories'] ?? 0.0,
+          "protein": widget.item!['protein'] ?? 0.0,
+          "carbs": widget.item!['carbs'] ?? 0.0,
+          "fats": widget.item!['fats'] ?? widget.item!['fat'] ?? 0.0,
+        }
+      ];
+      nutritionFacts = {
+        "calories": widget.item!['calories'] ?? 0.0,
+        "protein": widget.item!['protein'] ?? 0.0,
+        "carbs": widget.item!['carbs'] ?? 0.0,
+        "fats": widget.item!['fats'] ?? widget.item!['fat'] ?? 0.0,
+        "fiber": widget.item!['fiber'] ?? 0.0,
+        "sugar": widget.item!['sugar'] ?? 0.0,
+        "calcium": widget.item!['calcium'] ?? 0.0,
+        "sodium": widget.item!['sodium'] ?? 0.0,
+      };
+      selectedServing = servings[0];
+      isLoading = false;
+    });
+  }
+ 
   Future<void> _fetchFoodDetails() async {
     print("🔍 [SERVING] Starting fetch | source=${widget.source} "
         "fdcId=${widget.fdcId} barcode=${widget.barcode} "
         "scanId=${widget.scanId} logId=${widget.logId}");
- 
+  
+    if (widget.fdcId == null &&
+        widget.barcode == null &&
+        widget.scanId == null &&
+        widget.logId == null &&
+        widget.item != null) {
+      print("🔍 [SERVING] No remote ID provided. Using passed item data.");
+      _usePassedItemData();
+      return;
+    }
+  
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
- 
+  
     try {
       final token = await _getToken();
       if (token == null) throw Exception("Not authenticated");
- 
+  
       final String baseUrl = ApiService.baseUrl;
- 
+  
       final queryParameters = <String, String>{
         'source': widget.source,
         if (widget.barcode != null) 'barcode': widget.barcode!,
@@ -91,28 +142,28 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         if (widget.scanId != null) 'scan_id': widget.scanId!,
         if (widget.logId != null) 'log_id': widget.logId!,
       };
- 
+  
       final uri = Uri.parse("$baseUrl/user/food/database/serving")
           .replace(queryParameters: queryParameters);
- 
+  
       print("🔍 [SERVING] URL = $uri");
- 
+  
       final response = await http.get(uri, headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
       }).timeout(const Duration(seconds: 10));
- 
+  
       print("🔍 [SERVING] HTTP status = ${response.statusCode}");
- 
+  
       if (response.statusCode == 200) {
         final data = Map<String, dynamic>.from(json.decode(response.body));
- 
+  
         final nf = data['nutrition_facts'] is Map ? Map<String, dynamic>.from(data['nutrition_facts']) : null;
         final ld = data['log_details'] is Map ? Map<String, dynamic>.from(data['log_details']) : null;
- 
+  
         print("🔍 [SERVING] nutrition_facts keys = ${nf?.keys.toList()}");
         print("🔍 [SERVING] nutrition_facts full = $nf");
- 
+  
         setState(() {
           foodData       = data['food'] is Map ? Map<String, dynamic>.from(data['food']) : null;
           servings       = (data['servings'] as List?) ?? [];
@@ -124,6 +175,15 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
           isLoading = false;
         });
       } else {
+        if (widget.barcode != null && widget.barcode!.isNotEmpty) {
+          await _fetchFromOpenFoodFactsDirectly(widget.barcode!);
+          return;
+        }
+        if (widget.item != null) {
+          print("🔍 [SERVING] Remote returned error, using local fallback");
+          _usePassedItemData();
+          return;
+        }
         final body = json.decode(response.body) as Map<String, dynamic>;
         setState(() {
           errorMessage = body['message'] ?? body['error'] ?? "Failed to load food details";
@@ -132,8 +192,149 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
       }
     } catch (e, stack) {
       print("🔍 [SERVING] EXCEPTION: $e\n$stack");
+      if (widget.barcode != null && widget.barcode!.isNotEmpty) {
+        try {
+          await _fetchFromOpenFoodFactsDirectly(widget.barcode!);
+          return;
+        } catch (fallbackError) {
+          print("🔍 [SERVING] Fallback exception: $fallbackError");
+        }
+      }
+      if (widget.item != null) {
+        print("🔍 [SERVING] Request exception, using local fallback");
+        _usePassedItemData();
+        return;
+      }
       setState(() {
         errorMessage = "An error occurred: $e";
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchFromOpenFoodFactsDirectly(String barcode) async {
+    print("🔍 [SERVING] Querying Open Food Facts directly for barcode: $barcode");
+    try {
+      final response = await http.get(
+        Uri.parse("https://world.openfoodfacts.org/api/v2/product/$barcode"),
+        headers: {
+          "User-Agent": "GraduationProject/1.0 (Flutter App)",
+        },
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 1 && data['product'] != null) {
+          final product = data['product'];
+          final String name = product['product_name'] ?? product['product_name_en'] ?? 'Unknown Barcode Product';
+          final String img = product['image_url'] ?? product['image_front_url'] ?? '';
+
+          final nutriments = product['nutriments'] ?? {};
+          final double calories100g = double.tryParse(nutriments['energy-kcal_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['energy-kcal']?.toString() ?? '')
+              ?? 0.0;
+          final double protein100g = double.tryParse(nutriments['proteins_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['proteins']?.toString() ?? '')
+              ?? 0.0;
+          final double carbs100g = double.tryParse(nutriments['carbohydrates_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['carbohydrates']?.toString() ?? '')
+              ?? 0.0;
+          final double fat100g = double.tryParse(nutriments['fat_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['fat']?.toString() ?? '')
+              ?? 0.0;
+          final double fiber100g = double.tryParse(nutriments['fiber_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['fiber']?.toString() ?? '')
+              ?? 0.0;
+          final double sugar100g = double.tryParse(nutriments['sugars_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['sugars']?.toString() ?? '')
+              ?? 0.0;
+          
+          // sodium in OFF is in grams per 100g, convert to mg per 100g
+          final double sodium100g = (double.tryParse(nutriments['sodium_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['sodium']?.toString() ?? '')
+              ?? 0.0) * 1000.0;
+          
+          // calcium in OFF is in grams/100g, convert to mg per 100g
+          final double calcium100g = (double.tryParse(nutriments['calcium_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['calcium']?.toString() ?? '')
+              ?? 0.0) * 1000.0;
+
+          final String servingSizeStr = product['serving_size']?.toString() ?? '';
+          double servingGrams = 100.0;
+          if (servingSizeStr.isNotEmpty) {
+            final sq = double.tryParse(product['serving_quantity']?.toString() ?? '');
+            if (sq != null && sq > 0) {
+              servingGrams = sq;
+            } else {
+              final match = RegExp(r'([0-9.]+)\s*(g|ml|G|ML)').firstMatch(servingSizeStr);
+              if (match != null) {
+                servingGrams = double.tryParse(match.group(1) ?? '') ?? 100.0;
+              }
+            }
+          }
+
+          final double factor = servingGrams / 100.0;
+          final double servingCalories = calories100g * factor;
+          final double servingProtein = protein100g * factor;
+          final double servingCarbs = carbs100g * factor;
+          final double servingFats = fat100g * factor;
+
+          final Map<String, dynamic> localFoodData = {
+            "food_name": name,
+            "image_url": img,
+          };
+
+          final List<Map<String, dynamic>> localServings = [
+            if (servingSizeStr.isNotEmpty)
+              {
+                "serving_name": "Serving ($servingSizeStr)",
+                "grams": servingGrams,
+                "calories": servingCalories,
+                "protein": servingProtein,
+                "carbs": servingCarbs,
+                "fats": servingFats,
+              },
+            {
+              "serving_name": "100g",
+              "grams": 100.0,
+              "calories": calories100g,
+              "protein": protein100g,
+              "carbs": carbs100g,
+              "fats": fat100g,
+            }
+          ];
+
+          final Map<String, dynamic> localNutritionFacts = {
+            "calories": calories100g,
+            "protein": protein100g,
+            "carbs": carbs100g,
+            "fats": fat100g,
+            "fiber": fiber100g,
+            "sugar": sugar100g,
+            "calcium": calcium100g,
+            "sodium": sodium100g,
+            "health_score": 0,
+            "health_tip": "",
+            "glycemic_index_rating": "",
+            "gl_category": "",
+          };
+
+          setState(() {
+            foodData = localFoodData;
+            servings = localServings;
+            nutritionFacts = localNutritionFacts;
+            selectedServing = localServings[0];
+            isLoading = false;
+            errorMessage = null;
+          });
+          return;
+        }
+      }
+      throw Exception("Product status is not active on Open Food Facts");
+    } catch (e) {
+      print("🔍 [SERVING] OFF Fallback error: $e");
+      setState(() {
+        errorMessage = "Product not found in database or Open Food Facts";
         isLoading = false;
       });
     }
@@ -164,11 +365,10 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
  
   // ── Add Food Logic ────────────────────────────────────────────────────────
  
-  /// Shows a meal-type picker, then calls the log endpoint.
+  /// Shows a meal-type picker (if mealType not provided via widget), then calls the log endpoint.
   Future<void> _onAddFood() async {
-    // Step 1: ask which meal type
-    final mealType = await _showMealTypePicker();
-    if (mealType == null) return; // user dismissed
+    final mealType = widget.mealType ?? await _showMealTypePicker();
+    if (mealType == null) return;
  
     setState(() => _isLogging = true);
  
@@ -209,10 +409,10 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
             ? servingWeight.toDouble() * servingCount
             : servingCount.toDouble(),
         'meal_type':    mealType,
-        // Pass scan_id if this food came from a scan so it's saved under saved_scans
+        'image_url':    foodData?['image_path'] ?? foodData?['image_url'] ?? widget.imageUrl,
         if (widget.scanId != null) 'scan_id': widget.scanId,
-        // ai_scan = true when source is saved_scans (it was AI-analyzed)
         'ai_scan': widget.source == 'saved_scans',
+        'log_time': DateTime.now().toIso8601String(),
       };
  
       await _foodService.logFood(payload);
@@ -227,7 +427,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         ),
       );
  
-      // Pop back to the database search screen
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -242,7 +441,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     }
   }
  
-  /// Returns the selected meal type string, or null if dismissed.
   Future<String?> _showMealTypePicker() {
     return showModalBottomSheet<String>(
       context: context,
@@ -306,7 +504,9 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     final double sw = MediaQuery.of(context).size.width;
  
     final String foodName  = foodData?['food_name'] ?? foodData?['meal_name'] ?? "Unknown Food";
-    final String imageUrl  = foodData?['image_path'] ?? foodData?['image_url'] ?? '';
+    final String? resolvedImg = _getResolvedImageUrl(foodData?['image_path'] ?? foodData?['image_url'] ?? widget.imageUrl);
+    final String imageUrl = resolvedImg ?? '';
+
     final num    calories  = selectedServing?['calories']
                               ?? nutritionFacts?['calories']
                               ?? 0;
@@ -317,7 +517,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         (selectedServing?['serving_weight_grams'] ?? selectedServing?['grams'])
             ?.toString() ?? "100";
  
-    // ── Macros: from selectedServing first, fall back to nutrition_facts ──────
     final String protein = _fmt(
         selectedServing?['protein'] ?? _nf(['protein', 'protein_g']));
     final String carbs = _fmt(
@@ -325,21 +524,14 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     final String fats = _fmt(
         selectedServing?['fats'] ?? _nf(['fats', 'fat', 'fat_g']));
  
-    // ── Nutrition facts ───────────────────────────────────────────────────────
-    // Backend returns for USDA:           fiber, sugar, sodium         (no suffix)
-    // Backend returns for Open Food Facts: fiber, sugar, sodium        (no suffix)
-    // Backend returns for saved_scans:    full_report (fiber_g, calcium_mg, etc.)
-    // We try all known key variants so it works regardless of source.
     final String fiber   = _fmtNf(['fiber',   'fiber_g']);
     final String sugar   = _fmtNf(['sugar',   'sugar_g']);
     final String calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0);
     final String sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0);
  
-    // ── Log details ───────────────────────────────────────────────────────────
     final String mealType = logDetails?['meal_type'] ?? '';
     final String logTime  = logDetails?['log_time']  ?? '';
  
-    // ── Health info from backend ──────────────────────────────────────────────
     final int    healthScore = int.tryParse(
             nutritionFacts?['health_score']?.toString() ?? '0') ?? 0;
     final String healthTip   = nutritionFacts?['health_tip']?.toString() ?? '';
@@ -354,292 +546,266 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
       body: SafeArea(
-        child: Stack(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(sw * 0.05, 10, sw * 0.05, 20),
           children: [
-            // ── Full scrollable content ─────────────────────────────────────
-            ListView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(sw * 0.05, 10, sw * 0.05, 100),
+            Row(
               children: [
-                // Back row
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back,
-                          size: 24, color: Color(0xff151316)),
-                    ),
-                    const Text("Back to database",
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black)),
-                  ],
+                IconButton(
+                  onPressed: () => context.pop(),
+                  icon: const Icon(Icons.arrow_back,
+                      size: 24, color: Color(0xff151316)),
                 ),
-                const SizedBox(height: 20),
- 
-                // ── Food header ───────────────────────────────────────────
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: const Color(0xffE8F5E9),
-                        image: imageUrl.isNotEmpty
-                            ? DecorationImage(
-                                image: NetworkImage(
-                                  imageUrl.startsWith('http')
-                                      ? imageUrl
-                                      : '${ApiService.baseUrl}$imageUrl',
-                                ),
-                                fit: BoxFit.cover,
-                                onError: (_, __) {},
-                              )
-                            : null,
-                      ),
-                      child: imageUrl.isEmpty
-                          ? const Center(
-                              child: Text("🍜",
-                                  style: TextStyle(fontSize: 28)))
-                          : null,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(foodName,
-                              style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black)),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xffEEEEEE),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "${scaledCal.toStringAsFixed(0)} calories",
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
- 
-                // ── Serving size card ─────────────────────────────────────
-                _card(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          RichText(
-                            text: TextSpan(children: [
-                              const TextSpan(
-                                text: "Serving Size ",
-                                style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black),
-                              ),
-                              TextSpan(
-                                text: "($servingCount×${servingWeight}g)",
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xffA3A3A3)),
-                              ),
-                            ]),
-                          ),
-                          Row(
-                            children: [
-                              _controlBtn(Icons.remove, false, () {
-                                if (servingCount > 1) {
-                                  setState(() => servingCount--);
-                                }
-                              }),
-                              const SizedBox(width: 8),
-                              _controlBtn(Icons.add, true, () {
-                                setState(() => servingCount++);
-                              }),
-                            ],
-                          ),
-                        ],
-                      ),
-                      // Only show the serving dropdown if there are multiple servings
-                      if (servings.length > 1) ...[
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => _showServingPicker(context),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(servingLabel,
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xff555555))),
-                              const Icon(Icons.keyboard_arrow_down,
-                                  color: Color(0xffBBBABA)),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 8),
-                        Text(servingLabel,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xff555555))),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
- 
-                // ── Macros + Nutrition facts card ─────────────────────────
-                _card(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Macronutrients",
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black)),
-                      const SizedBox(height: 12),
-                      _nutritionRow("Protein", "$protein g"),
-                      _divider(),
-                      _nutritionRow("Carbs", "$carbs g"),
-                      _divider(),
-                      _nutritionRow("Fats", "$fats g"),
-                      const SizedBox(height: 20),
- 
-                      const Text("Nutrition Facts",
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black)),
-                      const SizedBox(height: 12),
- 
-                      // Fiber — returned by USDA, Open Food Facts, and saved_scans
-                      _nutritionRow("Fiber",   "$fiber g"),
-                      _divider(),
-                      // Sugar — returned by USDA, Open Food Facts, and saved_scans
-                      _nutritionRow("Sugar",   "$sugar g"),
-                      _divider(),
-                      // Calcium — returned by saved_scans (AI report); may be 0 for USDA/OFF
-                      _nutritionRow("Calcium", "$calcium mg"),
-                      _divider(),
-                      // Sodium — returned by USDA, Open Food Facts, and saved_scans
-                      _nutritionRow("Sodium",  "$sodium mg"),
- 
-                      // "View full nutrition" button — only shows if AI health info exists
-                      if (hasHealthInfo) ...[
-                        const SizedBox(height: 16),
-                        GestureDetector(
-                          onTap: () => _showHealthTip(
-                              context, healthTip, healthScore, giRating, glCategory),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xffF4F4F4),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                "View full nutrition info →",
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.black54,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
- 
-                // ── Log Details card (only if log details exist) ──────────
-                if (mealType.isNotEmpty || logTime.isNotEmpty)
-                  _card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Log Details",
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black)),
-                        const SizedBox(height: 12),
-                        if (logTime.isNotEmpty) ...[
-                          _logDetailRow("Log time", logTime),
-                          _divider(),
-                        ],
-                        if (mealType.isNotEmpty)
-                          _logDetailRow("Meal", mealType),
-                      ],
-                    ),
-                  ),
- 
-                const SizedBox(height: 24),
+                const Text("Back to database",
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black)),
               ],
             ),
- 
-            // ── "Add food" button — appears only after scrolling down ───────
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              bottom: _showAddButton ? 16 : -80,
-              left: sw * 0.05,
-              right: sw * 0.05,
-              child: SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _isLogging ? null : _onAddFood,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.black54,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 4,
+            const SizedBox(height: 20),
+
+            // Header
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xffE8F5E9),
+                    image: imageUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                            onError: (_, __) {},
+                          )
+                        : null,
                   ),
-                  child: _isLogging
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2.5),
-                        )
-                      : const Text("Add food",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: imageUrl.isEmpty
+                      ? const Center(
+                          child: Text("🍜",
+                              style: TextStyle(fontSize: 28)))
+                      : null,
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(foodName,
+                          style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xffEEEEEE),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "${scaledCal.toStringAsFixed(0)} calories",
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Serving Size
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      RichText(
+                        text: TextSpan(children: [
+                          const TextSpan(
+                              text: "Serving Size ",
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black)),
+                          TextSpan(
+                              text: "($servingCount×${servingWeight}g)",
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xffA3A3A3))),
+                        ]),
+                      ),
+                      Row(
+                        children: [
+                          _controlBtn(Icons.remove, false, () {
+                            if (servingCount > 1) {
+                              setState(() => servingCount--);
+                            }
+                          }),
+                          const SizedBox(width: 8),
+                          _controlBtn(Icons.add, true, () {
+                            setState(() => servingCount++);
+                          }),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (servings.length > 1) ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => _showServingPicker(context),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(servingLabel,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xff555555))),
+                          const Icon(Icons.keyboard_arrow_down,
+                              color: Color(0xffBBBABA)),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Text(servingLabel,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xff555555))),
+                  ],
+                ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Macronutrients
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Macronutrients",
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
+                  const SizedBox(height: 12),
+                  _nutritionRow("Protein", "$protein g"),
+                  _divider(),
+                  _nutritionRow("Carbs", "$carbs g"),
+                  _divider(),
+                  _nutritionRow("Fats", "$fats g"),
+                  const SizedBox(height: 20),
+
+                  const Text("Nutrition Facts",
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
+                  const SizedBox(height: 12),
+
+                  _nutritionRow("Fiber",   "$fiber g"),
+                  _divider(),
+                  _nutritionRow("Sugar",   "$sugar g"),
+                  _divider(),
+                  _nutritionRow("Calcium", "$calcium mg"),
+                  _divider(),
+                  _nutritionRow("Sodium",  "$sodium mg"),
+
+                  if (hasHealthInfo) ...[
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => _showHealthTip(
+                          context, healthTip, healthScore, giRating, glCategory),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xffF4F4F4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "View full nutrition info →",
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Log Details
+            if (mealType.isNotEmpty || logTime.isNotEmpty)
+              _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Log Details",
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black)),
+                    const SizedBox(height: 12),
+                    if (logTime.isNotEmpty) ...[
+                      _logDetailRow("Log time", logTime),
+                      _divider(),
+                    ],
+                    if (mealType.isNotEmpty)
+                      _logDetailRow("Meal", mealType),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 32),
+
+            // "Add food" button — inline at the bottom
+            SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLogging ? null : _onAddFood,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.black54,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 4,
+                ),
+                child: _isLogging
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : const Text("Add food",
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
- 
-  // ── Full nutrition / health tip bottom sheet ───────────────────────────────
  
   void _showHealthTip(BuildContext context, String tip, int score,
       String giRating, String glCategory) {
@@ -703,8 +869,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         ),
       );
  
-  // ── Serving picker ─────────────────────────────────────────────────────────
- 
   void _showServingPicker(BuildContext context) {
     if (servings.isEmpty) return;
     showModalBottomSheet(
@@ -739,8 +903,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     );
   }
  
-  // ── Widget helpers ─────────────────────────────────────────────────────────
- 
   Widget _card({required Widget child}) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -772,7 +934,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         ),
       );
  
-  /// Log detail row — no arrow icon (it was useless and opened nothing).
   Widget _logDetailRow(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
@@ -795,15 +956,12 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: filled ? Colors.black : Colors.white,
             shape: BoxShape.circle,
-            border: filled
-                ? null
-                : Border.all(color: const Color(0xffBBBABA)),
+            color: filled ? Colors.black : Colors.white,
+            border: Border.all(color: Colors.black, width: 1.5),
           ),
           child: Icon(icon,
-              size: 18,
-              color: filled ? Colors.white : Colors.black),
+              color: filled ? Colors.white : Colors.black, size: 18),
         ),
       );
 }
