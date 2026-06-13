@@ -30,6 +30,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   bool _isPremium = false;
   final TextEditingController _barcodeController = TextEditingController();
   Timer? _popupTimer;
+  String? _hiddenIngredients;
+  bool _hasPromptedForHidden = false;
 
   // Stores the path of the last captured/picked image
   String? _currentImagePath;
@@ -40,12 +42,17 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     _loadPremiumStatus();
     _initializeCamera();
     _popupTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted) {
-        showDialog(
+      if (mounted && !_hasPromptedForHidden) {
+        _hasPromptedForHidden = true;
+        showDialog<String>(
           context: context,
           barrierColor: Colors.black54,
           builder: (context) => const HiddenIngredientsPage(),
-        );
+        ).then((value) {
+          if (value != null && value.isNotEmpty) {
+            _hiddenIngredients = value;
+          }
+        });
       }
     });
   }
@@ -87,6 +94,20 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
   Future<void> _processImageForAI(XFile imageFile) async {
     if (_isAnalyzing) return;
+    _popupTimer?.cancel();
+
+    if (!_hasPromptedForHidden) {
+      _hasPromptedForHidden = true;
+      final value = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (context) => const HiddenIngredientsPage(),
+      );
+      if (value != null && value.isNotEmpty) {
+        _hiddenIngredients = value;
+      }
+    }
+
     setState(() => _isAnalyzing = true);
 
     try {
@@ -102,8 +123,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
         throw "No scan_id returned from server";
       }
 
-      // Step 2: Analyze the scanned food
-      final analyzeResult = await _foodService.analyzeFood(scanId);
+      // Step 2: Analyze the scanned food with hidden ingredients as context
+      final analyzeResult = await _foodService.analyzeFood(scanId, context: _hiddenIngredients);
 
       // Step 3: Parse the nutrition data from the 'report' key
       final nutritionData = analyzeResult['report'] ?? analyzeResult;
@@ -562,15 +583,23 @@ class _NutritionResultSheet extends StatefulWidget {
 class _NutritionResultSheetState extends State<_NutritionResultSheet> {
   int _quantity = 1;
   bool _isLogging = false;
+  bool _isReAnalyzing = false;
   final FoodService _foodService = FoodService();
+  late NutritionReport _currentReport;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentReport = widget.report;
+  }
 
   // Scaled values (macro‑only for simplicity; you can extend to micronutrients)
-  double get scaledCalories => widget.report.totalCalories * _quantity;
-  double get scaledProtein => widget.report.totalProtein * _quantity;
-  double get scaledCarbs => widget.report.totalCarbs * _quantity;
-  double get scaledFat => widget.report.totalFat * _quantity;
-  double get scaledSugar => widget.report.sugar * _quantity;
-  int get scaledSodium => widget.report.sodium * _quantity;
+  double get scaledCalories => _currentReport.totalCalories * _quantity;
+  double get scaledProtein => _currentReport.totalProtein * _quantity;
+  double get scaledCarbs => _currentReport.totalCarbs * _quantity;
+  double get scaledFat => _currentReport.totalFat * _quantity;
+  double get scaledSugar => _currentReport.sugar * _quantity;
+  int get scaledSodium => _currentReport.sodium * _quantity;
 
   Future<void> _logFood() async {
     if (_isLogging) return;
@@ -585,7 +614,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
           data['meal_type'] = widget.mealType;
         }
       } else {
-        data['food_name'] = widget.report.mealName;
+        data['food_name'] = _currentReport.mealName;
         data['calories'] = scaledCalories;
         data['protein'] = scaledProtein;
         data['carbs'] = scaledCarbs;
@@ -621,9 +650,66 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     }
   }
 
+  Future<void> _fixResults() async {
+    final fixPrompt = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => const FixResultsPage(),
+    );
+
+    if (fixPrompt == null || fixPrompt.trim().isEmpty) return;
+
+    if (widget.scanId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Cannot fix results without a valid scan ID"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isReAnalyzing = true);
+
+    try {
+      final analyzeResult = await _foodService.analyzeFood(
+        widget.scanId!,
+        context: fixPrompt,
+      );
+
+      final nutritionData = analyzeResult['report'] ?? analyzeResult;
+      final newReport = NutritionReport.fromJson(nutritionData as Map<String, dynamic>);
+
+      if (mounted) {
+        setState(() {
+          _currentReport = newReport;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Results updated successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to update results: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isReAnalyzing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final report = widget.report;
+    final report = _currentReport;
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
@@ -728,32 +814,32 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                 const SizedBox(height: 8),
 
                 // Warning
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      size: 14,
-                      color: Colors.deepOrange,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      // allows the text to shrink
-                      child: Text(
-                        report.warning.isNotEmpty
-                            ? report.warning
-                            : "",
-                        style: const TextStyle(
-                          color: Colors.deepOrange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                if (report.warning.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: Colors.deepOrange,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        // allows the text to shrink
+                        child: Text(
+                          report.warning,
+                          style: const TextStyle(
+                            color: Colors.deepOrange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
 
                 // Calories Card (scaled)
                 Container(
@@ -799,8 +885,12 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                       child: _buildSmallMetric(
                         "Glycemic Index",
                         "${report.glycemicIndex}",
-                        "Medium",
-                        Colors.red,
+                        report.glycemicIndex <= 55
+                            ? "Low"
+                            : (report.glycemicIndex <= 69 ? "Medium" : "High"),
+                        report.glycemicIndex <= 55
+                            ? Colors.green
+                            : (report.glycemicIndex <= 69 ? Colors.orange : Colors.red),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -808,8 +898,12 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                       child: _buildSmallMetric(
                         "Glycemic Load",
                         "${report.glycemicLoad}",
-                        "Medium",
-                        Colors.black,
+                        report.glycemicLoad <= 10
+                            ? "Low"
+                            : (report.glycemicLoad <= 19 ? "Medium" : "High"),
+                        report.glycemicLoad <= 10
+                            ? Colors.green
+                            : (report.glycemicLoad <= 19 ? Colors.orange : Colors.red),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -824,9 +918,19 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  "Moderate response - pair with protein for control",
-                  style: TextStyle(color: Colors.orange, fontSize: 12),
+                Text(
+                  report.glycemicIndex <= 55
+                      ? "Low response - stable energy levels"
+                      : (report.glycemicIndex <= 69
+                          ? "Moderate response - pair with protein for control"
+                          : "High response - potential spike; pair with protein, fat, or fiber"),
+                  style: TextStyle(
+                    color: report.glycemicIndex <= 55
+                        ? Colors.green
+                        : (report.glycemicIndex <= 69 ? Colors.orange : Colors.red),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -1012,13 +1116,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            barrierColor: Colors.black54, 
-                            builder: (context) => const FixResultsPage(),
-                          );
-                        },
+                        onPressed: _isReAnalyzing ? null : _fixResults,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E1E1E),
                           foregroundColor: Colors.white,
@@ -1028,10 +1126,19 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text(
-                          "Fix results",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        child: _isReAnalyzing
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Fix results",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),

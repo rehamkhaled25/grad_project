@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
 
-class FixResultsPage extends StatelessWidget {
+class FixResultsPage extends StatefulWidget {
   const FixResultsPage({super.key});
+
+  @override
+  State<FixResultsPage> createState() => _FixResultsPageState();
+}
+
+class _FixResultsPageState extends State<FixResultsPage> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +43,7 @@ class FixResultsPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               TextField(
+                controller: _controller,
                 autofocus: true, // Focus automatically when opened
                 decoration: InputDecoration(
                   hintText: 'tell the AI where it was mistaken',
@@ -72,8 +86,7 @@ class FixResultsPage extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Add your send logic here
-                        Navigator.pop(context); 
+                        Navigator.pop(context, _controller.text.trim()); 
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,

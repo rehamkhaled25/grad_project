@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 
 
 
-class HiddenIngredientsPage extends StatelessWidget {
+class HiddenIngredientsPage extends StatefulWidget {
   const HiddenIngredientsPage({super.key});
+
+  @override
+  State<HiddenIngredientsPage> createState() => _HiddenIngredientsPageState();
+}
+
+class _HiddenIngredientsPageState extends State<HiddenIngredientsPage> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       backgroundColor: const Color(0xFF222222),
       body: Center(
         child: Padding(
@@ -23,8 +35,6 @@ class HiddenIngredientsPage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
-
                 const Text(
                   'Any hidden ingredients?',
                   style: TextStyle(
@@ -33,34 +43,26 @@ class HiddenIngredientsPage extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-
                 TextField(
+                  controller: _controller,
                   decoration: InputDecoration(
                     hintText: 'e.g,Olive oil,Butter',
                     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
                     ),
-
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Colors.black, width: 1.5),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
-
                 Row(
                   children: [
-
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
@@ -81,13 +83,11 @@ class HiddenIngredientsPage extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 12),
-
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pop(context);
+                          Navigator.pop(context, _controller.text.trim());
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,

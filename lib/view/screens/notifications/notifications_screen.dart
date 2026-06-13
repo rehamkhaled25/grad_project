@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graduation_project/services/food_service.dart';
+import 'package:graduation_project/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
@@ -77,6 +78,105 @@ class _NotificationScreenState extends State<NotificationScreen>
           'icon': Icons.local_fire_department,
         });
       }
+
+      // 1. Check if user logged today and add streak reminders
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final email = await ApiService().getCurrentUserEmail() ?? '';
+      final prefix = email.isNotEmpty ? '${email}_' : '';
+      final double goal = prefs.getDouble('${prefix}plan_calories') ?? 2400.0;
+
+      final Map<String, double> dailyCalories = {};
+      for (final log in logs) {
+        final logTime = log['log_time']?.toString() ?? '';
+        if (logTime.isNotEmpty) {
+          final dateStr = logTime.split(' ')[0]; // YYYY-MM-DD
+          final calories = (log['calories'] ?? 0.0) as num;
+          dailyCalories[dateStr] = (dailyCalories[dateStr] ?? 0.0) + calories.toDouble();
+        }
+      }
+
+      final bool loggedToday = dailyCalories.containsKey(todayStr);
+      if (!loggedToday) {
+        notifs.insert(0, {
+          'id': 'reminder_log_$todayStr',
+          'title': 'Streak Reminder 🔥',
+          'body': 'Don\'t forget to log your meals today to keep your streak going!',
+          'time': DateTime.now().toIso8601String(),
+          'is_read': readIds.contains('reminder_log_$todayStr'),
+          'icon': Icons.edit_note,
+        });
+      }
+
+      // Dynamic streak active status / reminders
+      if (streakCount > 0) {
+        final streakId = 'streak_status_${todayStr}_$streakCount';
+        if (loggedToday) {
+          notifs.insert(0, {
+            'id': streakId,
+            'title': '🔥 Active Streak',
+            'body': 'Keep it up! You\'ve kept your $streakCount-day active streak alive today.',
+            'time': DateTime.now().toIso8601String(),
+            'is_read': readIds.contains(streakId),
+            'icon': Icons.local_fire_department,
+          });
+        } else {
+          notifs.insert(0, {
+            'id': streakId,
+            'title': '🔥 Streak Warning',
+            'body': 'Don\'t lose your $streakCount-day streak! Log a meal today to keep it going.',
+            'time': DateTime.now().toIso8601String(),
+            'is_read': readIds.contains(streakId),
+            'icon': Icons.warning_amber_rounded,
+          });
+        }
+      } else {
+        final noStreakId = 'no_streak_$todayStr';
+        notifs.insert(0, {
+          'id': noStreakId,
+          'title': '🔥 Start a Streak',
+          'body': 'Log a meal today to begin your streak and build healthy habits!',
+          'time': DateTime.now().toIso8601String(),
+          'is_read': readIds.contains(noStreakId),
+          'icon': Icons.local_fire_department,
+        });
+      }
+
+      // Check and add earned badges notifications
+      final badges = await FoodService().getBadges().catchError((_) => <Map<String, dynamic>>[]);
+      for (final b in badges) {
+        if (b['is_earned'] == true) {
+          final badgeKey = b['key'] ?? '';
+          final badgeTitle = b['title']?.toString().replaceAll('\n', ' ') ?? 'New Badge';
+          final badgeId = 'badge_notif_$badgeKey';
+          notifs.insert(0, {
+            'id': badgeId,
+            'title': '🏆 Badge Earned!',
+            'body': 'Congratulations! You\'ve earned the "$badgeTitle" badge!',
+            'time': DateTime.now().toIso8601String(),
+            'is_read': readIds.contains(badgeId),
+            'icon': Icons.emoji_events,
+          });
+        }
+      }
+
+      // 2. Exceeded calorie limit warnings
+      dailyCalories.forEach((date, consumed) {
+        if (consumed > goal) {
+          final diff = consumed - goal;
+          final exceededId = 'exceeded_${date}';
+          final isToday = date == todayStr;
+          final dateDisplay = isToday ? 'today' : 'on $date';
+
+          notifs.insert(0, {
+            'id': exceededId,
+            'title': '⚠️ Limit Exceeded',
+            'body': 'You exceeded your daily calorie limit by ${diff.toStringAsFixed(0)} cal $dateDisplay.',
+            'time': isToday ? DateTime.now().toIso8601String() : '${date} 23:59:59',
+            'is_read': readIds.contains(exceededId),
+            'icon': Icons.warning_amber_rounded,
+          });
+        }
+      });
 
       if (mounted) {
         setState(() {

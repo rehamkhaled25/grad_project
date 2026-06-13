@@ -37,6 +37,7 @@ class NutritionReport(typing.TypedDict):
     minerals_others: list[str]
     total_gl: float
     gl_category: str
+    glycemic_index: int
     glycemic_index_rating: str
     health_score: int
     is_processed_estimate: bool
@@ -49,7 +50,7 @@ class NutritionReport(typing.TypedDict):
 
 MASTER_PROMPT = """Act as a Clinical Nutrition Scientist. Analyze this image with high precision.
 Context provided by user: {context}
-Calculate Macros vs DV%, Micros (Magnesium, Calcium, Sodium, Vit C), and Glycemic Load.
+Calculate Macros vs DV%, Micros (Magnesium, Calcium, Sodium, Vit C), and Glycemic Index and Glycemic Load.
 Ensure mathematical consistency across the report.
 Return health_score as an integer from 0 to 10 only, not as a percentage."""
 
@@ -125,7 +126,7 @@ Serving size or quantity: {serving_size}
 Extra context: {context}
 
 Estimate the nutrition values as accurately as possible.
-Calculate calories, macros, daily value percentages, fiber, sugar, sodium, key micronutrients, glycemic load, and health score.
+Calculate calories, macros, daily value percentages, fiber, sugar, sodium, key micronutrients, glycemic index, glycemic load, and health score.
 
 Important rules:
 - Return valid JSON only.

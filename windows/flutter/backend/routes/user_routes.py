@@ -1005,6 +1005,19 @@ def analyze_food(scan_id):
     data = request.get_json(silent=True) or {}
     context = data.get("context", "")
 
+    from models import User
+    db_user = User.query.get(user["id"])
+    if db_user and db_user.allergies:
+        allergies_str = db_user.allergies
+        allergy_instruction = (
+            f"\n\n[ALLERGY WARNING CRITICAL INSTRUCTION]: The user has the following allergies/dietary restrictions: {allergies_str}. "
+            "Examine the food in the image carefully for these ingredients. "
+            "If any of these allergens are detected or likely present in the food, you MUST write a clear warning in the 'metabolic_warning' field of the response. "
+            "Do NOT list the user's allergies themselves in the warning; only mention the specific warning describing which allergen is present (e.g., 'Warning: This meal contains dairy'). "
+            "If no matching allergens are present, keep 'metabolic_warning' empty or list general metabolic comments."
+        )
+        context = f"{context}{allergy_instruction}"
+
     try:
         report = analyze_meal(scan.image_path, context)
     except Exception as e:
@@ -1163,6 +1176,19 @@ def log_food():
     else:
         if not food_name:
             return jsonify({"message": "food_name is required"}), 400
+
+        from models import User
+        db_user = User.query.get(user["id"])
+        if db_user and db_user.allergies:
+            allergies_str = db_user.allergies
+            allergy_instruction = (
+                f"\n\n[ALLERGY WARNING CRITICAL INSTRUCTION]: The user has the following allergies/dietary restrictions: {allergies_str}. "
+                "Examine the food entry carefully for these ingredients. "
+                "If any of these allergens are detected or likely present in the food, you MUST write a clear warning in the 'metabolic_warning' field of the response. "
+                "Do NOT list the user's allergies themselves in the warning; only mention the specific warning describing which allergen is present (e.g., 'Warning: This meal contains dairy'). "
+                "If no matching allergens are present, keep 'metabolic_warning' empty or list general metabolic comments."
+            )
+            context = f"{context}{allergy_instruction}"
 
         try:
             report = analyze_food_name(
