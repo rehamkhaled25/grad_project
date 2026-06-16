@@ -120,6 +120,44 @@ class FoodService {
     }
   }
 
+  /// Delete a food log entry.
+  Future<void> deleteFoodLog(int logId) async {
+    final token = await _getToken();
+    if (token == null) throw Exception("Not authenticated");
+
+    final url = Uri.parse('$baseUrl/user/food/log/$logId');
+    print("🗑️ [DELETE LOG]: DELETE $url");
+
+    final response = await http
+        .delete(url, headers: _authHeaders(token))
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      throw Exception(body['message'] ?? body['error'] ?? 'Delete failed');
+    }
+  }
+
+  /// Update/edit a food log entry.
+  Future<Map<String, dynamic>> updateFoodLog(int logId, Map<String, dynamic> data) async {
+    final token = await _getToken();
+    if (token == null) throw Exception("Not authenticated");
+
+    final url = Uri.parse('$baseUrl/user/food/log/$logId');
+    print("✏️ [UPDATE LOG]: PUT $url");
+
+    final response = await http
+        .put(url, headers: _authHeaders(token), body: jsonEncode(data))
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    } else {
+      final body = jsonDecode(response.body);
+      throw Exception(body['message'] ?? body['error'] ?? 'Update failed');
+    }
+  }
+
   // ─── FOOD HISTORY ────────────────────────────────────────────────────
 
   /// Get food history (grouped meals + daily totals).

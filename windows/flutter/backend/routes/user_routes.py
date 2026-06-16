@@ -1224,6 +1224,12 @@ def log_food():
     else:
         full_report = None
 
+    portion_multiplier = to_float(data.get("portion_multiplier"), 1.0)
+    base_calories = to_float(data.get("base_calories"), to_float(calories) / portion_multiplier if portion_multiplier > 0 else to_float(calories))
+    base_protein = to_float(data.get("base_protein"), to_float(protein) / portion_multiplier if portion_multiplier > 0 else to_float(protein))
+    base_carbs = to_float(data.get("base_carbs"), to_float(carbs) / portion_multiplier if portion_multiplier > 0 else to_float(carbs))
+    base_fats = to_float(data.get("base_fats"), to_float(fats) / portion_multiplier if portion_multiplier > 0 else to_float(fats))
+
     log = UserFoodLog(
         user_id=user["id"],
         food_name=food_name,
@@ -1231,6 +1237,11 @@ def log_food():
         protein=to_float(protein),
         carbs=to_float(carbs),
         fats=to_float(fats),
+        base_calories=base_calories,
+        base_protein=base_protein,
+        base_carbs=base_carbs,
+        base_fats=base_fats,
+        portion_multiplier=portion_multiplier,
         serving_size=to_float(data.get("serving_size"), 1),
         meal_type=normalize_meal_type(data.get("meal_type")),
         scan_id=scan_id,
@@ -1340,6 +1351,68 @@ def food_history():
         200,
     )
 
+# ---------------- Edit and Delete Food Logs ----------------
+@user_bp.route("/food/log/<int:log_id>", methods=["DELETE"])
+def delete_food_log(log_id):
+    user, error_response, status_code = get_current_user()
+    if error_response:
+        return error_response, status_code
+
+    log = UserFoodLog.query.filter_by(id=log_id, user_id=user["id"]).first()
+    if not log:
+        return jsonify({"message": "Food log not found"}), 404
+
+    db.session.delete(log)
+    db.session.commit()
+
+    return jsonify({"message": "Food log deleted successfully"}), 200
+
+
+@user_bp.route("/food/log/<int:log_id>", methods=["PUT"])
+def update_food_log(log_id):
+    user, error_response, status_code = get_current_user()
+    if error_response:
+        return error_response, status_code
+
+    log = UserFoodLog.query.filter_by(id=log_id, user_id=user["id"]).first()
+    if not log:
+        return jsonify({"message": "Food log not found"}), 404
+
+    data = request.get_json() or {}
+
+    if "food_name" in data:
+        log.food_name = data["food_name"]
+    if "calories" in data:
+        log.calories = to_float(data["calories"])
+    if "protein" in data:
+        log.protein = to_float(data["protein"])
+    if "carbs" in data:
+        log.carbs = to_float(data["carbs"])
+    if "fats" in data:
+        log.fats = to_float(data["fats"])
+    if "base_calories" in data:
+        log.base_calories = to_float(data["base_calories"])
+    if "base_protein" in data:
+        log.base_protein = to_float(data["base_protein"])
+    if "base_carbs" in data:
+        log.base_carbs = to_float(data["base_carbs"])
+    if "base_fats" in data:
+        log.base_fats = to_float(data["base_fats"])
+    if "portion_multiplier" in data:
+        log.portion_multiplier = to_float(data["portion_multiplier"])
+    if "serving_size" in data:
+        log.serving_size = to_float(data["serving_size"])
+    if "serving_name" in data:
+        log.serving_name = data["serving_name"]
+    if "meal_type" in data:
+        log.meal_type = normalize_meal_type(data["meal_type"])
+    if "image_url" in data:
+        log.image_url = data["image_url"]
+
+    db.session.commit()
+
+    return jsonify({"message": "Food log updated successfully", "food_log": log.to_dict()}), 200
+
 
 # ---------------- Food Database Search ----------------
 def search_my_meals(user_id, query, limit):
@@ -1352,7 +1425,7 @@ def search_my_meals(user_id, query, limit):
 
     results = []
     for log in logs:
-        image_url = None
+        image_url = log.image_url
         if log.scan_id:
             scan = FoodScan.query.filter_by(scan_id=log.scan_id).first()
             if scan and scan.image_path:
@@ -1393,7 +1466,7 @@ def search_my_foods(user_id, query, limit):
         key = log.food_name.lower().strip()
 
         if key not in unique_foods:
-            image_url = None
+            image_url = log.image_url
             if log.scan_id:
                 scan = FoodScan.query.filter_by(scan_id=log.scan_id).first()
                 if scan and scan.image_path:

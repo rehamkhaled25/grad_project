@@ -121,6 +121,8 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                   ),
                 ),
                 const SizedBox(height: 15),
+                _AiScanBanner(mealType: widget.mealType),
+                const SizedBox(height: 15),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
@@ -262,16 +264,25 @@ class _FoodItemCard extends StatelessWidget {
     return '$base$path';
   }
 
+  String _getFoodEmoji(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('salad')) return '🥗';
+    if (n.contains('pizza')) return '🍕';
+    if (n.contains('burger')) return '🍔';
+    if (n.contains('pasta') || n.contains('noodle') || n.contains('spaghetti')) return '🍝';
+    if (n.contains('rice')) return '🍚';
+    if (n.contains('soup') || n.contains('stew')) return '🥣';
+    return '🍽️';
+  }
+
   @override
   Widget build(BuildContext context) {
     final name      = item['food_name'] ?? item['meal_name'] ?? 'Unknown';
     final calories  = item['calories'] ?? 0;
     final resolvedUrl = _getResolvedImageUrl(name);
-    final fallbackUrl = 'https://loremflickr.com/150/150/food,${Uri.encodeComponent(name)}?lock=${name.hashCode.abs()}';
  
     return GestureDetector(
       onTap: () {
-        // ── THE FIX: navigate to ServingsDatabase, not the old _ServingsFromSearch ──
         context.push(
           '/servingsDatabase',
           extra: {
@@ -281,7 +292,7 @@ class _FoodItemCard extends StatelessWidget {
             'scanId':  item['scan_id']?.toString(),
             'logId':   item['log_id']?.toString() ?? item['id']?.toString(),
             'mealType': mealType,
-            'imageUrl': resolvedUrl ?? fallbackUrl,
+            'imageUrl': resolvedUrl,
             'item': item,
           },
         );
@@ -299,17 +310,34 @@ class _FoodItemCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 10, right: 20),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    resolvedUrl ?? fallbackUrl,
-                    width: 46,
-                    height: 46,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Image.asset(
-                        'assets/images/food_placeholder.png',
-                        width: 46,
-                        height: 46),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xffD9D9D9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: (resolvedUrl != null && resolvedUrl.isNotEmpty)
+                        ? Image.network(
+                            resolvedUrl,
+                            width: 46,
+                            height: 46,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(
+                                _getFoodEmoji(name),
+                                style: const TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              _getFoodEmoji(name),
+                              style: const TextStyle(fontSize: 22),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -355,7 +383,166 @@ class _FoodItemCard extends StatelessWidget {
     );
   }
 }
- 
+
+class _AiScanBanner extends StatefulWidget {
+  final String? mealType;
+  const _AiScanBanner({super.key, this.mealType});
+
+  @override
+  State<_AiScanBanner> createState() => _AiScanBannerState();
+}
+
+class _AiScanBannerState extends State<_AiScanBanner> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.98, end: 1.02).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    _glowAnimation = Tween<double>(begin: 4.0, end: 12.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, child) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.black, Color(0xFF1E1E1E)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD90C0C).withOpacity(0.25),
+                  blurRadius: _glowAnimation.value,
+                  spreadRadius: _glowAnimation.value / 4,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () async {
+              final prefs = await SharedPreferences.getInstance();
+              final email = await ApiService().getCurrentUserEmail() ?? '';
+              final prefix = email.isNotEmpty ? '${email}_' : '';
+              final isSubscribed = prefs.getBool('${prefix}premium_active') ?? false;
+              if (isSubscribed) {
+                context.push('/foodScanner', extra: widget.mealType);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const Cameraaiupgrade()),
+                );
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "SCAN MEAL WITH AI",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD90C0C),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                "PRO",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 8,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Instant calories, macros & hidden ingredients",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // _ServingsFromSearch has been intentionally removed.
 // All food item taps now go to ServingsDatabase which calls
 // GET /user/food/database/serving and shows fiber, sugar, sodium,

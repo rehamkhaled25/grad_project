@@ -10,7 +10,7 @@ class StreakScreen extends StatefulWidget {
   State<StreakScreen> createState() => _StreakScreenState();
 }
 
-class _StreakScreenState extends State<StreakScreen> {
+class _StreakScreenState extends State<StreakScreen> with SingleTickerProviderStateMixin {
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay;
 
@@ -22,10 +22,31 @@ class _StreakScreenState extends State<StreakScreen> {
 
   List<DateTime> loggedDays = [];
 
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _loadStreakData();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadStreakData() async {
@@ -128,28 +149,18 @@ class _StreakScreenState extends State<StreakScreen> {
                           SizedBox(
                             width: 120,
                             height: 120,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                /// FIRE OR NO FIRE
-                                Image.asset(
-                                  streakActive
-                                      ? "assets/images/fire.png"
-                                      : "assets/images/no_fire.png",
-                                  height: 90,
-                                ),
-
-                                /// CLOUD ABOVE (ONLY WHEN NOT ACTIVE)
-                                if (!streakActive)
-                                  Positioned(
-                                    top: 0,
+                            child: streakActive
+                                ? ScaleTransition(
+                                    scale: _animation,
                                     child: Image.asset(
-                                      "assets/images/cloud.png",
-                                      height: 80,
+                                      "assets/images/avocado_happy.png",
+                                      fit: BoxFit.contain,
                                     ),
+                                  )
+                                : Image.asset(
+                                    "assets/images/avocado_sad.png",
+                                    fit: BoxFit.contain,
                                   ),
-                              ],
-                            ),
                           ),
                         ],
                       ),

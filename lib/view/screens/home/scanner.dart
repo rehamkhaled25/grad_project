@@ -256,14 +256,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                     child: Icon(Icons.close, color: Colors.white),
                   ),
                 ),
-                const Text(
-                  "logoipsum",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic,
-                  ),
+                Image.asset(
+                  'assets/images/nutra_logo.png',
+                  height: 26,
                 ),
                 const SizedBox(width: 40),
               ],
@@ -1109,7 +1104,12 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
+
+                if (report.hiddenIngredients.isNotEmpty) ...[
+                  _buildHiddenIngredientsSection(report.hiddenIngredients),
+                  const SizedBox(height: 20),
+                ],
 
                 // FIX RESULTS BUTTON NAVIGATION SHOULD BE HERE AND SHOULD BE STACKED UNTOP OF THIS PAGE
                 Row(
@@ -1245,6 +1245,155 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHiddenIngredientsSection(List<HiddenIngredientReport> list) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Hidden Ingredients Analysis",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...list.map((ing) {
+          final double scaledCal = ing.impactCalories * _quantity;
+          final double scaledProt = ing.impactProtein * _quantity;
+          final double scaledCarbs = ing.impactCarbs * _quantity;
+          final double scaledFat = ing.impactFat * _quantity;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              border: Border.all(
+                color: const Color(0xFF81C784),
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4CAF50).withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.visibility_off_outlined, color: Color(0xFF2E7D32), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        ing.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildImpactMetric("Calories", "+${scaledCal.toStringAsFixed(0)} kcal"),
+                      _buildImpactDivider(),
+                      _buildImpactMetric("Protein", "+${scaledProt.toStringAsFixed(1)}g"),
+                      _buildImpactDivider(),
+                      _buildImpactMetric("Carbs", "+${scaledCarbs.toStringAsFixed(1)}g"),
+                      _buildImpactDivider(),
+                      _buildImpactMetric("Fats", "+${scaledFat.toStringAsFixed(1)}g"),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                if (ing.impactExplanation.isNotEmpty) ...[
+                  const Text(
+                    "Intake Impact",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    ing.impactExplanation,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                if (ing.generalInfo.isNotEmpty) ...[
+                  const Text(
+                    "About this Ingredient",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    ing.generalInfo,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.black87,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildImpactMetric(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            color: Color(0xFF2E7D32),
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            color: Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImpactDivider() {
+    return Container(
+      height: 20,
+      width: 1,
+      color: const Color(0xFF81C784).withOpacity(0.5),
     );
   }
 }

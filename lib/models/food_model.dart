@@ -61,6 +61,38 @@ class FoodItem {
 // ─── NutritionReport ──────────────────────────────────────────────────────────
 // Represents the detailed AI-generated nutrition report for a scanned meal.
 
+class HiddenIngredientReport {
+  final String name;
+  final double impactCalories;
+  final double impactProtein;
+  final double impactCarbs;
+  final double impactFat;
+  final String impactExplanation;
+  final String generalInfo;
+
+  HiddenIngredientReport({
+    required this.name,
+    required this.impactCalories,
+    required this.impactProtein,
+    required this.impactCarbs,
+    required this.impactFat,
+    required this.impactExplanation,
+    required this.generalInfo,
+  });
+
+  factory HiddenIngredientReport.fromJson(Map<String, dynamic> json) {
+    return HiddenIngredientReport(
+      name: json['name']?.toString() ?? "",
+      impactCalories: double.tryParse(json['impact_calories']?.toString() ?? "0") ?? 0.0,
+      impactProtein: double.tryParse(json['impact_protein_g']?.toString() ?? "0") ?? 0.0,
+      impactCarbs: double.tryParse(json['impact_carbs_g']?.toString() ?? "0") ?? 0.0,
+      impactFat: double.tryParse(json['impact_fat_g']?.toString() ?? "0") ?? 0.0,
+      impactExplanation: json['impact_explanation']?.toString() ?? "",
+      generalInfo: json['general_info']?.toString() ?? "",
+    );
+  }
+}
+
 class NutritionReport {
   final String mealName;
   final double totalCalories;
@@ -78,6 +110,7 @@ class NutritionReport {
   final int healthScore;
   final String healthTip;
   final String warning;
+  final List<HiddenIngredientReport> hiddenIngredients;
 
   NutritionReport({
     required this.mealName,
@@ -96,9 +129,18 @@ class NutritionReport {
     required this.healthScore,
     required this.healthTip,
     required this.warning,
+    required this.hiddenIngredients,
   });
 
   factory NutritionReport.fromJson(Map<String, dynamic> json) {
+    var rawHidden = json['hidden_ingredients'] as List?;
+    List<HiddenIngredientReport> parsedHidden = [];
+    if (rawHidden != null) {
+      parsedHidden = rawHidden
+          .map((item) => HiddenIngredientReport.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
     return NutritionReport(
       mealName: json['meal_name']?.toString() ?? "Unknown Meal",
       totalCalories:
@@ -119,6 +161,7 @@ class NutritionReport {
       healthScore: (double.tryParse(json['health_score']?.toString() ?? "0") ?? 0.0).round(),
       healthTip: json['health_tip']?.toString() ?? "No tip provided.",
       warning: json['warning']?.toString() ?? json['metabolic_warning']?.toString() ?? "",
+      hiddenIngredients: parsedHidden,
     );
   }
 }

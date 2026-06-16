@@ -54,6 +54,279 @@ class _LogFoodState extends State<LogFood> {
     }
   }
 
+  Future<void> _handleDelete(Map<String, dynamic> item) async {
+    final logId = item['id'];
+    if (logId == null) return;
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete food log?"),
+        content: Text("Are you sure you want to delete ${item['food_name']}?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel", style: TextStyle(color: Colors.black)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await FoodService().deleteFoodLog(logId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Food log deleted"), backgroundColor: Colors.black),
+      );
+      _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Failed to delete food log: $e"), backgroundColor: Colors.red),
+      );
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleEdit(Map<String, dynamic> item) {
+    final logId = item['id'];
+    if (logId == null) return;
+
+    final String foodName = item['food_name'] ?? 'Unknown';
+    final double baseCal = double.tryParse((item['base_calories'] ?? (item['portion_multiplier'] != null && item['portion_multiplier'] > 0 ? (item['calories'] / item['portion_multiplier']) : item['calories'])).toString()) ?? 0.0;
+    final double basePro = double.tryParse((item['base_protein'] ?? (item['portion_multiplier'] != null && item['portion_multiplier'] > 0 ? (item['protein'] / item['portion_multiplier']) : item['protein'])).toString()) ?? 0.0;
+    final double baseCar = double.tryParse((item['base_carbs'] ?? (item['portion_multiplier'] != null && item['portion_multiplier'] > 0 ? (item['carbs'] / item['portion_multiplier']) : item['carbs'])).toString()) ?? 0.0;
+    final double baseFat = double.tryParse((item['base_fats'] ?? (item['portion_multiplier'] != null && item['portion_multiplier'] > 0 ? (item['fats'] / item['portion_multiplier']) : item['fats'])).toString()) ?? 0.0;
+
+    double baseSize = double.tryParse((item['portion_multiplier'] != null && item['portion_multiplier'] > 0 ? (item['serving_size'] / item['portion_multiplier']) : (item['serving_size'] ?? 1.0)).toString()) ?? 1.0;
+    final String servingName = item['serving_name'] ?? 'serving';
+
+    double multiplier = double.tryParse(item['portion_multiplier']?.toString() ?? '1.0') ?? 1.0;
+
+    final TextEditingController controller = TextEditingController(text: multiplier.toStringAsFixed(2).replaceAll(RegExp(r'\.00$'), ''));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final double scaledCal = baseCal * multiplier;
+            final double scaledPro = basePro * multiplier;
+            final double scaledCar = baseCar * multiplier;
+            final double scaledFat = baseFat * multiplier;
+            final double scaledSize = baseSize * multiplier;
+
+            final List<Map<String, dynamic>> quickChips = [
+              {'label': '1/4', 'val': 0.25},
+              {'label': '1/2', 'val': 0.5},
+              {'label': '3/4', 'val': 0.75},
+              {'label': '1', 'val': 1.0},
+              {'label': '1.5', 'val': 1.5},
+              {'label': '2', 'val': 2.0},
+              {'label': '3', 'val': 3.0},
+            ];
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Edit Portion: $foodName",
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Live Preview Row
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffF9F9F9),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xffEEEEEE)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Portion Preview", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                            Text("${scaledSize.toStringAsFixed(1)} $servingName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _previewItem("Calories", "${scaledCal.toStringAsFixed(0)} kcal", Colors.redAccent.withOpacity(0.1), Colors.redAccent),
+                            _previewItem("Protein", "${scaledPro.toStringAsFixed(1)}g", Colors.green.withOpacity(0.1), Colors.green),
+                            _previewItem("Carbs", "${scaledCar.toStringAsFixed(1)}g", Colors.blue.withOpacity(0.1), Colors.blue),
+                            _previewItem("Fats", "${scaledFat.toStringAsFixed(1)}g", Colors.orange.withOpacity(0.1), Colors.orange),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Quick Select Chips
+                  const Text("Quick Select Serving", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: quickChips.map((chip) {
+                      final val = chip['val'] as double;
+                      final isSelected = (multiplier - val).abs() < 0.01;
+                      return ChoiceChip(
+                        label: Text(chip['label'], style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+                        selected: isSelected,
+                        selectedColor: Colors.black,
+                        backgroundColor: const Color(0xffEEEEEE),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setModalState(() {
+                              multiplier = val;
+                              controller.text = val.toString();
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Custom Input
+                  const Text("Custom Portion Size", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      hintText: "Enter custom serving multiplier (e.g. 1.25)",
+                      suffixText: "servings",
+                      filled: true,
+                      fillColor: const Color(0xffF2F2F2),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    onChanged: (text) {
+                      final val = double.tryParse(text);
+                      if (val != null && val > 0) {
+                        setModalState(() {
+                          multiplier = val;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text("Cancel", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            setState(() => _isLoading = true);
+                            try {
+                              final payload = {
+                                'calories': scaledCal,
+                                'protein': scaledPro,
+                                'carbs': scaledCar,
+                                'fats': scaledFat,
+                                'portion_multiplier': multiplier,
+                                'serving_size': scaledSize,
+                              };
+                              await FoodService().updateFoodLog(logId, payload);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("✅ Food log updated"), backgroundColor: Colors.black),
+                              );
+                              _loadData();
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("❌ Failed to update: $e"), backgroundColor: Colors.red),
+                              );
+                              setState(() => _isLoading = false);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _previewItem(String label, String value, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
@@ -159,13 +432,37 @@ class _LogFoodState extends State<LogFood> {
                     title: progressTitle,
                   ),
                   const SizedBox(height: 30),
-                  _MealCardWithItems(title: "Breakfast", subtitle: "$breakfastCal calories advised", items: breakfastList),
+                  _MealCardWithItems(
+                    title: "Breakfast",
+                    subtitle: "$breakfastCal calories advised",
+                    items: breakfastList,
+                    onDelete: _handleDelete,
+                    onEdit: _handleEdit,
+                  ),
                   const SizedBox(height: 15),
-                  _MealCardWithItems(title: "Lunch", subtitle: "$lunchCal calories advised", items: lunchList),
+                  _MealCardWithItems(
+                    title: "Lunch",
+                    subtitle: "$lunchCal calories advised",
+                    items: lunchList,
+                    onDelete: _handleDelete,
+                    onEdit: _handleEdit,
+                  ),
                   const SizedBox(height: 15),
-                  _MealCardWithItems(title: "Dinner", subtitle: "$dinnerCal calories advised", items: dinnerList),
+                  _MealCardWithItems(
+                    title: "Dinner",
+                    subtitle: "$dinnerCal calories advised",
+                    items: dinnerList,
+                    onDelete: _handleDelete,
+                    onEdit: _handleEdit,
+                  ),
                   const SizedBox(height: 15),
-                  _MealCardWithItems(title: "Snack", subtitle: "Snacks", items: snackList),
+                  _MealCardWithItems(
+                    title: "Snack",
+                    subtitle: "Snacks",
+                    items: snackList,
+                    onDelete: _handleDelete,
+                    onEdit: _handleEdit,
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -283,8 +580,16 @@ class _MealCardWithItems extends StatelessWidget {
   final String title;
   final String subtitle;
   final List items;
+  final Function(Map<String, dynamic> item) onDelete;
+  final Function(Map<String, dynamic> item) onEdit;
 
-  const _MealCardWithItems({required this.title, required this.subtitle, required this.items});
+  const _MealCardWithItems({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+    required this.onDelete,
+    required this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +653,19 @@ class _MealCardWithItems extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => onEdit(logItem),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => onDelete(logItem),
                     ),
                   ],
                 ),

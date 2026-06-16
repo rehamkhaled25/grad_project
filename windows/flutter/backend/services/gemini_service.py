@@ -18,6 +18,16 @@ class FoodItem(typing.TypedDict):
     item_gl: float
 
 
+class HiddenIngredientReport(typing.TypedDict):
+    name: str
+    impact_calories: int
+    impact_protein_g: float
+    impact_carbs_g: float
+    impact_fat_g: float
+    impact_explanation: str
+    general_info: str
+
+
 class NutritionReport(typing.TypedDict):
     meal_name: str
     total_calories: int
@@ -46,13 +56,20 @@ class NutritionReport(typing.TypedDict):
     user_summary: str
     missing_nutrients: list[str]
     items: list[FoodItem]
+    hidden_ingredients: list[HiddenIngredientReport]
 
 
 MASTER_PROMPT = """Act as a Clinical Nutrition Scientist. Analyze this image with high precision.
 Context provided by user: {context}
 Calculate Macros vs DV%, Micros (Magnesium, Calcium, Sodium, Vit C), and Glycemic Index and Glycemic Load.
 Ensure mathematical consistency across the report.
-Return health_score as an integer from 0 to 10 only, not as a percentage."""
+Return health_score as an integer from 0 to 10 only, not as a percentage.
+
+If the user mentions any hidden ingredients in the context:
+1. Populate the `hidden_ingredients` list with an entry for each identified hidden ingredient.
+2. Estimate its specific impact (calories, protein, carbs, fat) and how much it increases/changes the meal's overall intake.
+3. Write a clear, concise impact_explanation (e.g. "Adds 120 kcal of fat") and provide a general_info string explaining general facts/health impacts of that ingredient.
+4. If no hidden ingredients are specified, return an empty list for `hidden_ingredients`."""
 
 
 def _safe_generate_content(model, content):
@@ -133,6 +150,12 @@ Important rules:
 - health_score must be an integer from 0 to 10 only, not a percentage.
 - If the quantity is unclear, estimate a common serving size and mention that in user_summary.
 - Be realistic and conservative with estimates.
+
+If the user mentions any hidden ingredients in the extra context:
+1. Populate the `hidden_ingredients` list with an entry for each identified hidden ingredient.
+2. Estimate its specific impact (calories, protein, carbs, fat) and how much it increases/changes the meal's overall intake.
+3. Write a clear, concise impact_explanation (e.g. "Adds 120 kcal of fat") and provide a general_info string explaining general facts/health impacts of that ingredient.
+4. If no hidden ingredients are specified, return an empty list for `hidden_ingredients`.
 """
 
     response = _safe_generate_content(model, [prompt])

@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _weekFuture = FoodService()
           .getWeekProgress()
-          .catchError((_) => <List<Map<String, dynamic>>>[]);
+          .catchError((_) => <Map<String, dynamic>>[]);
     });
   }
 

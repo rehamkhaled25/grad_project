@@ -90,6 +90,13 @@ class UserFoodLog(db.Model):
     carbs = db.Column(db.Float, default=0)
     fats = db.Column(db.Float, default=0)
 
+    # Base nutritional values
+    base_calories = db.Column(db.Float, default=0)
+    base_protein = db.Column(db.Float, default=0)
+    base_carbs = db.Column(db.Float, default=0)
+    base_fats = db.Column(db.Float, default=0)
+    portion_multiplier = db.Column(db.Float, default=1.0)
+
     serving_size = db.Column(db.Float, default=1)
 
     meal_type = db.Column(
@@ -113,6 +120,11 @@ class UserFoodLog(db.Model):
             "protein": self.protein,
             "carbs": self.carbs,
             "fats": self.fats,
+            "base_calories": self.base_calories,
+            "base_protein": self.base_protein,
+            "base_carbs": self.base_carbs,
+            "base_fats": self.base_fats,
+            "portion_multiplier": self.portion_multiplier,
             "serving_size": self.serving_size,
             "meal_type": self.meal_type,
             "scan_id": self.scan_id,

@@ -377,18 +377,40 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
           foodData?['food_name'] ?? foodData?['meal_name'] ?? 'Unknown Food';
  
       final num calories =
-          selectedServing?['calories'] ?? nutritionFacts?['calories'] ?? 0;
+          selectedServing?['calories']
+          ?? nutritionFacts?['calories']
+          ?? foodData?['calories']
+          ?? foodData?['base_calories']
+          ?? 0;
       final num protein =
-          selectedServing?['protein'] ?? _nf(['protein', 'protein_g']);
+          selectedServing?['protein']
+          ?? _nf(['protein', 'protein_g'])
+          ?? foodData?['protein']
+          ?? foodData?['base_protein']
+          ?? 0;
       final num carbs =
-          selectedServing?['carbs'] ?? _nf(['carbs', 'carbs_g', 'carbohydrates']);
+          selectedServing?['carbs']
+          ?? _nf(['carbs', 'carbs_g', 'carbohydrates'])
+          ?? foodData?['carbs']
+          ?? foodData?['base_carbs']
+          ?? 0;
       final num fats =
-          selectedServing?['fats'] ?? _nf(['fats', 'fat', 'fat_g']);
+          selectedServing?['fats']
+          ?? _nf(['fats', 'fat', 'fat_g'])
+          ?? foodData?['fats']
+          ?? foodData?['fat']
+          ?? foodData?['base_fats']
+          ?? 0;
  
       final double scaledCalories = calories.toDouble() * servingCount;
       final double scaledProtein  = protein.toDouble()  * servingCount;
       final double scaledCarbs    = carbs.toDouble()    * servingCount;
       final double scaledFats     = fats.toDouble()     * servingCount;
+ 
+      final double baseCalories = calories.toDouble();
+      final double baseProtein  = protein.toDouble();
+      final double baseCarbs    = carbs.toDouble();
+      final double baseFats     = fats.toDouble();
  
       final String servingName =
           selectedServing?['serving_name'] ?? '1 serving';
@@ -404,6 +426,11 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         'protein':      scaledProtein,
         'carbs':        scaledCarbs,
         'fats':         scaledFats,
+        'base_calories': baseCalories,
+        'base_protein':  baseProtein,
+        'base_carbs':    baseCarbs,
+        'base_fats':     baseFats,
+        'portion_multiplier': servingCount.toDouble(),
         'serving_name': servingName,
         'serving_size': (servingWeight is num)
             ? servingWeight.toDouble() * servingCount
@@ -509,6 +536,8 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
 
     final num    calories  = selectedServing?['calories']
                               ?? nutritionFacts?['calories']
+                              ?? foodData?['calories']
+                              ?? foodData?['base_calories']
                               ?? 0;
     final double scaledCal = calories.toDouble() * servingCount;
  
@@ -518,16 +547,37 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
             ?.toString() ?? "100";
  
     final String protein = _fmt(
-        selectedServing?['protein'] ?? _nf(['protein', 'protein_g']));
+        selectedServing?['protein']
+        ?? _nf(['protein', 'protein_g'])
+        ?? foodData?['protein']
+        ?? foodData?['base_protein']
+        ?? 0.0
+    );
     final String carbs = _fmt(
-        selectedServing?['carbs'] ?? _nf(['carbs', 'carbs_g', 'carbohydrates']));
+        selectedServing?['carbs']
+        ?? _nf(['carbs', 'carbs_g', 'carbohydrates'])
+        ?? foodData?['carbs']
+        ?? foodData?['base_carbs']
+        ?? 0.0
+    );
     final String fats = _fmt(
-        selectedServing?['fats'] ?? _nf(['fats', 'fat', 'fat_g']));
+        selectedServing?['fats']
+        ?? _nf(['fats', 'fat', 'fat_g'])
+        ?? foodData?['fats']
+        ?? foodData?['fat']
+        ?? foodData?['base_fats']
+        ?? 0.0
+    );
  
-    final String fiber   = _fmtNf(['fiber',   'fiber_g']);
-    final String sugar   = _fmtNf(['sugar',   'sugar_g']);
-    final String calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0);
-    final String sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0);
+    final double fallbackFiber = double.tryParse(foodData?['fiber']?.toString() ?? '0') ?? 0.0;
+    final double fallbackSugar = double.tryParse(foodData?['sugar']?.toString() ?? '0') ?? 0.0;
+    final double fallbackCalcium = double.tryParse(foodData?['calcium']?.toString() ?? '0') ?? 0.0;
+    final double fallbackSodium = double.tryParse(foodData?['sodium']?.toString() ?? '0') ?? 0.0;
+
+    final String fiber   = _fmtNf(['fiber',   'fiber_g'], fallback: fallbackFiber);
+    final String sugar   = _fmtNf(['sugar',   'sugar_g'], fallback: fallbackSugar);
+    final String calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0, fallback: fallbackCalcium);
+    final String sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0, fallback: fallbackSodium);
  
     final String mealType = logDetails?['meal_type'] ?? '';
     final String logTime  = logDetails?['log_time']  ?? '';
@@ -575,19 +625,23 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: const Color(0xffE8F5E9),
-                    image: imageUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(imageUrl),
-                            fit: BoxFit.cover,
-                            onError: (_, __) {},
-                          )
-                        : null,
                   ),
-                  child: imageUrl.isEmpty
-                      ? const Center(
-                          child: Text("🍜",
-                              style: TextStyle(fontSize: 28)))
-                      : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Text(_getFoodEmoji(foodName),
+                                  style: const TextStyle(fontSize: 28)),
+                            ),
+                          )
+                        : Center(
+                            child: Text(_getFoodEmoji(foodName),
+                                style: const TextStyle(fontSize: 28)),
+                          ),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -964,4 +1018,15 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
               color: filled ? Colors.white : Colors.black, size: 18),
         ),
       );
+
+  String _getFoodEmoji(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('salad')) return '🥗';
+    if (n.contains('pizza')) return '🍕';
+    if (n.contains('burger')) return '🍔';
+    if (n.contains('pasta') || n.contains('noodle') || n.contains('spaghetti')) return '🍝';
+    if (n.contains('rice')) return '🍚';
+    if (n.contains('soup') || n.contains('stew')) return '🥣';
+    return '🍽️';
+  }
 }
