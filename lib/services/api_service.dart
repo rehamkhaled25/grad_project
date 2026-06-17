@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
  
 class ApiService {
-  // static const String baseUrl = "http://192.168.100.9:5000";
-  static const String baseUrl = "http://10.0.2.2:5000";
+  static const String baseUrl = "http://192.168.100.9:5000";
+  //tatic const String baseUrl = "http://10.0.2.2:5000";
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);

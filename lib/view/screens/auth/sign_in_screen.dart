@@ -99,7 +99,7 @@ class _SignInScreenState extends State<SignInScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Image.asset('assets/images/logo-78.png', height: 100),
+              Image.asset('assets/images/nutra_logo.png', height: 100),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(20),
@@ -164,6 +164,26 @@ class _SignInScreenState extends State<SignInScreen> {
                           'Login',
                           style: TextStyle(color: Colors.white),
                         ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () => context.go('/onboardingGender'),
+                child: RichText(
+                  text: const TextSpan(
+                    text: "Don't have an account? ",
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                    children: [
+                      TextSpan(
+                        text: "Sign up",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

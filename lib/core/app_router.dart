@@ -358,6 +358,8 @@ import 'package:graduation_project/view/screens/streak/streak_screen.dart';
 import 'package:graduation_project/view/screens/settings/goals_screen.dart';
 import 'package:graduation_project/view/screens/plan/premium_plan.dart';
 import 'package:graduation_project/view/screens/database/servings_database.dart';
+import 'package:graduation_project/view/screens/home/ai_coach.dart';
+import 'package:graduation_project/view/screens/home/recipe_generator.dart';
  
 // Simple in-memory auth state — splash screen sets this on startup
 class AuthState {
@@ -399,7 +401,7 @@ abstract class AppRouter {
       final protectedRoutes = ['/home', '/log_food', '/progress', '/settings',
         '/profile', '/notifications', '/notificationsScreen', '/foodScanner',
         '/log', '/streak', '/weeklyBreakdownScreen', '/goals', '/premiumPlan',
-        '/editGoal', '/myTarget', '/servingsDatabase'];
+        '/editGoal', '/myTarget', '/servingsDatabase', '/ai_coach', '/recipe_generator'];
  
       if (protectedRoutes.contains(location) && !AuthState.isLoggedIn) {
         return '/login';
@@ -610,6 +612,16 @@ abstract class AppRouter {
         path: '/premiumPlan',
         name: 'premiumPlan',
         builder: (context, state) => const PremiumPlanScreen(),
+      ),
+      GoRoute(
+        path: '/ai_coach',
+        name: 'ai_coach',
+        builder: (context, state) => const AICoachScreen(),
+      ),
+      GoRoute(
+        path: '/recipe_generator',
+        name: 'recipe_generator',
+        builder: (context, state) => const RecipeGeneratorScreen(),
       ),
  
       ShellRoute(

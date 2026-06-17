@@ -601,7 +601,9 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     setState(() => _isLogging = true);
 
     try {
-      final data = <String, dynamic>{};
+      final data = <String, dynamic>{
+        'log_time': DateTime.now().toIso8601String(),
+      };
       if (widget.scanId != null) {
         data['scan_id'] = widget.scanId;
         data['quantity'] = _quantity;
@@ -1267,15 +1269,15 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: const Color(0xFFFFF1F3),
               border: Border.all(
-                color: const Color(0xFF81C784),
+                color: const Color(0xFFF48FB1),
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF4CAF50).withOpacity(0.08),
+                  color: const Color(0xFFE91E63).withOpacity(0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -1286,7 +1288,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.visibility_off_outlined, color: Color(0xFF2E7D32), size: 20),
+                    const Icon(Icons.visibility_off_outlined, color: Color(0xFFC2185B), size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1294,7 +1296,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          color: Color(0xFFC2185B),
                         ),
                       ),
                     ),
@@ -1329,7 +1331,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E7D32),
+                      color: Color(0xFFC2185B),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1346,7 +1348,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E7D32),
+                      color: Color(0xFFC2185B),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1375,7 +1377,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
-            color: Color(0xFF2E7D32),
+            color: Color(0xFFC2185B),
           ),
         ),
         Text(
@@ -1393,7 +1395,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     return Container(
       height: 20,
       width: 1,
-      color: const Color(0xFF81C784).withOpacity(0.5),
+      color: const Color(0xFFF48FB1).withOpacity(0.5),
     );
   }
 }

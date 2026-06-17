@@ -581,13 +581,17 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
     // Fallbacks from foodData — nullable: null means truly missing
     final double? fallbackFiber = double.tryParse(foodData?['fiber']?.toString() ?? '');
     final double? fallbackSugar = double.tryParse(foodData?['sugar']?.toString() ?? '');
-    final double? fallbackCalcium = double.tryParse(foodData?['calcium']?.toString() ?? '');
     final double? fallbackSodium = double.tryParse(foodData?['sodium']?.toString() ?? '');
 
     final String? fiber   = _fmtNf(['fiber',   'fiber_g'], fallback: fallbackFiber);
     final String? sugar   = _fmtNf(['sugar',   'sugar_g'], fallback: fallbackSugar);
-    final String? calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0, fallback: fallbackCalcium);
-    final String? sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0, fallback: fallbackSodium);
+    final double? rawSodium = _nf(['sodium', 'sodium_mg'], fallback: fallbackSodium);
+    final double? scaledSodium = rawSodium != null
+        ? ((widget.source == 'open_food_facts' && rawSodium < 10.0) ? rawSodium * 1000.0 : rawSodium)
+        : null;
+    final String? sodium  = scaledSodium != null
+        ? (scaledSodium * servingCount).toStringAsFixed(0)
+        : null;
  
     final String mealType = logDetails?['meal_type'] ?? '';
     final String logTime  = logDetails?['log_time']  ?? '';
@@ -780,8 +784,6 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
                   _nutritionRow("Fiber",   fiber != null ? "$fiber g" : "N/A"),
                   _divider(),
                   _nutritionRow("Sugar",   sugar != null ? "$sugar g" : "N/A"),
-                  _divider(),
-                  _nutritionRow("Calcium", calcium != null ? "$calcium mg" : "N/A"),
                   _divider(),
                   _nutritionRow("Sodium",  sodium != null ? "$sodium mg" : "N/A"),
 

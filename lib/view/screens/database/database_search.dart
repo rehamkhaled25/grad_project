@@ -7,7 +7,6 @@ import 'package:graduation_project/view/screens/payment/CameraAiUpgrade.dart';
 
 import 'dart:async';
 
-import 'package:graduation_project/view/screens/database/servings_database.dart';
  
 class DatabaseSearch extends StatefulWidget {
   final String? mealType;
@@ -469,7 +468,6 @@ class _AiScanBanner extends StatefulWidget {
 
 class _AiScanBannerState extends State<_AiScanBanner> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
   late Animation<double> _glowAnimation;
 
   @override
@@ -479,10 +477,6 @@ class _AiScanBannerState extends State<_AiScanBanner> with SingleTickerProviderS
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 0.98, end: 1.02).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
 
     _glowAnimation = Tween<double>(begin: 4.0, end: 12.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
@@ -498,7 +492,7 @@ class _AiScanBannerState extends State<_AiScanBanner> with SingleTickerProviderS
   @override
   Widget build(BuildContext context) {
     return ScaleTransition(
-      scale: _scaleAnimation,
+      scale: const AlwaysStoppedAnimation(1.0),
       child: AnimatedBuilder(
         animation: _glowAnimation,
         builder: (context, child) {

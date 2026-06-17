@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ? _user!.profileImageUrl!
                                     : '${ApiService.baseUrl}${_user!.profileImageUrl}',
                               )
-                            : const AssetImage('assets/images/placeholder_profile.png') as ImageProvider,
+                            : const AssetImage('assets/images/profilee.png') as ImageProvider,
                       ),
                       title: Text(
                         _user?.fullName ?? '',

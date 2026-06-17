@@ -22,6 +22,17 @@
 
 
 # app.py
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+import requests
+from requests.adapters import HTTPAdapter
+original_send = HTTPAdapter.send
+HTTPAdapter.send = lambda self, request, **kwargs: original_send(self, request, **{**kwargs, 'verify': False})
+
 from flask import Flask
 from config import Config
 from extensions import db

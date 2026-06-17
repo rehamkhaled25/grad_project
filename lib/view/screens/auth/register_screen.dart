@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Image.asset('assets/images/logo-78.png', height: 100),
+              Image.asset('assets/images/nutra_logo.png', height: 100),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(20),

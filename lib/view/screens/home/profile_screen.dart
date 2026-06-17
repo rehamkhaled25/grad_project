@@ -28,7 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
  
   List<double> get _filteredWeights {
     if (_weightLogs.isEmpty) {
-      return [175.0, 175.0, 173.0, 173.0, 170.0, 170.0, 165.0, 171.0, 169.0, 169.1];
+      return [];
     }
     final sorted = List<Map<String, dynamic>>.from(_weightLogs);
     sorted.sort((a, b) => a['log_date'].toString().compareTo(b['log_date'].toString()));
@@ -38,7 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   List<String> get _weightLabels {
     if (_weightLogs.isEmpty) {
-      return ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+      return [];
     }
     final sorted = List<Map<String, dynamic>>.from(_weightLogs);
     sorted.sort((a, b) => a['log_date'].toString().compareTo(b['log_date'].toString()));

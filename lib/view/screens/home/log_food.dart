@@ -4,6 +4,8 @@ import 'package:graduation_project/view/screens/home/dashboard.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:graduation_project/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class LogFood extends StatefulWidget {
   const LogFood({super.key});
@@ -18,6 +20,7 @@ class _LogFoodState extends State<LogFood> {
   bool _isLoading = true;
   String? _profileImageUrl;
   DateTime _selectedDate = DateTime.now();
+  double _caloriesBurned = 0.0;
 
   static const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
@@ -28,10 +31,43 @@ class _LogFoodState extends State<LogFood> {
     _loadData();
   }
 
+  Future<String> _getLocalPrefix() async {
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    return email.isNotEmpty ? '${email}_' : '';
+  }
+
+  Future<void> _loadLocalData(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
+    final workoutKey = '${prefix}workout_log_$dateStr';
+    final workoutJson = prefs.getString(workoutKey);
+    double totalBurned = 0.0;
+    
+    if (workoutJson != null) {
+      try {
+        final decoded = jsonDecode(workoutJson) as List;
+        for (final w in decoded) {
+          totalBurned += (w['burned'] as num).toDouble();
+        }
+      } catch (e) {
+        print("Error parsing workouts in LogFood: $e");
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _caloriesBurned = totalBurned;
+      });
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      await _loadLocalData(_selectedDate);
       final results = await Future.wait([
         FoodService().getFoodHistory(date: dateStr).catchError((_) => <String, dynamic>{}),
         FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{}),
@@ -335,8 +371,8 @@ class _LogFoodState extends State<LogFood> {
     final totals = _historyData?['totals'] is Map ? Map<String, dynamic>.from(_historyData!['totals']) : <String, dynamic>{};
     final consumed = (totals['calories'] ?? 0).toDouble();
     final dailyCal = (_planData?['calories'] ?? 2400).toDouble();
-    final remaining = (dailyCal - consumed).clamp(0.0, dailyCal);
-    final progress = dailyCal > 0 ? (consumed / dailyCal).clamp(0.0, 1.0) : 0.0;
+    final remaining = dailyCal - consumed + _caloriesBurned;
+    final progress = (dailyCal + _caloriesBurned) > 0 ? consumed / (dailyCal + _caloriesBurned) : 0.0;
 
     final grouped = _historyData?['grouped'] is Map ? Map<String, dynamic>.from(_historyData!['grouped']) : <String, dynamic>{};
     final breakfastList = (grouped['breakfast'] as List?) ?? [];
@@ -430,6 +466,7 @@ class _LogFoodState extends State<LogFood> {
                     remaining: remaining,
                     progress: progress,
                     title: progressTitle,
+                    burned: _caloriesBurned,
                   ),
                   const SizedBox(height: 30),
                   _MealCardWithItems(
@@ -478,6 +515,7 @@ class _DailyProgressCard extends StatelessWidget {
   final double remaining;
   final double progress;
   final String title;
+  final double burned;
 
   const _DailyProgressCard({
     required this.size,
@@ -486,13 +524,15 @@ class _DailyProgressCard extends StatelessWidget {
     required this.remaining,
     required this.progress,
     required this.title,
+    this.burned = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double budget = dailyCal + burned;
     Color progressColor = Colors.grey.shade400;
-    if (dailyCal > 0 && consumed > 0) {
-      final diff = ((consumed - dailyCal) / dailyCal).abs();
+    if (budget > 0 && consumed > 0) {
+      final diff = ((consumed - budget) / budget).abs();
       if (diff <= 0.05) {
         progressColor = Colors.green;
       } else if (diff <= 0.15) {
@@ -529,7 +569,7 @@ class _DailyProgressCard extends StatelessWidget {
                 height: size.width * 0.35,
                 width: size.width * 0.35,
                 child: CircularProgressIndicator(
-                  value: progress,
+                  value: progress.clamp(0.0, 1.0),
                   strokeWidth: 5,
                   backgroundColor: const Color(0xffEEEEEE),
                   valueColor: AlwaysStoppedAnimation<Color>(progressColor),
@@ -545,7 +585,7 @@ class _DailyProgressCard extends StatelessWidget {
                       child: Text("${consumed.toStringAsFixed(0)}", style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                  Text("of ${dailyCal.toStringAsFixed(0)}", style: const TextStyle(color: Colors.black, fontSize: 10)),
+                  Text("of ${budget.toStringAsFixed(0)}", style: const TextStyle(color: Colors.black, fontSize: 10)),
                 ],
               )
             ],

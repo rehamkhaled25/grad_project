@@ -6,6 +6,8 @@ import 'package:graduation_project/services/api_service.dart';
 import 'package:graduation_project/services/food_service.dart';
 import 'package:intl/intl.dart';
 import 'package:graduation_project/view/screens/database/servings_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +31,266 @@ class _HomeScreenState extends State<HomeScreen> {
   // Week data for the bar (loaded once, refreshed on pull-to-refresh)
   Future<List<Map<String, dynamic>>>? _weekFuture;
 
+  // Local storage properties for Water & Workouts
+  int _waterIntake = 0;
+  bool _tipDismissed = false;
+
+  static const List<Map<String, String>> _tipsPool = [
+    {
+      'title': 'Stay Hydrated',
+      'text': 'Drinking water before meals can help reduce appetite and support weight management.'
+    },
+    {
+      'title': 'Prioritize Protein',
+      'text': 'Eating enough protein helps maintain muscle mass, increases satiety, and burns slightly more calories during digestion.'
+    },
+    {
+      'title': 'Mindful Eating',
+      'text': 'Try eating slower and without distractions (like screens) to better recognize your body\'s fullness signals.'
+    },
+    {
+      'title': 'Fiber for Digestibility',
+      'text': 'Incorporate high-fiber foods like oats, beans, and berries to maintain healthy digestion and steady blood sugar.'
+    },
+    {
+      'title': 'Get Quality Sleep',
+      'text': 'Poor sleep can disrupt appetite hormones (ghrelin and leptin), leading to increased cravings.'
+    },
+    {
+      'title': 'Focus on Whole Foods',
+      'text': 'Try to fill most of your plate with minimally processed whole foods to maximize nutrient density.'
+    },
+    {
+      'title': 'Limit Liquid Calories',
+      'text': 'Sugary drinks, sodas, and fruit juices add empty calories without making you feel full.'
+    },
+    {
+      'title': 'Eat the Rainbow',
+      'text': 'Include different colored fruits and vegetables in your meals to get a diverse range of vitamins and antioxidants.'
+    },
+    {
+      'title': 'Don\'t Skip Breakfast',
+      'text': 'A high-protein breakfast can help stabilize blood glucose levels and prevent overeating later in the day.'
+    },
+    {
+      'title': 'Healthy Fats Matter',
+      'text': 'Include sources of healthy unsaturated fats like avocados, nuts, and olive oil for cellular and hormone health.'
+    },
+    {
+      'title': 'Reduce Added Sugar',
+      'text': 'Check ingredients labels for hidden added sugars which can cause energy spikes and crashes.'
+    },
+    {
+      'title': 'Active Breaks',
+      'text': 'If you sit for long hours, take a 5-minute walking or stretching break every hour to boost circulation.'
+    },
+    {
+      'title': 'Pre-plan Your Meals',
+      'text': 'Pre-planning your meals for the day or week significantly increases the likelihood of hitting your goals.'
+    },
+    {
+      'title': 'Magnesium for Recovery',
+      'text': 'Leafy greens, pumpkin seeds, and dark chocolate are rich in magnesium, which supports muscle relaxation and sleep.'
+    },
+    {
+      'title': 'Sodium Awareness',
+      'text': 'Reducing processed foods can significantly lower your daily sodium intake and improve cardiovascular health.'
+    },
+    {
+      'title': 'Choose Complex Carbs',
+      'text': 'Swap white rice/bread for brown rice, quinoa, and whole wheat to get sustained energy release.'
+    },
+    {
+      'title': 'Limit Late Night Eating',
+      'text': 'Try to finish eating at least 2-3 hours before sleep to support digestion and sleep quality.'
+    },
+    {
+      'title': 'Portion Control',
+      'text': 'Using smaller plates and bowls can visually trick your brain into feeling satisfied with appropriate portion sizes.'
+    },
+    {
+      'title': 'Calcium for Bones',
+      'text': 'Dairy, fortified plant milks, and almonds are excellent sources of calcium to support bone strength.'
+    },
+    {
+      'title': 'Vitamin C Boost',
+      'text': 'Citrus fruits, bell peppers, and broccoli help boost immunity and improve iron absorption from plant sources.'
+    },
+    {
+      'title': 'Gut Health Support',
+      'text': 'Eat fermented foods like yogurt, kefir, or kimchi to introduce beneficial probiotics to your gut microbiome.'
+    },
+    {
+      'title': 'Strength Training Benefits',
+      'text': 'Strength training boosts your resting metabolic rate, meaning you burn more calories even when at rest.'
+    },
+    {
+      'title': 'Use Healthy Herbs',
+      'text': 'Flavor meals with spices like turmeric, garlic, or ginger instead of excess salt to get antioxidant benefits.'
+    },
+    {
+      'title': 'Watch Salad Dressings',
+      'text': 'Creamy salad dressings can add hundreds of hidden calories. Opt for olive oil and vinegar or lemon juice.'
+    },
+    {
+      'title': 'Post-meal Walk',
+      'text': 'A light 10-minute walk after eating helps lower post-meal blood sugar levels and aids digestion.'
+    },
+    {
+      'title': 'Listen to Your Body',
+      'text': 'Eat when you are physically hungry, not just bored, stressed, or following a rigid clock schedule.'
+    },
+    {
+      'title': 'Stay Consistent',
+      'text': 'Healthy eating is about long-term habits. A single over-budget meal won\'t ruin your overall progress.'
+    },
+    {
+      'title': 'Enjoy Dark Chocolate',
+      'text': '70%+ dark chocolate is rich in antioxidants and can help satisfy sweet cravings in moderate amounts.'
+    },
+    {
+      'title': 'Snack Smarter',
+      'text': 'Prepare snacks like carrot sticks with hummus or apple slices with nut butter instead of chips.'
+    },
+    {
+      'title': 'Celebrate Wins',
+      'text': 'Acknowledge your efforts, whether it\'s logging food consistently or drinking more water. Consistency is key!'
+    }
+  ];
+  final int _waterGoal = 2000;
+  double _caloriesBurned = 0.0;
+  List<Map<String, dynamic>> _todayWorkouts = [];
+
+  Future<String> _getLocalPrefix() async {
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    return email.isNotEmpty ? '${email}_' : '';
+  }
+
+  Future<void> _loadLocalData(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final dateKey = _dateStr(date);
+    
+    final waterKey = '${prefix}water_log_$dateKey';
+    final workoutKey = '${prefix}workout_log_$dateKey';
+    
+    final water = prefs.getInt(waterKey) ?? 0;
+    final workoutJson = prefs.getString(workoutKey);
+    List<Map<String, dynamic>> workouts = [];
+    double totalBurned = 0.0;
+    
+    if (workoutJson != null) {
+      try {
+        final decoded = jsonDecode(workoutJson) as List;
+        workouts = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        for (final w in workouts) {
+          totalBurned += (w['burned'] as num).toDouble();
+        }
+      } catch (e) {
+        print("Error parsing workouts: $e");
+      }
+    }
+    
+    setState(() {
+      _waterIntake = water;
+      _todayWorkouts = workouts;
+      _caloriesBurned = totalBurned;
+    });
+  }
+
+  Future<void> _saveWaterIntake(int newVal) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final dateKey = _dateStr(_selectedDate);
+    final waterKey = '${prefix}water_log_$dateKey';
+    
+    final clampedVal = newVal.clamp(0, 10000);
+    await prefs.setInt(waterKey, clampedVal);
+    
+    setState(() {
+      _waterIntake = clampedVal;
+    });
+  }
+
+  Future<void> _addWorkout(String activity, int duration, double burned) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final dateKey = _dateStr(_selectedDate);
+    final workoutKey = '${prefix}workout_log_$dateKey';
+    
+    final newWorkout = {
+      'activity': activity,
+      'duration': duration,
+      'burned': burned,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    
+    final updatedList = List<Map<String, dynamic>>.from(_todayWorkouts)..add(newWorkout);
+    await prefs.setString(workoutKey, jsonEncode(updatedList));
+    
+    setState(() {
+      _todayWorkouts = updatedList;
+      _caloriesBurned += burned;
+    });
+  }
+
+  Future<void> _deleteWorkout(int index) async {
+    if (index < 0 || index >= _todayWorkouts.length) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final dateKey = _dateStr(_selectedDate);
+    final workoutKey = '${prefix}workout_log_$dateKey';
+    
+    final removedBurned = (_todayWorkouts[index]['burned'] as num).toDouble();
+    
+    final updatedList = List<Map<String, dynamic>>.from(_todayWorkouts)..removeAt(index);
+    await prefs.setString(workoutKey, jsonEncode(updatedList));
+    
+    setState(() {
+      _todayWorkouts = updatedList;
+      _caloriesBurned -= removedBurned;
+      if (_caloriesBurned < 0) _caloriesBurned = 0.0;
+    });
+  }
+
+  void _showAddWorkoutSheet(BuildContext context) {
+    _userFuture.then((user) {
+      final double weight = user?.weight ?? 70.0;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _AddWorkoutBottomSheet(
+          userWeight: weight,
+          onSave: (activity, duration, burned) {
+            _addWorkout(activity, duration, burned);
+          },
+        ),
+      );
+    });
+  }
+
+  Future<void> _loadTipState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final todayStr = _dateStr(DateTime.now());
+    final dismissedDate = prefs.getString('${prefix}dismissed_tip_date');
+    setState(() {
+      _tipDismissed = dismissedDate == todayStr;
+    });
+  }
+
+  Future<void> _dismissTip() async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getLocalPrefix();
+    final todayStr = _dateStr(DateTime.now());
+    await prefs.setString('${prefix}dismissed_tip_date', todayStr);
+    setState(() {
+      _tipDismissed = true;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _planFuture = FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{});
     _loadDayData(_selectedDate);
     _loadWeekData();
+    _loadTipState();
   }
 
   String _dateStr(DateTime d) =>
@@ -50,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .getDayProgress(_dateStr(date))
           .catchError((_) => <String, dynamic>{});
     });
+    _loadLocalData(date);
   }
 
   void _loadWeekData() {
@@ -211,7 +475,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 25),
+              if (!_tipDismissed && _dateStr(_selectedDate) == _dateStr(DateTime.now())) ...[
+                _TipOfTheDayCard(
+                  tipTitle: _tipsPool[DateTime.now().day % _tipsPool.length]['title']!,
+                  tipText: _tipsPool[DateTime.now().day % _tipsPool.length]['text']!,
+                  onDismiss: _dismissTip,
+                ),
+                const SizedBox(height: 15),
+              ],
 
               // ── Days-of-week bar (fetches its own per-day data) ──────
               DaysOfWeekBar(
@@ -245,14 +517,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             .toDouble();
                     final consumed =
                         (dayData['calories'] ?? 0).toDouble();
-                    // NOTE: NOT clamped — negative value means calories exceeded goal.
-                    // _DailyProgressCard handles the display of over-goal state.
-                    final remaining = dailyCal - consumed;
-                    final progress = dayData['progress'] != null
-                        ? (dayData['progress'] as num).toDouble()
-                        : (dailyCal > 0
-                            ? (consumed / dailyCal)
-                            : 0.0);
+                    // Remaining = Goal - Consumed + Burned
+                    final remaining = dailyCal - consumed + _caloriesBurned;
+                    final progress = (dailyCal + _caloriesBurned) > 0
+                        ? consumed / (dailyCal + _caloriesBurned)
+                        : 0.0;
  final progressClamped = progress.clamp(0.0, 1.5);
                     final fats = (dayData['fats'] ?? 0).toDouble();
                     final protein = (dayData['protein'] ?? 0).toDouble();
@@ -290,6 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               remaining: remaining,
                               progress: progress,
                               title: progressLabel,
+                              burned: _caloriesBurned,
                             ),
                             // ── Calories Breakdown card ──────────────
                             Container(
@@ -431,6 +701,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+              const SizedBox(height: 20),
+              const _AIHealthHubCard(),
+              const SizedBox(height: 20),
+              _WaterTrackerCard(
+                waterIntake: _waterIntake,
+                waterGoal: _waterGoal,
+                onAddWater: (amount) => _saveWaterIntake(_waterIntake + amount),
+                onSetWater: (amount) => _saveWaterIntake(amount),
+              ),
+              const SizedBox(height: 15),
+              _WorkoutLoggerCard(
+                workouts: _todayWorkouts,
+                caloriesBurned: _caloriesBurned,
+                onAddWorkoutTap: () => _showAddWorkoutSheet(context),
+                onDeleteWorkout: _deleteWorkout,
+              ),
               const SizedBox(height: 25),
 
               // ── Recently Logged meals for selected day ───────────────
@@ -686,6 +972,7 @@ class _DailyProgressCard extends StatelessWidget {
   final double remaining;
   final double progress; // uncapped — can be > 1.0
   final String title;
+  final double burned;
 
   const _DailyProgressCard({
     required this.size,
@@ -694,11 +981,13 @@ class _DailyProgressCard extends StatelessWidget {
     required this.remaining,
     required this.progress,
     required this.title,
+    this.burned = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isOver = progress > 1.0;
+    final double budget = dailyCal + burned;
+    final bool isOver = consumed > budget;
     // Label reflects over-goal state
     final String statusLabel = consumed == 0
         ? "No Data"
@@ -711,8 +1000,8 @@ class _DailyProgressCard extends StatelessWidget {
                     : "In Progress";
 
     Color progressColor = Colors.grey.shade300;
-    if (consumed > 0 && dailyCal > 0) {
-      final diff = ((consumed - dailyCal) / dailyCal).abs();
+    if (consumed > 0 && budget > 0) {
+      final diff = ((consumed - budget) / budget).abs();
       if (diff <= 0.05) {
         progressColor = Colors.green;
       } else if (diff <= 0.15) {
@@ -727,7 +1016,7 @@ class _DailyProgressCard extends StatelessWidget {
         : progressColor;
 
     // How many calories over the goal (positive = over)
-    final double overBy = consumed - dailyCal;
+    final double overBy = consumed - budget;
 
     // Remaining label: show negative (over by X) or positive
     final String remainingLabel = consumed == 0
@@ -797,7 +1086,7 @@ class _DailyProgressCard extends StatelessWidget {
                 Text(
                   consumed == 0
                       ? "No logs"
-                      : "of ${dailyCal.toStringAsFixed(0)}",
+                      : "of ${budget.toStringAsFixed(0)}",
                   style: const TextStyle(
                       color: Colors.black,
                       fontSize: 12,
@@ -1073,6 +1362,775 @@ class ProgressItem extends StatelessWidget {
                   fontSize: 10, fontWeight: FontWeight.bold)),
         ),
       ],
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// _WaterTrackerCard
+// ════════════════════════════════════════════════════════════════════════
+
+class _WaterTrackerCard extends StatelessWidget {
+  final int waterIntake;
+  final int waterGoal;
+  final ValueChanged<int> onAddWater;
+  final ValueChanged<int> onSetWater;
+
+  const _WaterTrackerCard({
+    required this.waterIntake,
+    required this.waterGoal,
+    required this.onAddWater,
+    required this.onSetWater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.local_drink_rounded, color: Colors.blueAccent, size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    "Water Tracker",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff1E1B39),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                "$waterIntake / $waterGoal ml",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(8, (index) {
+              final cupVol = (index + 1) * 250;
+              final isFilled = waterIntake >= cupVol;
+              return GestureDetector(
+                onTap: () => onSetWater(cupVol),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isFilled ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.water_drop_rounded,
+                    color: isFilled ? Colors.blueAccent : Colors.grey.shade300,
+                    size: 24,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ElevatedButton(
+                onPressed: waterIntake > 0 ? () => onAddWater(-250) : null,
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: Colors.grey.shade100,
+                  foregroundColor: Colors.black54,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.remove, size: 16),
+                    SizedBox(width: 4),
+                    Text("-250 ml", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => onAddWater(250),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                    foregroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 16),
+                      SizedBox(width: 4),
+                      Text("+250 ml", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => onAddWater(500),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.local_drink_rounded, size: 16),
+                      SizedBox(width: 4),
+                      Text("+500 ml", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// _WorkoutLoggerCard
+// ════════════════════════════════════════════════════════════════════════
+
+class _WorkoutLoggerCard extends StatelessWidget {
+  final List<Map<String, dynamic>> workouts;
+  final double caloriesBurned;
+  final VoidCallback onAddWorkoutTap;
+  final ValueChanged<int> onDeleteWorkout;
+
+  const _WorkoutLoggerCard({
+    required this.workouts,
+    required this.caloriesBurned,
+    required this.onAddWorkoutTap,
+    required this.onDeleteWorkout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    "Workout Logger",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff1E1B39),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "🔥 ${caloriesBurned.toStringAsFixed(0)} kcal",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          if (workouts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Center(
+                child: Text(
+                  "No workouts logged for today yet.",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: workouts.length,
+              separatorBuilder: (context, index) => const Divider(height: 16),
+              itemBuilder: (context, index) {
+                final workout = workouts[index];
+                final activity = workout['activity'] ?? 'Workout';
+                final duration = workout['duration'] ?? 0;
+                final burned = (workout['burned'] ?? 0.0) as num;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Color(0xffFFF2E6),
+                          child: Icon(Icons.fitness_center_rounded, size: 16, color: Colors.orange),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              activity,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              "$duration min",
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          "-${burned.toStringAsFixed(0)} kcal",
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.redAccent),
+                          onPressed: () => _showDeleteConfirmation(context, index),
+                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          const SizedBox(height: 15),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onAddWorkoutTap,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text("Log Active Workout", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: const Color(0xffFFF2E6),
+                foregroundColor: Colors.orange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Workout Log?"),
+        content: const Text("Are you sure you want to delete this workout entry? This will adjust your daily calorie budget."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              onDeleteWorkout(index);
+              Navigator.pop(context);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// _AddWorkoutBottomSheet
+// ════════════════════════════════════════════════════════════════════════
+
+class _AddWorkoutBottomSheet extends StatefulWidget {
+  final double userWeight;
+  final Function(String activity, int duration, double burned) onSave;
+
+  const _AddWorkoutBottomSheet({
+    super.key,
+    required this.userWeight,
+    required this.onSave,
+  });
+
+  @override
+  State<_AddWorkoutBottomSheet> createState() => _AddWorkoutBottomSheetState();
+}
+
+class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
+  String _selectedActivity = 'Running';
+  int _duration = 30;
+  double _customCalories = 0.0;
+  final TextEditingController _customCalController = TextEditingController();
+
+  final Map<String, double> _metValues = {
+    'Running': 8.0,
+    'Walking': 3.5,
+    'Cycling': 6.0,
+    'Weightlifting': 4.0,
+    'Yoga': 2.5,
+    'Swimming': 6.0,
+    'Custom': 5.0,
+  };
+
+  double get _estimatedBurn {
+    if (_selectedActivity == 'Custom') {
+      return _customCalories;
+    }
+    final met = _metValues[_selectedActivity] ?? 5.0;
+    return met * 3.5 * widget.userWeight / 200.0 * _duration;
+  }
+
+  @override
+  void dispose() {
+    _customCalController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      padding: EdgeInsets.fromLTRB(25, 25, 25, 25 + bottomInset),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Log Active Workout",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xff1E1B39)),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Select Activity",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                children: _metValues.keys.map((activity) {
+                  final isSelected = _selectedActivity == activity;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(activity),
+                      selected: isSelected,
+                      selectedColor: Colors.orange.shade100,
+                      backgroundColor: Colors.grey.shade100,
+                      labelStyle: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.orange.shade800 : Colors.black87,
+                      ),
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedActivity = activity;
+                          });
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 25),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Duration",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                Text(
+                  "$_duration min",
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                ),
+              ],
+            ),
+            Slider(
+              value: _duration.toDouble(),
+              min: 5,
+              max: 120,
+              divisions: 23,
+              activeColor: Colors.orange,
+              inactiveColor: Colors.orange.shade100,
+              onChanged: (val) {
+                setState(() {
+                  _duration = val.round();
+                });
+              },
+            ),
+            if (_selectedActivity == 'Custom') ...[
+              const SizedBox(height: 10),
+              const Text(
+                "Calories Burned (kcal)",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _customCalController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: "Enter burned calories",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _customCalories = double.tryParse(val) ?? 0.0;
+                  });
+                },
+              ),
+            ],
+            const SizedBox(height: 25),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Estimated Burn",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange),
+                        ),
+                        Text(
+                          "${_estimatedBurn.toStringAsFixed(0)} kcal",
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    "(${widget.userWeight.toStringAsFixed(0)} kg weight)",
+                    style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  widget.onSave(_selectedActivity, _duration, _estimatedBurn);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text("Save Workout", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// _AIHealthHubCard
+// ════════════════════════════════════════════════════════════════════════
+
+class _AIHealthHubCard extends StatelessWidget {
+  const _AIHealthHubCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade700, Colors.indigo.shade800],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "AI Health Hub",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      "Powered by Gemini AI",
+                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => context.push('/ai_coach'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.forum_rounded, color: Colors.white, size: 22),
+                        SizedBox(height: 6),
+                        Text(
+                          "AI Coach Chat",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () => context.push('/recipe_generator'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 22),
+                        SizedBox(height: 6),
+                        Text(
+                          "Recipe Maker",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// _TipOfTheDayCard
+// ════════════════════════════════════════════════════════════════════════
+
+class _TipOfTheDayCard extends StatelessWidget {
+  final String tipTitle;
+  final String tipText;
+  final VoidCallback onDismiss;
+
+  const _TipOfTheDayCard({
+    required this.tipTitle,
+    required this.tipText,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.teal.shade500, Colors.teal.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lightbulb_rounded, color: Colors.yellowAccent, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Tip of the Day",
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      tipTitle,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tipText,
+                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+            ],
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: onDismiss,
+              child: Icon(Icons.close, color: Colors.white.withOpacity(0.8), size: 18),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

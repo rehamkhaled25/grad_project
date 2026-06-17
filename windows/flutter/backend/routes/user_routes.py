@@ -1224,6 +1224,17 @@ def log_food():
     base_carbs = to_float(data.get("base_carbs"), to_float(carbs) / portion_multiplier if portion_multiplier > 0 else to_float(carbs))
     base_fats = to_float(data.get("base_fats"), to_float(fats) / portion_multiplier if portion_multiplier > 0 else to_float(fats))
 
+    log_time_raw = data.get("log_time")
+    log_time = None
+    if log_time_raw:
+        try:
+            dt = datetime.fromisoformat(log_time_raw.replace("Z", "+00:00"))
+            log_time = dt.replace(tzinfo=None)
+        except Exception:
+            pass
+    if not log_time:
+        log_time = datetime.now()
+
     log = UserFoodLog(
         user_id=user["id"],
         food_name=food_name,
@@ -1244,7 +1255,7 @@ def log_food():
         image_url=image_url_input,
         full_report=full_report,
         ai_scan=ai_scan,
-        log_time=datetime.utcnow(),
+        log_time=log_time,
     )
 
     db.session.add(log)

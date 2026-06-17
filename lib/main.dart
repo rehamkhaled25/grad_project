@@ -30,10 +30,17 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 
-// Future<void> 
-main()  {
- 
+import 'package:graduation_project/services/gemini_service.dart';
 
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+    GeminiService.initialize();
+  } catch (e) {
+    debugPrint("Failed to load .env: $e");
+  }
   runApp(const GraduationProjectApp());
 }
 

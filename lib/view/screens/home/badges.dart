@@ -140,7 +140,7 @@ class _BadgesScreenState extends State<BadgesScreen> {
   }
 }
 
-class BadgeItem extends StatelessWidget {
+class BadgeItem extends StatefulWidget {
   final IconData icon;
   final String title;
   final bool isLocked;
@@ -161,6 +161,63 @@ class BadgeItem extends StatelessWidget {
   });
 
   @override
+  State<BadgeItem> createState() => _BadgeItemState();
+}
+
+class _BadgeItemState extends State<BadgeItem> with SingleTickerProviderStateMixin {
+  late AnimationController _celebrationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _celebrationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.5).chain(CurveTween(curve: Curves.elasticOut)), weight: 40),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.5, end: 1.0), weight: 30),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.2), weight: 30),
+    ]).animate(_celebrationController);
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.2),
+      end: const Offset(0.0, -0.8),
+    ).animate(CurvedAnimation(
+      parent: _celebrationController,
+      curve: Curves.easeOut,
+    ));
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0), weight: 70),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)), weight: 30),
+    ]).animate(_celebrationController);
+
+    if (widget.isNew) {
+      _celebrationController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _celebrationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(BadgeItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isNew && !oldWidget.isNew) {
+      _celebrationController.reset();
+      _celebrationController.forward();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
@@ -175,17 +232,17 @@ class BadgeItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ClipPath(
-                clipper: HexagonClipper(isDiamond: isDiamond),
+                clipper: HexagonClipper(isDiamond: widget.isDiamond),
                 child: Container(
                   width: 55,
                   height: 55,
-                  color: isLocked
+                  color: widget.isLocked
                       ? Colors.grey.shade300
-                      : (streakCount % 5 == 0 && streakCount > 0)
+                      : (widget.streakCount % 5 == 0 && widget.streakCount > 0)
                           ? Colors.black
                           : Colors.grey,
                   child: Icon(
-                    icon,
+                    widget.icon,
                     color: Colors.white,
                     size: 26,
                   ),
@@ -193,19 +250,19 @@ class BadgeItem extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                title,
+                widget.title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isLocked ? Colors.grey.shade400 : Colors.black87,
+                  color: widget.isLocked ? Colors.grey.shade400 : Colors.black87,
                 ),
               ),
             ],
           ),
         ),
 
-        if (isNew)
+        if (widget.isNew)
           Positioned(
             top: 10,
             right: 3,
@@ -222,7 +279,7 @@ class BadgeItem extends StatelessWidget {
             ),
           ),
 
-        if (notificationCount > 0)
+        if (widget.notificationCount > 0)
           Positioned(
             right: -3,
             top: 0,
@@ -232,17 +289,38 @@ class BadgeItem extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: isLocked ? Colors.grey : Colors.red,
+                  color: widget.isLocked ? Colors.grey : Colors.red,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  notificationCount.toString(),
+                  widget.notificationCount.toString(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        if (widget.isNew)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: FadeTransition(
+                    opacity: _opacityAnimation,
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: const Text(
+                        "🎉",
+                        style: TextStyle(fontSize: 40),
+                      ),
+                    ),
                   ),
                 ),
               ),

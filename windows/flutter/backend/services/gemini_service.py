@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import sys
@@ -72,68 +73,99 @@ If the user mentions any hidden ingredients in the context:
 4. If no hidden ingredients are specified, return an empty list for `hidden_ingredients`."""
 
 
-def _safe_generate_content(model, content):
-    for attempt in range(3):
+def get_api_keys():
+    keys = []
+    # 1. Try GEMINI_API_KEY (might be comma-separated list of keys)
+    primary = None
+    try:
+        primary = current_app.config.get("GEMINI_API_KEY")
+    except Exception:
+        pass
+    if not primary:
+        primary = os.getenv("GEMINI_API_KEY")
+        
+    if primary:
+        for k in primary.split(','):
+            k = k.strip()
+            if k and k != "your_api_key_here" and k not in keys:
+                keys.append(k)
+
+    # 2. Try GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc.
+    i = 2
+    while True:
+        key = os.getenv(f"GEMINI_API_KEY_{i}")
+        if not key:
+            break
+        k = key.strip()
+        if k and k != "your_api_key_here" and k not in keys:
+            keys.append(k)
+        i += 1
+        
+    return keys
+
+
+def _generate_with_key_rotation(model_creator, content_generator):
+    keys = get_api_keys()
+    if not keys:
+        raise ValueError("No GEMINI_API_KEY found in config or environment variables")
+
+    last_error = None
+    for attempt in range(max(3, len(keys))):
+        key = keys[attempt % len(keys)]
         try:
-            return model.generate_content(content)
+            model = model_creator(key)
+            return content_generator(model)
         except Exception as e:
-            if "429" in str(e) or "503" in str(e):
+            err_str = str(e).lower()
+            is_quota_or_auth = (
+                "429" in err_str or
+                "quota" in err_str or
+                "limit" in err_str or
+                "invalid" in err_str or
+                "400" in err_str or
+                "403" in err_str
+            )
+            if is_quota_or_auth and len(keys) > 1:
                 sys.stdout.write(
-                    f"\rNetwork congestion. Retrying in 10s... Attempt {attempt + 1}/3"
+                    f"\nGemini API call failed with key index {attempt % len(keys)}. Rotating key... Error: {e}\n"
                 )
                 sys.stdout.flush()
-                time.sleep(10)
+                time.sleep(1)
+                last_error = e
+                continue
             else:
                 raise e
 
-    return None
+    if last_error:
+        raise last_error
+    raise RuntimeError("Failed to generate content after exhausting keys")
 
 
 def analyze_meal(image_path, context=""):
-    api_key = current_app.config.get("GEMINI_API_KEY")
-
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is missing from environment variables")
-
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-            "response_schema": NutritionReport,
-        },
-    )
-
     image = PIL.Image.open(image_path)
     image.thumbnail((600, 600))
-
     prompt = MASTER_PROMPT.format(context=context or "")
 
-    response = _safe_generate_content(model, [prompt, image])
+    def model_creator(api_key):
+        genai.configure(api_key=api_key, transport="rest")
+        return genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            generation_config={
+                "response_mime_type": "application/json",
+                "response_schema": NutritionReport,
+            },
+        )
 
-    if response is None:
-        raise RuntimeError("Gemini API failed after 3 retry attempts")
+    def content_generator(model):
+        response = model.generate_content([prompt, image])
+        if response is None or not response.text:
+            raise RuntimeError("Gemini API returned an empty response")
+        return json.loads(response.text)
 
-    return json.loads(response.text)
+    return _generate_with_key_rotation(model_creator, content_generator)
 
 
 def analyze_food_name(food_name, serving_size="", context=""):
-    api_key = current_app.config.get("GEMINI_API_KEY")
-
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is missing from environment variables")
-
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-            "response_schema": NutritionReport,
-        },
-    )
-
     prompt = f"""Act as a Clinical Nutrition Scientist.
 
 Analyze this food entry based on the user's text only.
@@ -158,23 +190,30 @@ If the user mentions any hidden ingredients in the extra context:
 4. If no hidden ingredients are specified, return an empty list for `hidden_ingredients`.
 """
 
-    response = _safe_generate_content(model, [prompt])
+    def model_creator(api_key):
+        genai.configure(api_key=api_key, transport="rest")
+        return genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            generation_config={
+                "response_mime_type": "application/json",
+                "response_schema": NutritionReport,
+            },
+        )
 
-    if response is None:
-        raise RuntimeError("Gemini API failed after 3 retry attempts")
+    def content_generator(model):
+        response = model.generate_content([prompt])
+        if response is None or not response.text:
+            raise RuntimeError("Gemini API returned an empty response")
+        data = json.loads(response.text)
+        health_score = data.get("health_score")
+        try:
+            health_score = float(health_score)
+            if health_score > 10:
+                health_score = round(health_score / 10)
+            health_score = max(0, min(10, int(health_score)))
+        except Exception:
+            health_score = None
+        data["health_score"] = health_score
+        return data
 
-    data = json.loads(response.text)
-
-    health_score = data.get("health_score")
-
-    try:
-        health_score = float(health_score)
-        if health_score > 10:
-            health_score = round(health_score / 10)
-        health_score = max(0, min(10, int(health_score)))
-    except Exception:
-        health_score = None
-
-    data["health_score"] = health_score
-
-    return data
+    return _generate_with_key_rotation(model_creator, content_generator)
