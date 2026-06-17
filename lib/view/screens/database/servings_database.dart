@@ -99,10 +99,10 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         "protein": widget.item!['protein'] ?? 0.0,
         "carbs": widget.item!['carbs'] ?? 0.0,
         "fats": widget.item!['fats'] ?? widget.item!['fat'] ?? 0.0,
-        "fiber": widget.item!['fiber'] ?? 0.0,
-        "sugar": widget.item!['sugar'] ?? 0.0,
-        "calcium": widget.item!['calcium'] ?? 0.0,
-        "sodium": widget.item!['sodium'] ?? 0.0,
+        "fiber": widget.item!['fiber'],   // null-safe: preserve absence
+        "sugar": widget.item!['sugar'],
+        "calcium": widget.item!['calcium'],
+        "sodium": widget.item!['sodium'],
       };
       selectedServing = servings[0];
       isLoading = false;
@@ -230,6 +230,10 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
           final String img = product['image_url'] ?? product['image_front_url'] ?? '';
 
           final nutriments = product['nutriments'] ?? {};
+
+          // ── Debug: log raw nutriments so we can confirm which keys OFF provides ──
+          print("🔍 [OFF] Raw nutriments for barcode $barcode: $nutriments");
+
           final double calories100g = double.tryParse(nutriments['energy-kcal_100g']?.toString() ?? '')
               ?? double.tryParse(nutriments['energy-kcal']?.toString() ?? '')
               ?? 0.0;
@@ -242,22 +246,22 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
           final double fat100g = double.tryParse(nutriments['fat_100g']?.toString() ?? '')
               ?? double.tryParse(nutriments['fat']?.toString() ?? '')
               ?? 0.0;
-          final double fiber100g = double.tryParse(nutriments['fiber_100g']?.toString() ?? '')
-              ?? double.tryParse(nutriments['fiber']?.toString() ?? '')
-              ?? 0.0;
-          final double sugar100g = double.tryParse(nutriments['sugars_100g']?.toString() ?? '')
-              ?? double.tryParse(nutriments['sugars']?.toString() ?? '')
-              ?? 0.0;
+
+          // Micronutrients: nullable — null means the API did NOT provide this field
+          final double? fiber100g = double.tryParse(nutriments['fiber_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['fiber']?.toString() ?? '');
+          final double? sugar100g = double.tryParse(nutriments['sugars_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['sugars']?.toString() ?? '');
           
           // sodium in OFF is in grams per 100g, convert to mg per 100g
-          final double sodium100g = (double.tryParse(nutriments['sodium_100g']?.toString() ?? '')
-              ?? double.tryParse(nutriments['sodium']?.toString() ?? '')
-              ?? 0.0) * 1000.0;
+          final double? sodiumRaw = double.tryParse(nutriments['sodium_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['sodium']?.toString() ?? '');
+          final double? sodium100g = sodiumRaw != null ? sodiumRaw * 1000.0 : null;
           
           // calcium in OFF is in grams/100g, convert to mg per 100g
-          final double calcium100g = (double.tryParse(nutriments['calcium_100g']?.toString() ?? '')
-              ?? double.tryParse(nutriments['calcium']?.toString() ?? '')
-              ?? 0.0) * 1000.0;
+          final double? calciumRaw = double.tryParse(nutriments['calcium_100g']?.toString() ?? '')
+              ?? double.tryParse(nutriments['calcium']?.toString() ?? '');
+          final double? calcium100g = calciumRaw != null ? calciumRaw * 1000.0 : null;
 
           final String servingSizeStr = product['serving_size']?.toString() ?? '';
           double servingGrams = 100.0;
@@ -343,7 +347,8 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
   // ── Helpers ───────────────────────────────────────────────────────────────
  
   /// Safely read a number from nutrition_facts, trying multiple possible key names.
-  double _nf(List<String> keys, {double fallback = 0.0}) {
+  /// Returns null when none of the keys exist (data truly missing).
+  double? _nf(List<String> keys, {double? fallback}) {
     if (nutritionFacts == null) return fallback;
     for (final k in keys) {
       final v = nutritionFacts![k];
@@ -360,8 +365,12 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
   String _fmt(dynamic raw, {int decimals = 1}) =>
       _scaledValue(raw).toStringAsFixed(decimals);
  
-  String _fmtNf(List<String> keys, {int decimals = 1, double fallback = 0.0}) =>
-      (_nf(keys, fallback: fallback) * servingCount).toStringAsFixed(decimals);
+  /// Returns a formatted string, or null if the underlying data is missing.
+  String? _fmtNf(List<String> keys, {int decimals = 1, double? fallback}) {
+    final value = _nf(keys, fallback: fallback);
+    if (value == null) return null;
+    return (value * servingCount).toStringAsFixed(decimals);
+  }
  
   // ── Add Food Logic ────────────────────────────────────────────────────────
  
@@ -569,15 +578,16 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
         ?? 0.0
     );
  
-    final double fallbackFiber = double.tryParse(foodData?['fiber']?.toString() ?? '0') ?? 0.0;
-    final double fallbackSugar = double.tryParse(foodData?['sugar']?.toString() ?? '0') ?? 0.0;
-    final double fallbackCalcium = double.tryParse(foodData?['calcium']?.toString() ?? '0') ?? 0.0;
-    final double fallbackSodium = double.tryParse(foodData?['sodium']?.toString() ?? '0') ?? 0.0;
+    // Fallbacks from foodData — nullable: null means truly missing
+    final double? fallbackFiber = double.tryParse(foodData?['fiber']?.toString() ?? '');
+    final double? fallbackSugar = double.tryParse(foodData?['sugar']?.toString() ?? '');
+    final double? fallbackCalcium = double.tryParse(foodData?['calcium']?.toString() ?? '');
+    final double? fallbackSodium = double.tryParse(foodData?['sodium']?.toString() ?? '');
 
-    final String fiber   = _fmtNf(['fiber',   'fiber_g'], fallback: fallbackFiber);
-    final String sugar   = _fmtNf(['sugar',   'sugar_g'], fallback: fallbackSugar);
-    final String calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0, fallback: fallbackCalcium);
-    final String sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0, fallback: fallbackSodium);
+    final String? fiber   = _fmtNf(['fiber',   'fiber_g'], fallback: fallbackFiber);
+    final String? sugar   = _fmtNf(['sugar',   'sugar_g'], fallback: fallbackSugar);
+    final String? calcium = _fmtNf(['calcium', 'calcium_mg'], decimals: 0, fallback: fallbackCalcium);
+    final String? sodium  = _fmtNf(['sodium',  'sodium_mg'],  decimals: 0, fallback: fallbackSodium);
  
     final String mealType = logDetails?['meal_type'] ?? '';
     final String logTime  = logDetails?['log_time']  ?? '';
@@ -767,13 +777,13 @@ class _ServingsDatabaseState extends State<ServingsDatabase> {
                           color: Colors.black)),
                   const SizedBox(height: 12),
 
-                  _nutritionRow("Fiber",   "$fiber g"),
+                  _nutritionRow("Fiber",   fiber != null ? "$fiber g" : "N/A"),
                   _divider(),
-                  _nutritionRow("Sugar",   "$sugar g"),
+                  _nutritionRow("Sugar",   sugar != null ? "$sugar g" : "N/A"),
                   _divider(),
-                  _nutritionRow("Calcium", "$calcium mg"),
+                  _nutritionRow("Calcium", calcium != null ? "$calcium mg" : "N/A"),
                   _divider(),
-                  _nutritionRow("Sodium",  "$sodium mg"),
+                  _nutritionRow("Sodium",  sodium != null ? "$sodium mg" : "N/A"),
 
                   if (hasHealthInfo) ...[
                     const SizedBox(height: 16),

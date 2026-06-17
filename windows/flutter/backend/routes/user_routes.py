@@ -170,7 +170,7 @@ def get_fdc_api_key():
     return current_app.config.get("FDC_API_KEY") or os.getenv("FDC_API_KEY") or "DEMO_KEY"
 
 
-def fdc_nutrient_value(food_nutrients, possible_names, default=0):
+def fdc_nutrient_value(food_nutrients, possible_names, default=None):
     if not food_nutrients:
         return default
 
@@ -316,19 +316,16 @@ def build_usda_serving_details(food):
     fiber = fdc_nutrient_value(
         food_nutrients,
         ["Fiber", "Fiber, total dietary"],
-        0,
     )
 
     sugar = fdc_nutrient_value(
         food_nutrients,
         ["Sugars", "Sugars, total"],
-        0,
     )
 
     sodium = fdc_nutrient_value(
         food_nutrients,
         ["Sodium", "Sodium, Na"],
-        0,
     )
 
     serving_size = food.get("servingSize")
@@ -379,7 +376,7 @@ def open_food_facts_headers():
     return {"User-Agent": "EcoDrive-My-Work/1.0 - Graduation Project Backend"}
 
 
-def nutriment_value(nutriments, keys, default=0):
+def nutriment_value(nutriments, keys, default=None):
     for key in keys:
         value = nutriments.get(key)
 
@@ -537,19 +534,16 @@ def build_open_food_serving_details(product):
     fiber = nutriment_value(
         nutriments,
         ["fiber_serving", "fiber_100g"],
-        0,
     )
 
     sugar = nutriment_value(
         nutriments,
         ["sugars_serving", "sugars_100g"],
-        0,
     )
 
     sodium = nutriment_value(
         nutriments,
         ["sodium_serving", "sodium_100g"],
-        0,
     )
 
     servings = []
@@ -1563,7 +1557,25 @@ def search_food():
             search_query = query or ""
             if not search_query:
                 results = search_my_foods(user["id"], "", limit)
-                return jsonify({"tab": tab, "query": query, "count": len(results), "results": results}), 200
+                if results:
+                    return jsonify({"tab": tab, "query": query, "count": len(results), "results": results, "is_suggestions": False}), 200
+
+                # No recent foods — return popular suggestions
+                popular = [
+                    {"food_name": "Banana", "calories": 89, "protein": 1.1, "carbs": 22.8, "fats": 0.3, "serving_size": "1 medium (118g)", "source": "suggestion", "image_url": "https://images.openfoodfacts.org/images/products/020/113/602/1003/front_en.6.400.jpg"},
+                    {"food_name": "Chicken Breast", "calories": 165, "protein": 31.0, "carbs": 0.0, "fats": 3.6, "serving_size": "100g", "source": "suggestion", "image_url": None},
+                    {"food_name": "Egg", "calories": 155, "protein": 13.0, "carbs": 1.1, "fats": 11.0, "serving_size": "1 large (50g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Apple", "calories": 52, "protein": 0.3, "carbs": 13.8, "fats": 0.2, "serving_size": "1 medium (182g)", "source": "suggestion", "image_url": "https://images.openfoodfacts.org/images/products/871/817/607/4882/front_en.7.400.jpg"},
+                    {"food_name": "White Rice", "calories": 130, "protein": 2.7, "carbs": 28.0, "fats": 0.3, "serving_size": "1 cup (158g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Whole Milk", "calories": 149, "protein": 7.7, "carbs": 11.7, "fats": 7.9, "serving_size": "1 cup (244g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Oatmeal", "calories": 68, "protein": 2.4, "carbs": 12.0, "fats": 1.4, "serving_size": "1 cup cooked (234g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Greek Yogurt", "calories": 100, "protein": 17.0, "carbs": 6.0, "fats": 0.7, "serving_size": "1 container (170g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Salmon", "calories": 208, "protein": 20.0, "carbs": 0.0, "fats": 13.0, "serving_size": "100g", "source": "suggestion", "image_url": None},
+                    {"food_name": "Avocado", "calories": 160, "protein": 2.0, "carbs": 8.5, "fats": 14.7, "serving_size": "1/2 fruit (100g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Sweet Potato", "calories": 86, "protein": 1.6, "carbs": 20.1, "fats": 0.1, "serving_size": "1 medium (130g)", "source": "suggestion", "image_url": None},
+                    {"food_name": "Pasta", "calories": 131, "protein": 5.0, "carbs": 25.0, "fats": 1.1, "serving_size": "1 cup cooked (140g)", "source": "suggestion", "image_url": None},
+                ]
+                return jsonify({"tab": tab, "query": query, "count": len(popular), "results": popular, "is_suggestions": True}), 200
 
             try:
                 off_results = search_open_food_facts(search_query, limit)

@@ -23,6 +23,7 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
   final FoodService _foodService = FoodService();
   List<Map<String, dynamic>> _results = [];
   bool _isLoading = false;
+  bool _isSuggestions = false;
   Timer? _debounce;
  
   final List<String> _tabLabels = ["All", "My foods", "Saved Scans"];
@@ -60,6 +61,7 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
 
       setState(() {
         _results   = parsedResults;
+        _isSuggestions = response['is_suggestions'] == true;
         _isLoading = false;
       });
     } catch (e) {
@@ -169,13 +171,69 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_results.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
-                child: Text("No results found",
-                    style: TextStyle(color: Colors.grey, fontSize: 16)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _searchController.text.isEmpty
+                          ? Icons.restaurant_menu_rounded
+                          : Icons.search_off_rounded,
+                      size: 64,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _searchController.text.isEmpty
+                          ? "Search for any food"
+                          : "No results found",
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _searchController.text.isEmpty
+                          ? "Try \"banana\", \"chicken breast\", or scan a barcode"
+                          : "Try a different spelling or keyword",
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
-          else
+          else ...[  
+            // Section header
+            if (_isSuggestions || (_searchController.text.isEmpty && selectedTabIndex == 0))
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 40, right: 40, bottom: 16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isSuggestions ? Icons.local_fire_department_rounded : Icons.history_rounded,
+                        size: 20,
+                        color: _isSuggestions ? const Color(0xffFF0F3C) : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isSuggestions ? "Popular Foods" : "Recent Foods",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -186,12 +244,20 @@ class _DatabaseSearchState extends State<DatabaseSearch> {
                       item: item,
                       currentTab: _tabKeys[selectedTabIndex],
                       mealType: widget.mealType,
+                      onSearchTap: (foodName) {
+                        _searchController.text = foodName;
+                        _searchController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: foodName.length),
+                        );
+                        _performSearch(foodName);
+                      },
                     ),
                   );
                 },
                 childCount: _results.length,
               ),
             ),
+          ],
           const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
@@ -224,8 +290,9 @@ class _FoodItemCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final String currentTab; // tells us which source to pass
   final String? mealType;
+  final void Function(String foodName)? onSearchTap;
  
-  const _FoodItemCard({required this.item, required this.currentTab, this.mealType});
+  const _FoodItemCard({required this.item, required this.currentTab, this.mealType, this.onSearchTap});
  
   /// Map the search tab to the source string the serving endpoint expects.
   String get _source {
@@ -283,6 +350,14 @@ class _FoodItemCard extends StatelessWidget {
  
     return GestureDetector(
       onTap: () {
+        // Suggestion items trigger a search instead of navigating
+        if (item['source'] == 'suggestion') {
+          final foodName = item['food_name'] ?? '';
+          if (onSearchTap != null && foodName.isNotEmpty) {
+            onSearchTap!(foodName);
+          }
+          return;
+        }
         context.push(
           '/servingsDatabase',
           extra: {

@@ -99,13 +99,13 @@ class NutritionReport {
   final double totalProtein;
   final double totalCarbs;
   final double totalFat;
-  final double sugar;
-  final int sodium;
+  final double? sugar;
+  final int? sodium;
   final int glycemicIndex;
   final int glycemicLoad;
-  final int magnesium;
-  final int calcium;
-  final int fiber;
+  final int? magnesium;
+  final int? calcium;
+  final int? fiber;
   final String vitamins;
   final int healthScore;
   final String healthTip;
@@ -118,19 +118,34 @@ class NutritionReport {
     required this.totalProtein,
     required this.totalCarbs,
     required this.totalFat,
-    required this.sugar,
-    required this.sodium,
+    this.sugar,
+    this.sodium,
     required this.glycemicIndex,
     required this.glycemicLoad,
-    required this.magnesium,
-    required this.calcium,
-    required this.fiber,
+    this.magnesium,
+    this.calcium,
+    this.fiber,
     required this.vitamins,
     required this.healthScore,
     required this.healthTip,
     required this.warning,
     required this.hiddenIngredients,
   });
+
+  /// Parses a nullable double from two candidate JSON keys.
+  /// Returns null only when BOTH keys are absent/null in the source.
+  /// Preserves explicit 0 from the API.
+  static double? _tryParseNullableDouble(Map<String, dynamic> json, String key1, String key2) {
+    final raw = json[key1] ?? json[key2];
+    if (raw == null) return null;
+    return double.tryParse(raw.toString()) ?? 0.0;
+  }
+
+  /// Same as above but returns int? (rounded).
+  static int? _tryParseNullableInt(Map<String, dynamic> json, String key1, String key2) {
+    final d = _tryParseNullableDouble(json, key1, key2);
+    return d?.round();
+  }
 
   factory NutritionReport.fromJson(Map<String, dynamic> json) {
     var rawHidden = json['hidden_ingredients'] as List?;
@@ -150,13 +165,13 @@ class NutritionReport {
       totalCarbs:
           double.tryParse(json['total_carbs']?.toString() ?? "0") ?? 0.0,
       totalFat: double.tryParse(json['total_fat']?.toString() ?? "0") ?? 0.0,
-      sugar: double.tryParse(json['sugar_g']?.toString() ?? json['sugar']?.toString() ?? "0") ?? 0.0,
-      sodium: (double.tryParse(json['sodium_mg']?.toString() ?? json['sodium']?.toString() ?? "0") ?? 0.0).round(),
+      sugar: _tryParseNullableDouble(json, 'sugar_g', 'sugar'),
+      sodium: _tryParseNullableInt(json, 'sodium_mg', 'sodium'),
       glycemicIndex: (double.tryParse(json['item_gi']?.toString() ?? json['glycemic_index']?.toString() ?? (json['glycemic_index_rating']?.toString().toLowerCase() == 'low' ? '35' : json['glycemic_index_rating']?.toString().toLowerCase() == 'high' ? '75' : '55')) ?? 55.0).round(),
       glycemicLoad: (double.tryParse(json['total_gl']?.toString() ?? json['glycemic_load']?.toString() ?? "0") ?? 0.0).round(),
-      magnesium: (double.tryParse(json['magnesium_mg']?.toString() ?? json['magnesium']?.toString() ?? "0") ?? 0.0).round(),
-      calcium: (double.tryParse(json['calcium_mg']?.toString() ?? json['calcium']?.toString() ?? "0") ?? 0.0).round(),
-      fiber: (double.tryParse(json['fiber_g']?.toString() ?? json['fiber']?.toString() ?? "0") ?? 0.0).round(),
+      magnesium: _tryParseNullableInt(json, 'magnesium_mg', 'magnesium'),
+      calcium: _tryParseNullableInt(json, 'calcium_mg', 'calcium'),
+      fiber: _tryParseNullableInt(json, 'fiber_g', 'fiber'),
       vitamins: json['vitamins_others']?.toString() ?? json['vitamins']?.toString() ?? "",
       healthScore: (double.tryParse(json['health_score']?.toString() ?? "0") ?? 0.0).round(),
       healthTip: json['health_tip']?.toString() ?? "No tip provided.",

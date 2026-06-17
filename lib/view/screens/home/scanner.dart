@@ -593,8 +593,8 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
   double get scaledProtein => _currentReport.totalProtein * _quantity;
   double get scaledCarbs => _currentReport.totalCarbs * _quantity;
   double get scaledFat => _currentReport.totalFat * _quantity;
-  double get scaledSugar => _currentReport.sugar * _quantity;
-  int get scaledSodium => _currentReport.sodium * _quantity;
+  double? get scaledSugar => _currentReport.sugar != null ? _currentReport.sugar! * _quantity : null;
+  int? get scaledSodium => _currentReport.sodium != null ? _currentReport.sodium! * _quantity : null;
 
   Future<void> _logFood() async {
     if (_isLogging) return;
@@ -905,7 +905,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     Expanded(
                       child: _buildSmallMetric(
                         "Sodium",
-                        "${scaledSodium}mg",
+                        scaledSodium != null ? "${scaledSodium}mg" : "N/A",
                         "",
                         Colors.black,
                       ),
@@ -965,7 +965,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     Expanded(
                       child: _buildGridCard(
                         "Sugar",
-                        "${scaledSugar.toStringAsFixed(1)}g",
+                        scaledSugar != null ? "${scaledSugar!.toStringAsFixed(1)}g" : "N/A",
                       ),
                     ),
                   ],
@@ -983,12 +983,12 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     Expanded(
                       child: _buildGridCard(
                         "Magnesium",
-                        "${report.magnesium}mg",
+                        report.magnesium != null ? "${report.magnesium}mg" : "N/A",
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildGridCard("Calcium", "${report.calcium}mg"),
+                      child: _buildGridCard("Calcium", report.calcium != null ? "${report.calcium}mg" : "N/A"),
                     ),
                   ],
                 ),
@@ -996,7 +996,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildGridCard("Fiber", "${report.fiber}mg"),
+                      child: _buildGridCard("Fiber", report.fiber != null ? "${report.fiber}g" : "N/A"),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
