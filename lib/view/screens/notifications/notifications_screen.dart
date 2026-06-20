@@ -246,7 +246,7 @@ class _NotificationScreenState extends State<NotificationScreen>
             child: IconButton(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               onPressed: () {
-                context.push('/notifications');
+                context.push('/settings');
               },
               icon: const Icon(Icons.settings, size: 24, color: Colors.black),
             ),

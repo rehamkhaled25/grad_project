@@ -5,12 +5,14 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
   final int currentStep;
   final int totalSteps;
   final bool showBackButton;
+  final VoidCallback? onBack;
 
   const CustomAppbar({
     super.key,
     required this.currentStep,
     required this.totalSteps,
     this.showBackButton = true,
+    this.onBack,
   });
 
   @override
@@ -32,7 +34,9 @@ class CustomAppbar extends StatelessWidget implements PreferredSizeWidget {
             if (showBackButton)
               GestureDetector(
                 onTap: () {
-                  if (context.canPop()) {
+                  if (onBack != null) {
+                    onBack!();
+                  } else if (context.canPop()) {
                     context.pop();
                   } else {
                     Navigator.maybePop(context);

@@ -401,21 +401,24 @@ class _LogFoodState extends State<LogFood> {
                 children: [
                   Row(
                     children: [
-                      _profileImageUrl != null
-                          ? CircleAvatar(
-                              radius: 23.5,
-                              backgroundImage: NetworkImage(
-                                _profileImageUrl!.startsWith('http')
-                                    ? _profileImageUrl!
-                                    : '${ApiService.baseUrl}$_profileImageUrl',
+                      GestureDetector(
+                        onTap: () => context.push('/profile'),
+                        child: _profileImageUrl != null
+                            ? CircleAvatar(
+                                radius: 23.5,
+                                backgroundImage: NetworkImage(
+                                  _profileImageUrl!.startsWith('http')
+                                      ? _profileImageUrl!
+                                      : '${ApiService.baseUrl}$_profileImageUrl',
+                                ),
+                              )
+                            : const CircleAvatar(
+                                radius: 23.5,
+                                backgroundImage: AssetImage(
+                                  'assets/images/profilee.png',
+                                ),
                               ),
-                            )
-                          : const CircleAvatar(
-                              radius: 23.5,
-                              backgroundImage: AssetImage(
-                                'assets/images/profilee.png',
-                              ),
-                            ),
+                      ),
                       const Spacer(),
                       GestureDetector(
                         onTap: () {

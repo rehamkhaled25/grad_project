@@ -1269,26 +1269,19 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF1F3),
+              color: const Color(0xFFFFE1E1),
               border: Border.all(
-                color: const Color(0xFFF48FB1),
-                width: 1.5,
+                color: const Color(0xFF8C0B0B),
+                width: 0.3,
               ),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFE91E63).withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.visibility_off_outlined, color: Color(0xFFC2185B), size: 20),
+                    const Icon(Icons.visibility_off_outlined, color: Color(0xFFD90C0C), size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1296,7 +1289,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFC2185B),
+                          color: Color(0xFFD90C0C),
                         ),
                       ),
                     ),
@@ -1331,7 +1324,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFC2185B),
+                      color: Color(0xFFD90C0C),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1348,7 +1341,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFC2185B),
+                      color: Color(0xFFD90C0C),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1377,7 +1370,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 12,
-            color: Color(0xFFC2185B),
+            color: Color(0xFFD90C0C),
           ),
         ),
         Text(
@@ -1395,7 +1388,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     return Container(
       height: 20,
       width: 1,
-      color: const Color(0xFFF48FB1).withOpacity(0.5),
+      color: const Color(0xFF8C0B0B).withOpacity(0.3),
     );
   }
 }

@@ -162,9 +162,9 @@ class _AICoachScreenState extends State<AICoachScreen> {
               alignment: Alignment.bottomRight,
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.deepPurple.shade50,
+                  backgroundColor: const Color(0xFFFFE1E1),
                   radius: 20,
-                  child: const Icon(Icons.psychology_rounded, color: Colors.deepPurple, size: 22),
+                  child: const Icon(Icons.psychology_rounded, color: Color(0xFFD90C0C), size: 22),
                 ),
                 Container(
                   width: 10,
@@ -233,7 +233,7 @@ class _AICoachScreenState extends State<AICoachScreen> {
                         SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.deepPurple),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD90C0C)),
                         ),
                         SizedBox(width: 10),
                         Text(
@@ -270,7 +270,7 @@ class _AICoachScreenState extends State<AICoachScreen> {
                         onTap: _sendMessage,
                         child: CircleAvatar(
                           radius: 23,
-                          backgroundColor: Colors.deepPurple.shade700,
+                          backgroundColor: const Color(0xFFD90C0C),
                           child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                         ),
                       ),
@@ -300,7 +300,8 @@ class _ChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUser ? Colors.deepPurple.shade700 : Colors.white,
+          color: isUser ? const Color(0xFFFFE1E1) : Colors.white,
+          border: isUser ? Border.all(color: const Color(0xFF8C0B0B), width: 0.3) : null,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -318,7 +319,7 @@ class _ChatBubble extends StatelessWidget {
         child: Text(
           text,
           style: TextStyle(
-            color: isUser ? Colors.white : Colors.black87,
+            color: isUser ? const Color(0xFF8C0B0B) : Colors.black87,
             fontSize: 14,
             height: 1.4,
           ),

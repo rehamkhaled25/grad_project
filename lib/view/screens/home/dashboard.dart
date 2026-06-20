@@ -1435,19 +1435,23 @@ class _WaterTrackerCard extends StatelessWidget {
             children: List.generate(8, (index) {
               final cupVol = (index + 1) * 250;
               final isFilled = waterIntake >= cupVol;
-              return GestureDetector(
-                onTap: () => onSetWater(cupVol),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: isFilled ? Colors.blue.withOpacity(0.1) : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.water_drop_rounded,
-                    color: isFilled ? Colors.blueAccent : Colors.grey.shade300,
-                    size: 24,
+              return Expanded(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => onSetWater(cupVol),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: isFilled ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.water_drop_rounded,
+                        color: isFilled ? Colors.blueAccent : Colors.grey.shade300,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -1457,21 +1461,24 @@ class _WaterTrackerCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ElevatedButton(
-                onPressed: waterIntake > 0 ? () => onAddWater(-250) : null,
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
-                  backgroundColor: Colors.grey.shade100,
-                  foregroundColor: Colors.black54,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.remove, size: 16),
-                    SizedBox(width: 4),
-                    Text("-250 ml", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ],
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: waterIntake > 0 ? () => onAddWater(-250) : null,
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Colors.grey.shade100,
+                    foregroundColor: Colors.black54,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.remove, size: 16),
+                      SizedBox(width: 4),
+                      Text("-250 ml", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1565,7 +1572,7 @@ class _WorkoutLoggerCard extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 24),
+                  Icon(Icons.local_fire_department_rounded, color: Color(0xFFD90C0C), size: 24),
                   SizedBox(width: 8),
                   Text(
                     "Workout Logger",
@@ -1580,17 +1587,10 @@ class _WorkoutLoggerCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: const Color(0xFFFFE1E1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  "🔥 ${caloriesBurned.toStringAsFixed(0)} kcal",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
+                
               ),
             ],
           ),
@@ -1627,8 +1627,8 @@ class _WorkoutLoggerCard extends StatelessWidget {
                       children: [
                         const CircleAvatar(
                           radius: 16,
-                          backgroundColor: Color(0xffFFF2E6),
-                          child: Icon(Icons.fitness_center_rounded, size: 16, color: Colors.orange),
+                          backgroundColor: Color(0xFFFFE1E1),
+                          child: Icon(Icons.fitness_center_rounded, size: 16, color: Color(0xFFD90C0C)),
                         ),
                         const SizedBox(width: 10),
                         Column(
@@ -1650,7 +1650,7 @@ class _WorkoutLoggerCard extends StatelessWidget {
                       children: [
                         Text(
                           "-${burned.toStringAsFixed(0)} kcal",
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFD90C0C)),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
@@ -1674,9 +1674,12 @@ class _WorkoutLoggerCard extends StatelessWidget {
               label: const Text("Log Active Workout", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: const Color(0xffFFF2E6),
-                foregroundColor: Colors.orange,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                backgroundColor: const Color(0xFFFFE1E1),
+                foregroundColor: const Color(0xFF8C0B0B),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  side: const BorderSide(color: Color(0xFFD90C0C), width: 0.5),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -1806,11 +1809,11 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
                     child: ChoiceChip(
                       label: Text(activity),
                       selected: isSelected,
-                      selectedColor: Colors.orange.shade100,
+                      selectedColor: const Color(0xFFFFE1E1),
                       backgroundColor: Colors.grey.shade100,
                       labelStyle: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.orange.shade800 : Colors.black87,
+                        color: isSelected ? const Color(0xFF8C0B0B) : Colors.black87,
                       ),
                       onSelected: (selected) {
                         if (selected) {
@@ -1834,7 +1837,7 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
                 ),
                 Text(
                   "$_duration min",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF8C0B0B)),
                 ),
               ],
             ),
@@ -1843,8 +1846,8 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
               min: 5,
               max: 120,
               divisions: 23,
-              activeColor: Colors.orange,
-              inactiveColor: Colors.orange.shade100,
+              activeColor: const Color(0xFFD90C0C),
+              inactiveColor: const Color(0xFFFFE1E1),
               onChanged: (val) {
                 setState(() {
                   _duration = val.round();
@@ -1878,12 +1881,12 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: const Color(0xFFFFE1E1),
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 28),
+                  const Icon(Icons.local_fire_department_rounded, color: Color(0xFFD90C0C), size: 28),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1891,18 +1894,18 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
                       children: [
                         const Text(
                           "Estimated Burn",
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF8C0B0B)),
                         ),
                         Text(
                           "${_estimatedBurn.toStringAsFixed(0)} kcal",
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFD90C0C)),
                         ),
                       ],
                     ),
                   ),
                   Text(
                     "(${widget.userWeight.toStringAsFixed(0)} kg weight)",
-                    style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                    style: TextStyle(fontSize: 12, color: const Color(0xFF8C0B0B)),
                   ),
                 ],
               ),
@@ -1916,7 +1919,7 @@ class _AddWorkoutBottomSheetState extends State<_AddWorkoutBottomSheet> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: const Color(0xFFD90C0C),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1944,15 +1947,15 @@ class _AIHealthHubCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.deepPurple.shade700, Colors.indigo.shade800],
+        gradient: const LinearGradient(
+          colors: [Colors.black, Color(0xff1E1E1E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurple.withOpacity(0.2),
+            color: Colors.black.withOpacity(0.2),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -2071,18 +2074,18 @@ class _TipOfTheDayCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.teal.shade500, Colors.teal.shade700],
+          colors: [const Color.fromARGB(255, 0, 0, 0), const Color.fromARGB(255, 59, 60, 60)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: Colors.teal.withOpacity(0.15),
+        //     blurRadius: 8,
+        //     offset: const Offset(0, 4),
+        //   ),
+        // ],
       ),
       child: Stack(
         children: [
@@ -2103,7 +2106,7 @@ class _TipOfTheDayCard extends StatelessWidget {
                   children: [
                     const Text(
                       "Tip of the Day",
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white70),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -2115,7 +2118,7 @@ class _TipOfTheDayCard extends StatelessWidget {
                       tipText,
                       style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9), height: 1.3),
                     ),
-                  ],
+                ],
                 ),
               ),
               const SizedBox(width: 20),

@@ -168,46 +168,6 @@ class _PlanState extends State<Plan> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 24),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: const Color(0xffE3E3E3),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text("Health score",
-                                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                        Text("${_plan!.healthScore}/10",
-                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.favorite_border, color: Color(0xff141414), size: 24),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(10),
-                                            child: LinearProgressIndicator(
-                                              value: _plan!.healthScore / 10,
-                                              minHeight: 8,
-                                              backgroundColor: Colors.white,
-                                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xff43A047)),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
                               const SizedBox(height: 30),
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: pageWidth * 0.002, vertical: 20),

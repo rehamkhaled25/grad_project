@@ -86,7 +86,9 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to save recipe: $e")),
+        SnackBar(content: Text("Failed to save recipe: $e"),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -270,7 +272,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please enter at least some ingredients!"),
-          backgroundColor: Colors.orangeAccent,
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -410,9 +412,9 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Colors.orange.shade50,
+              backgroundColor: Colors.grey.shade200,
               radius: 18,
-              child: const Icon(Icons.restaurant_menu_rounded, color: Colors.orange, size: 20),
+              child: const Icon(Icons.restaurant_menu_rounded, color: Colors.black, size: 20),
             ),
             const SizedBox(width: 10),
             const Column(
@@ -424,7 +426,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                 ),
                 Text(
                   "Pantry-to-Plate Assistant",
-                  style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -497,7 +499,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: Colors.orange),
+                  borderSide: const BorderSide(color: Color(0xFFD90C0C), width: 1.5),
                 ),
               ),
             ),
@@ -516,18 +518,18 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                   label: Text(
                     goal,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
+                      color: isSelected ? const Color(0xFFFFE1E1) : Colors.black87,
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   selected: isSelected,
-                  selectedColor: Colors.orange,
-                  checkmarkColor: Colors.white,
+                  selectedColor: Colors.black,
+                  checkmarkColor: const Color(0xFFD90C0C),
                   backgroundColor: const Color(0xffF4F4F4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade300, width: 0.5),
+                    
                   ),
                   onSelected: (selected) {
                     setState(() {
@@ -551,23 +553,29 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                 ),
                 Text(
                   "${_maxPrepTime.round()} mins",
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.orange),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
               ],
             ),
-            Slider(
-              value: _maxPrepTime,
-              min: 5.0,
-              max: 90.0,
-              divisions: 17,
-              activeColor: Colors.orange,
-              inactiveColor: Colors.orange.shade100,
-              label: "${_maxPrepTime.round()} mins",
-              onChanged: (value) {
-                setState(() {
-                  _maxPrepTime = value;
-                });
-              },
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: const Color.fromARGB(255, 0, 0, 0),
+                inactiveTrackColor: Colors.grey.shade300,
+                thumbColor: const Color.fromARGB(255, 0, 0, 0),
+                overlayColor: const Color(0xFFFFE1E1).withOpacity(0.4),
+              ),
+              child: Slider(
+                value: _maxPrepTime,
+                min: 5.0,
+                max: 90.0,
+                divisions: 17,
+                label: "${_maxPrepTime.round()} mins",
+                onChanged: (value) {
+                  setState(() {
+                    _maxPrepTime = value;
+                  });
+                },
+              ),
             ),
             const SizedBox(height: 15),
             SizedBox(
@@ -576,15 +584,18 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _generateRecipe,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade700,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    
+                  ),
                   elevation: 0,
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.auto_awesome_rounded),
+                    Icon(Icons.auto_awesome_rounded, color: Color.fromARGB(255, 255, 255, 255)),
                     SizedBox(width: 10),
                     Text(
                       "Generate Recipe",
@@ -606,7 +617,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
-            const CircularProgressIndicator(color: Colors.orange),
+            const CircularProgressIndicator(color: Color(0xFFD90C0C)),
             const SizedBox(height: 15),
             Text(
               "Creating a customized recipe...",
@@ -677,12 +688,12 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           "⏱️ $prepTime",
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -704,7 +715,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildMacroMetric("Calories", "🔥 $calories kcal", Colors.orange),
+                    _buildMacroMetric("Calories", "🔥 $calories kcal", Colors.black),
                     _buildMacroMetric("Protein", "🍗 $protein", Colors.green),
                     _buildMacroMetric("Carbs", "🍞 $carbs", Colors.blue),
                     _buildMacroMetric("Fat", "🥑 $fat", Colors.amber),
@@ -716,11 +727,12 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _saveRecipe,
-                        icon: const Icon(Icons.bookmark_border_rounded, size: 18),
+                        icon: const Icon(Icons.bookmark_border_rounded, size: 18, color: Color(0xFFD90C0C)),
                         label: const Text("Save Recipe", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange.shade800,
-                          side: BorderSide(color: Colors.orange.shade300),
+                          backgroundColor: Colors.black,
+                          foregroundColor: const Color(0xFFFFE1E1),
+                          side: const BorderSide(color: Color(0xFFD90C0C), width: 1.5),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
@@ -730,11 +742,12 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _logRecipeAsMeal,
-                        icon: const Icon(Icons.add_rounded, size: 18),
+                        icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFFD90C0C)),
                         label: const Text("Log to Diary", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade700,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.black,
+                          foregroundColor: const Color(0xFFFFE1E1),
+                          side: const BorderSide(color: Color(0xFFD90C0C), width: 1.5),
                           elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -761,7 +774,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.shopping_basket_rounded, color: Colors.orange),
+                    Icon(Icons.shopping_basket_rounded, color: Colors.black),
                     SizedBox(width: 8),
                     Text(
                       "Ingredients Needed",
@@ -781,7 +794,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 16)),
+                          const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
                           Expanded(
                             child: Text(
                               rawIngredients[index].toString(),
@@ -811,7 +824,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.format_list_numbered_rounded, color: Colors.orange),
+                    Icon(Icons.format_list_numbered_rounded, color: Colors.black),
                     SizedBox(width: 8),
                     Text(
                       "Instructions",
@@ -832,10 +845,10 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
                         children: [
                           CircleAvatar(
                             radius: 12,
-                            backgroundColor: Colors.orange.shade100,
+                            backgroundColor: Colors.grey.shade200,
                             child: Text(
                               "${index + 1}",
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -890,8 +903,8 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: CircleAvatar(
-                  backgroundColor: Colors.orange.shade50,
-                  child: const Icon(Icons.restaurant_rounded, color: Colors.orange),
+                  backgroundColor: Colors.grey.shade100,
+                  child: const Icon(Icons.restaurant_rounded, color: Colors.black),
                 ),
                 title: Text(
                   title,

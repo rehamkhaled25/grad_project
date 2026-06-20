@@ -39,10 +39,11 @@ class _OnboardingGenderState extends State<OnboardingGender> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const CustomAppbar(
+          CustomAppbar(
             currentStep: 1,
             totalSteps: 9,
             showBackButton: true,
+            onBack: () => context.go('/splash'),
           ),
           SizedBox(height: height * 0.04),
           const Text(
