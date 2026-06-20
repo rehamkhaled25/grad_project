@@ -253,7 +253,12 @@ class SettingsContainer extends StatelessWidget {
           ),
         ],
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(20),
+        child: child,
+      ),
     );
   }
 }

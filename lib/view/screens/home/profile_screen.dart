@@ -225,8 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
- 
-    return Scaffold(
+     return Scaffold(
       backgroundColor: const Color(0xFF141414),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -234,19 +233,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Center(
               child: Container(
                 width: baseWidth,
-                decoration: BoxDecoration(color: const Color(0xFFF4F4F4)),
-                child: Column(
+                decoration: const BoxDecoration(color: Color(0xFFF4F4F4)),
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    _buildHeader(context, scaleFactor),
-                    _buildStatsCards(scaleFactor),
-                    _buildEditProfileButton(context, scaleFactor),
-                    _buildBadgesButton(context, scaleFactor),
-                    _buildBodyStatsCard(scaleFactor),
-                    _buildWeightProgressCard(scaleFactor),
-                    _buildDailyGoalsCard(scaleFactor),
-                    _buildFoodPreferencesCard(scaleFactor),
-                    _buildPremiumCard(context, scaleFactor),
-                    SizedBox(height: 20 * scaleFactor),
+                    Column(
+                      children: [
+                        _buildHeaderBackground(context, scaleFactor),
+                        _buildStatsCards(scaleFactor),
+                        _buildEditProfileButton(context, scaleFactor),
+                        _buildBadgesButton(context, scaleFactor),
+                        _buildBodyStatsCard(scaleFactor),
+                        _buildWeightProgressCard(scaleFactor),
+                        _buildDailyGoalsCard(scaleFactor),
+                        _buildFoodPreferencesCard(scaleFactor),
+                        _buildPremiumCard(context, scaleFactor),
+                        SizedBox(height: 20 * scaleFactor),
+                      ],
+                    ),
+                    Positioned(
+                      top: 109 * scaleFactor,
+                      left: 0,
+                      right: 0,
+                      child: _buildProfilePictureRow(scaleFactor),
+                    ),
                   ],
                 ),
               ),
@@ -256,9 +266,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
- 
-  // Header Section
-  Widget _buildHeader(BuildContext context, double scale) {
+
+  // Header Background Section (no profile pic row, contains placeholder spacer instead)
+  Widget _buildHeaderBackground(BuildContext context, double scale) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -297,75 +307,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          SizedBox(height: 35 * scale),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 30 * scale),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    _profileImageUrl != null
-                        ? CircleAvatar(
-                            radius: 60 * scale,
-                            backgroundImage: NetworkImage(
-                              _profileImageUrl!.startsWith('http')
-                                  ? _profileImageUrl!
-                                  : '${ApiService.baseUrl}$_profileImageUrl',
-                            ),
-                          )
-                        : CircleAvatar(
-                            radius: 60 * scale,
-                            backgroundImage:
-                                const AssetImage('assets/images/profilee.png'),
-                          ),
-                    GestureDetector(
-                      onTap: _pickAndUploadProfileImage,
-                      child: Container(
-                        width: 28 * scale,
-                        height: 28 * scale,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD90C0C),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(Icons.camera_alt,
-                            color: Colors.white, size: 14 * scale),
+          // Spacer matching the size of profile picture row (35 + 120 + 24)
+          SizedBox(height: 179 * scale),
+        ],
+      ),
+    );
+  }
+
+  // Profile Picture Row (painted last on the Stack, overlaying the container shift)
+  Widget _buildProfilePictureRow(double scale) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 30 * scale),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              _profileImageUrl != null
+                  ? CircleAvatar(
+                      radius: 60 * scale,
+                      backgroundImage: NetworkImage(
+                        _profileImageUrl!.startsWith('http')
+                            ? _profileImageUrl!
+                            : '${ApiService.baseUrl}$_profileImageUrl',
                       ),
+                    )
+                  : CircleAvatar(
+                      radius: 60 * scale,
+                      backgroundImage:
+                          const AssetImage('assets/images/profilee.png'),
                     ),
-                  ],
+              GestureDetector(
+                onTap: _pickAndUploadProfileImage,
+                child: Container(
+                  width: 28 * scale,
+                  height: 28 * scale,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD90C0C),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Icon(Icons.camera_alt,
+                      color: Colors.white, size: 14 * scale),
                 ),
-                SizedBox(width: 18 * scale),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _name,
-                        style: TextStyle(
-                          fontFamily: 'SF Pro',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20 * scale,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 4 * scale),
-                      Text(
-                        _goal,
-                        style: TextStyle(
-                          fontFamily: 'SF Pro',
-                          fontSize: 13 * scale,
-                          color: const Color(0xFFF4F4F4),
-                        ),
-                      ),
-                    ],
+              ),
+            ],
+          ),
+          SizedBox(width: 18 * scale),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _name,
+                  style: TextStyle(
+                    fontFamily: 'SF Pro',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20 * scale,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 4 * scale),
+                Text(
+                  _goal,
+                  style: TextStyle(
+                    fontFamily: 'SF Pro',
+                    fontSize: 13 * scale,
+                    color: const Color(0xFFF4F4F4),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 24 * scale),
         ],
       ),
     );

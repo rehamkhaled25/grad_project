@@ -19,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = FoodService.globalSelectedDate;
 
   late Future<UserModel?> _userFuture;
   late Future<Map<String, dynamic>> _streakFuture;
@@ -325,12 +325,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onDaySelected(DateTime date) {
+    FoodService.globalSelectedDate = date;
     setState(() => _selectedDate = date);
     _loadDayData(date);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (FoodService.globalSelectedDate != _selectedDate) {
+      _selectedDate = FoodService.globalSelectedDate;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDayData(_selectedDate);
+      });
+    }
+    if (FoodService.needsRefresh) {
+      FoodService.needsRefresh = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDayData(_selectedDate);
+        _loadWeekData();
+      });
+    }
+
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
 
@@ -669,6 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
+                            _GlycemicStatusCard(dayData: dayData),
                           ],
                         ),
                         if (isLoading)
@@ -685,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
-                  2,
+                  3,
                   (index) => AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -843,7 +859,9 @@ class _DaysOfWeekBarState extends State<DaysOfWeekBar> {
     super.didUpdateWidget(old);
     if (widget.weekFuture != null &&
         widget.weekFuture != old.weekFuture) {
-      setState(() => _future = widget.weekFuture!);
+      setState(() {
+        _future = widget.weekFuture!;
+      });
     }
   }
  
@@ -2133,6 +2151,219 @@ class _TipOfTheDayCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GlycemicStatusCard extends StatelessWidget {
+  final Map<String, dynamic> dayData;
+
+  const _GlycemicStatusCard({required this.dayData});
+
+  @override
+  Widget build(BuildContext context) {
+    final List meals = dayData['meals'] ?? dayData['logs'] ?? [];
+    double totalGL = 0.0;
+    double weightedGISum = 0.0;
+    double totalCarbsForGI = 0.0;
+    int giCount = 0;
+    double giSum = 0.0;
+
+    for (final meal in meals) {
+      final mealMap = meal is Map ? Map<String, dynamic>.from(meal as Map) : <String, dynamic>{};
+      final gi = double.tryParse((mealMap['glycemic_index'] ?? mealMap['item_gi'] ?? '0').toString()) ?? 0.0;
+      final gl = double.tryParse((mealMap['glycemic_load'] ?? mealMap['total_gl'] ?? '0').toString()) ?? 0.0;
+      final carbs = double.tryParse((mealMap['carbs'] ?? '0').toString()) ?? 0.0;
+
+      if (gi > 0) {
+        totalGL += gl;
+        weightedGISum += gi * carbs;
+        totalCarbsForGI += carbs;
+        giSum += gi;
+        giCount++;
+      }
+    }
+
+    double averageGI = 0.0;
+    if (totalCarbsForGI > 0) {
+      averageGI = weightedGISum / totalCarbsForGI;
+    } else if (giCount > 0) {
+      averageGI = giSum / giCount;
+    }
+
+    final int giVal = averageGI.round();
+    final int glVal = totalGL.round();
+
+    // Determine GI rating & color
+    String giRating = "None";
+    Color giColor = Colors.grey.shade400;
+    String giDesc = "No data logged yet.";
+    if (giVal > 0) {
+      if (giVal <= 55) {
+        giRating = "Low";
+        giColor = Colors.green;
+        giDesc = "Stable blood sugar";
+      } else if (giVal <= 69) {
+        giRating = "Medium";
+        giColor = Colors.orange;
+        giDesc = "Moderate response";
+      } else {
+        giRating = "High";
+        giColor = Colors.red;
+        giDesc = "Rapid sugar spike risk";
+      }
+    }
+
+    // Determine GL rating & color
+    String glRating = "None";
+    Color glColor = Colors.grey.shade400;
+    String glDesc = "No carbs logged yet.";
+    if (glVal > 0) {
+      if (glVal <= 10) {
+        glRating = "Low";
+        glColor = Colors.green;
+        glDesc = "Minimal sugar load";
+      } else if (glVal <= 19) {
+        glRating = "Medium";
+        glColor = Colors.orange;
+        glDesc = "Moderate sugar load";
+      } else {
+        glColor = Colors.red;
+        glRating = "High";
+        glDesc = "Heavy sugar load";
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Glycemic Status',
+                  style: TextStyle(
+                    color: Color(0xff1E1B39),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff141414),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    "USP Feature",
+                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                )
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                // Average Glycemic Index (GI)
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Avg Glycemic Index",
+                        style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      CircularPercentIndicator(
+                        radius: 40.0,
+                        lineWidth: 6.0,
+                        percent: (giVal / 100.0).clamp(0.0, 1.0),
+                        center: Text(
+                          giVal > 0 ? "$giVal" : "—",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+                        ),
+                        progressColor: giColor,
+                        backgroundColor: Colors.grey.shade200,
+                        circularStrokeCap: CircularStrokeCap.round,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        giVal > 0 ? "Rating: $giRating" : "No logs",
+                        style: TextStyle(color: giColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      Text(
+                        giVal > 0 ? giDesc : "Add food to see GI",
+                        style: const TextStyle(color: Colors.grey, fontSize: 10),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 100,
+                  width: 1,
+                  color: Colors.grey.shade200,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+                // Daily Glycemic Load (GL)
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Total Glycemic Load",
+                        style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      CircularPercentIndicator(
+                        radius: 40.0,
+                        lineWidth: 6.0,
+                        percent: (glVal / 100.0).clamp(0.0, 1.0),
+                        center: Text(
+                          glVal > 0 ? "$glVal" : "—",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+                        ),
+                        progressColor: glColor,
+                        backgroundColor: Colors.grey.shade200,
+                        circularStrokeCap: CircularStrokeCap.round,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        glVal > 0 ? "Rating: $glRating" : "No logs",
+                        style: TextStyle(color: glColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      Text(
+                        glVal > 0 ? glDesc : "Add food to see GL",
+                        style: const TextStyle(color: Colors.grey, fontSize: 10),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+          ],
+        ),
       ),
     );
   }

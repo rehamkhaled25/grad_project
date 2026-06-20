@@ -6,6 +6,8 @@ import 'api_service.dart';
 
 class FoodService {
   static const String baseUrl = ApiService.baseUrl;
+  static DateTime globalSelectedDate = DateTime.now();
+  static bool needsRefresh = false;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -113,6 +115,7 @@ class FoodService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
+      needsRefresh = true;
       return Map<String, dynamic>.from(jsonDecode(response.body));
     } else {
       final body = jsonDecode(response.body);
@@ -136,6 +139,7 @@ class FoodService {
       final body = jsonDecode(response.body);
       throw Exception(body['message'] ?? body['error'] ?? 'Delete failed');
     }
+    needsRefresh = true;
   }
 
   /// Update/edit a food log entry.
@@ -151,6 +155,7 @@ class FoodService {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
+      needsRefresh = true;
       return Map<String, dynamic>.from(jsonDecode(response.body));
     } else {
       final body = jsonDecode(response.body);

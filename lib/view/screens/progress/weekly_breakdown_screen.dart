@@ -21,6 +21,9 @@ class _WeeklyBreakdownScreenState extends State<WeeklyBreakdownScreen> {
 
   List<Map<String, dynamic>> _weeklyProgress = [];
   double _goalCal = 2000;
+  double _goalProtein = 150;
+  double _goalCarbs = 250;
+  double _goalFats = 70;
 
   @override
   void initState() {
@@ -42,6 +45,9 @@ class _WeeklyBreakdownScreenState extends State<WeeklyBreakdownScreen> {
         setState(() {
           _weeklyProgress = weekly;
           _goalCal = (plan['calories'] ?? 2000).toDouble();
+          _goalProtein = (plan['protein'] ?? 150).toDouble();
+          _goalCarbs = (plan['carbs'] ?? 250).toDouble();
+          _goalFats = (plan['fats'] ?? 70).toDouble();
           _isLoading = false;
         });
       }
@@ -486,18 +492,48 @@ class _WeeklyBreakdownScreenState extends State<WeeklyBreakdownScreen> {
       totalFats += (day['fats'] ?? 0.0);
     }
 
-    double totalGrams = totalProtein + totalCarbs + totalFats;
-    if (totalGrams == 0) {
-      // Fallback ratios if no logs
-      totalProtein = 25;
-      totalCarbs = 50;
-      totalFats = 25;
-      totalGrams = 100;
+    if (totalProtein == 0 && totalCarbs == 0 && totalFats == 0) {
+      // Fallback ratios from user's custom macro targets (from plan/user entry)
+      totalProtein = _goalProtein;
+      totalCarbs = _goalCarbs;
+      totalFats = _goalFats;
     }
 
-    final double proteinPct = (totalProtein / totalGrams) * 100;
-    final double carbsPct = (totalCarbs / totalGrams) * 100;
-    final double fatsPct = (totalFats / totalGrams) * 100;
+    final double totalGrams = totalProtein + totalCarbs + totalFats;
+
+    double proteinPct = 25;
+    double carbsPct = 50;
+    double fatsPct = 25;
+
+    if (totalGrams > 0) {
+      proteinPct = (totalProtein / totalGrams) * 100;
+      carbsPct = (totalCarbs / totalGrams) * 100;
+      fatsPct = (totalFats / totalGrams) * 100;
+    }
+
+    // Round to integers and adjust to sum to exactly 100%
+    int proteinRound = proteinPct.round();
+    int carbsRound = carbsPct.round();
+    int fatsRound = fatsPct.round();
+
+    int sum = proteinRound + carbsRound + fatsRound;
+    if (sum > 0) {
+      int diff = 100 - sum;
+      if (diff != 0) {
+        // Adjust the largest one to minimize relative error
+        if (proteinRound >= carbsRound && proteinRound >= fatsRound) {
+          proteinRound += diff;
+        } else if (carbsRound >= proteinRound && carbsRound >= fatsRound) {
+          carbsRound += diff;
+        } else {
+          fatsRound += diff;
+        }
+      }
+    } else {
+      carbsRound = 50;
+      proteinRound = 25;
+      fatsRound = 25;
+    }
 
     return PieChart(
       PieChartData(
@@ -506,27 +542,27 @@ class _WeeklyBreakdownScreenState extends State<WeeklyBreakdownScreen> {
         startDegreeOffset: 270,
         sections: [
           PieChartSectionData(
-            value: carbsPct,
+            value: carbsRound.toDouble(),
             color: redColor,
             radius: 70,
             showTitle: false,
-            badgeWidget: _buildBadge("Carbs:\n${carbsPct.toStringAsFixed(0)}%", redColor, 0),
+            badgeWidget: _buildBadge("Carbs:\n$carbsRound%", redColor, 0),
             badgePositionPercentageOffset: 1.35,
           ),
           PieChartSectionData(
-            value: fatsPct,
+            value: fatsRound.toDouble(),
             color: darkBlueColor,
             radius: 70,
             showTitle: false,
-            badgeWidget: _buildBadge("Fats:\n${fatsPct.toStringAsFixed(0)}%", darkBlueColor, 0),
+            badgeWidget: _buildBadge("Fats:\n$fatsRound%", darkBlueColor, 0),
             badgePositionPercentageOffset: 1.35,
           ),
           PieChartSectionData(
-            value: proteinPct,
+            value: proteinRound.toDouble(),
             color: yellowColor,
             radius: 70,
             showTitle: false,
-            badgeWidget: _buildBadge("Protein:\n${proteinPct.toStringAsFixed(0)}%", yellowColor, 0),
+            badgeWidget: _buildBadge("Protein:\n$proteinRound%", yellowColor, 0),
             badgePositionPercentageOffset: 1.35,
           ),
         ],

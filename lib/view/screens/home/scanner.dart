@@ -888,6 +888,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         report.glycemicIndex <= 55
                             ? Colors.green
                             : (report.glycemicIndex <= 69 ? Colors.orange : Colors.red),
+                        tooltipMessage: "Glycemic Index (GI) measures how fast a food raises blood sugar.\n\n• Low GI (<=55): Digested slowly, stable energy.\n• Medium GI (56-69): Moderate response.\n• High GI (>=70): Rapid sugar spike.",
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -901,6 +902,7 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         report.glycemicLoad <= 10
                             ? Colors.green
                             : (report.glycemicLoad <= 19 ? Colors.orange : Colors.red),
+                        tooltipMessage: "Glycemic Load (GL) accounts for both the GI and carb portion size.\n\n• Low GL (<=10): Low blood sugar impact.\n• Medium GL (11-19): Moderate impact.\n• High GL (>=20): Heavy sugar load.",
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1186,8 +1188,9 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     String title,
     String value,
     String subtitle,
-    Color valueColor,
-  ) {
+    Color valueColor, {
+    String? tooltipMessage,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1197,13 +1200,42 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (tooltipMessage != null)
+                Tooltip(
+                  message: tooltipMessage,
+                  triggerMode: TooltipTriggerMode.tap,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                  preferBelow: false,
+                  child: const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(

@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingService {
-  static const String baseUrl = "http://192.168.1.6:5000";
+  static const String baseUrl = "http://192.168.1.9:5000";
   // static const String baseUrl = "http://10.0.2.2:5000";
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

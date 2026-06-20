@@ -46,8 +46,45 @@ class _GoalWeightScreenState extends State<GoalWeightScreen> {
 
   void _continueToNextPage() {
     final currentModel = widget.userModel ?? UserModel();
-  final updatedUser = currentModel.copyWith(goalWeight: weightKg);
-    context.push('/onboardingAllergies',extra: updatedUser);
+    final currentWeight = currentModel.weight ?? 0.0;
+    final goal = currentModel.goal;
+
+    final displayCurrent = isKg ? currentWeight : kgToLb(currentWeight);
+    final displayGoal = isKg ? weightKg : kgToLb(weightKg);
+    final unit = isKg ? "kg" : "lb";
+    final displayCurrentStr = displayCurrent.toStringAsFixed(1);
+    final displayGoalStr = displayGoal.toStringAsFixed(1);
+
+    if (goal == "Lose Weight" && weightKg >= currentWeight) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Goal weight ($displayGoalStr $unit) must be less than current weight ($displayCurrentStr $unit) to lose weight."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (goal == "Gain Weight" && weightKg <= currentWeight) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Goal weight ($displayGoalStr $unit) must be greater than current weight ($displayCurrentStr $unit) to gain weight."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (goal == "Maintain Weight" && (weightKg - currentWeight).abs() > 0.01) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Goal weight ($displayGoalStr $unit) must be equal to current weight ($displayCurrentStr $unit) to maintain weight."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final updatedUser = currentModel.copyWith(goalWeight: weightKg);
+    context.push('/onboardingAllergies', extra: updatedUser);
   }
 
   @override

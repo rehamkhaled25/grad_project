@@ -112,6 +112,19 @@ class UserFoodLog(db.Model):
     ai_scan = db.Column(db.Boolean, default=False)
 
     def to_dict(self):
+        gi = 0
+        gl = 0
+        gi_rating = ""
+        if self.full_report:
+            try:
+                import json
+                report = json.loads(self.full_report)
+                gi = report.get("glycemic_index") or report.get("item_gi") or 0
+                gl = report.get("total_gl") or report.get("glycemic_load") or 0
+                gi_rating = report.get("glycemic_index_rating") or report.get("gl_category") or ""
+            except Exception:
+                pass
+
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -136,6 +149,9 @@ class UserFoodLog(db.Model):
             ),
             "ai_scan": self.ai_scan,
             "has_full_report": self.full_report is not None,
+            "glycemic_index": gi,
+            "glycemic_load": gl,
+            "glycemic_index_rating": gi_rating,
         }
 
 

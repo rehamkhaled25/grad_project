@@ -218,7 +218,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
 
     final generationConfig = GenerationConfig(
       responseMimeType: 'application/json',
-      maxOutputTokens: 2000,
+      maxOutputTokens: 8000,
       responseSchema: Schema.object(
         properties: {
           'title': Schema.string(description: 'Recipe Name'),
@@ -286,7 +286,7 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
 
     final generationConfig = GenerationConfig(
       responseMimeType: 'application/json',
-      maxOutputTokens: 2000,
+      maxOutputTokens: 8000,
       responseSchema: Schema.object(
         properties: {
           'title': Schema.string(description: 'Recipe Name'),
@@ -347,18 +347,24 @@ class _RecipeGeneratorScreenState extends State<RecipeGeneratorScreen> {
 
         debugPrint("Raw Gemini Response: $text");
 
-        // Clean markdown code blocks from response if present
+        // Extract JSON from markdown code block if present (more robust than line-by-line checks)
         String cleanText = text.trim();
-        if (cleanText.startsWith("```")) {
-          final lines = cleanText.split('\n');
-          if (lines.first.startsWith("```")) {
-            lines.removeAt(0);
+        final jsonRegex = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```');
+        final match = jsonRegex.firstMatch(cleanText);
+        if (match != null) {
+          cleanText = match.group(1)!.trim();
+        } else {
+          // If no markdown block, extract between the first '{' and last '}'
+          final firstBrace = cleanText.indexOf('{');
+          final lastBrace = cleanText.lastIndexOf('}');
+          if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
           }
-          if (lines.last.startsWith("```")) {
-            lines.removeLast();
-          }
-          cleanText = lines.join('\n').trim();
         }
+
+        // Clean trailing commas (e.g. [1, 2,] or {a: 1,}) which make jsonDecode fail in Dart
+        cleanText = cleanText.replaceAll(RegExp(r',\s*(\])'), ']');
+        cleanText = cleanText.replaceAll(RegExp(r',\s*(\})'), '}');
 
         final parsed = jsonDecode(cleanText) as Map<String, dynamic>;
         setState(() {

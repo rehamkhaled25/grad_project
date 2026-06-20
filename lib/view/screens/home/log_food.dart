@@ -19,7 +19,7 @@ class _LogFoodState extends State<LogFood> {
   Map<String, dynamic>? _planData;
   bool _isLoading = true;
   String? _profileImageUrl;
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = FoodService.globalSelectedDate;
   double _caloriesBurned = 0.0;
 
   static const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -173,171 +173,173 @@ class _LogFoodState extends State<LogFood> {
               {'label': '3', 'val': 3.0},
             ];
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Edit Portion: $foodName",
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Live Preview Row
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xffF9F9F9),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xffEEEEEE)),
-                    ),
-                    child: Column(
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Portion Preview", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
-                            Text("${scaledSize.toStringAsFixed(1)} $servingName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black)),
-                          ],
+                        Expanded(
+                          child: Text(
+                            "Edit Portion: $foodName",
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _previewItem("Calories", "${scaledCal.toStringAsFixed(0)} kcal", Colors.redAccent.withOpacity(0.1), Colors.redAccent),
-                            _previewItem("Protein", "${scaledPro.toStringAsFixed(1)}g", Colors.green.withOpacity(0.1), Colors.green),
-                            _previewItem("Carbs", "${scaledCar.toStringAsFixed(1)}g", Colors.blue.withOpacity(0.1), Colors.blue),
-                            _previewItem("Fats", "${scaledFat.toStringAsFixed(1)}g", Colors.orange.withOpacity(0.1), Colors.orange),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Quick Select Chips
-                  const Text("Quick Select Serving", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: quickChips.map((chip) {
-                      final val = chip['val'] as double;
-                      final isSelected = (multiplier - val).abs() < 0.01;
-                      return ChoiceChip(
-                        label: Text(chip['label'], style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-                        selected: isSelected,
-                        selectedColor: Colors.black,
-                        backgroundColor: const Color(0xffEEEEEE),
-                        onSelected: (selected) {
-                          if (selected) {
-                            setModalState(() {
-                              multiplier = val;
-                              controller.text = val.toString();
-                            });
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Custom Input
-                  const Text("Custom Portion Size", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      hintText: "Enter custom serving multiplier (e.g. 1.25)",
-                      suffixText: "servings",
-                      filled: true,
-                      fillColor: const Color(0xffF2F2F2),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                    onChanged: (text) {
-                      final val = double.tryParse(text);
-                      if (val != null && val > 0) {
-                        setModalState(() {
-                          multiplier = val;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Actions
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text("Cancel", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        ),
+                    const SizedBox(height: 16),
+                    
+                    // Live Preview Row
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xffF9F9F9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xffEEEEEE)),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            setState(() => _isLoading = true);
-                            try {
-                              final payload = {
-                                'calories': scaledCal,
-                                'protein': scaledPro,
-                                'carbs': scaledCar,
-                                'fats': scaledFat,
-                                'portion_multiplier': multiplier,
-                                'serving_size': scaledSize,
-                              };
-                              await FoodService().updateFoodLog(logId, payload);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("✅ Food log updated"), backgroundColor: Colors.black),
-                              );
-                              _loadData();
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("❌ Failed to update: $e"), backgroundColor: Colors.red),
-                              );
-                              setState(() => _isLoading = false);
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Portion Preview", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                              Text("${scaledSize.toStringAsFixed(1)} $servingName", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _previewItem("Calories", "${scaledCal.toStringAsFixed(0)} kcal", Colors.redAccent.withOpacity(0.1), Colors.redAccent),
+                              _previewItem("Protein", "${scaledPro.toStringAsFixed(1)}g", Colors.green.withOpacity(0.1), Colors.green),
+                              _previewItem("Carbs", "${scaledCar.toStringAsFixed(1)}g", Colors.blue.withOpacity(0.1), Colors.blue),
+                              _previewItem("Fats", "${scaledFat.toStringAsFixed(1)}g", Colors.orange.withOpacity(0.1), Colors.orange),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+  
+                    // Quick Select Chips
+                    const Text("Quick Select Serving", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: quickChips.map((chip) {
+                        final val = chip['val'] as double;
+                        final isSelected = (multiplier - val).abs() < 0.01;
+                        return ChoiceChip(
+                          label: Text(chip['label'], style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+                          selected: isSelected,
+                          selectedColor: Colors.black,
+                          backgroundColor: const Color(0xffEEEEEE),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                multiplier = val;
+                                controller.text = val.toString();
+                              });
                             }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+  
+                    // Custom Input
+                    const Text("Custom Portion Size", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: controller,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        hintText: "Enter custom serving multiplier (e.g. 1.25)",
+                        suffixText: "servings",
+                        filled: true,
+                        fillColor: const Color(0xffF2F2F2),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
-                    ],
-                  ),
-                ],
+                      onChanged: (text) {
+                        final val = double.tryParse(text);
+                        if (val != null && val > 0) {
+                          setModalState(() {
+                            multiplier = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+  
+                    // Actions
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text("Cancel", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              setState(() => _isLoading = true);
+                              try {
+                                final payload = {
+                                  'calories': scaledCal,
+                                  'protein': scaledPro,
+                                  'carbs': scaledCar,
+                                  'fats': scaledFat,
+                                  'portion_multiplier': multiplier,
+                                  'serving_size': scaledSize,
+                                };
+                                await FoodService().updateFoodLog(logId, payload);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("✅ Food log updated"), backgroundColor: Colors.black),
+                                );
+                                _loadData();
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("❌ Failed to update: $e"), backgroundColor: Colors.red),
+                                );
+                                setState(() => _isLoading = false);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -363,8 +365,29 @@ class _LogFoodState extends State<LogFood> {
     );
   }
 
+  void _changeDate(DateTime date) {
+    FoodService.globalSelectedDate = date;
+    setState(() {
+      _selectedDate = date;
+    });
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (FoodService.globalSelectedDate != _selectedDate) {
+      _selectedDate = FoodService.globalSelectedDate;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadData();
+      });
+    }
+    if (FoodService.needsRefresh) {
+      FoodService.needsRefresh = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadData();
+      });
+    }
+
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
 
@@ -422,10 +445,7 @@ class _LogFoodState extends State<LogFood> {
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
-                          setState(() {
-                            _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-                          });
-                          _loadData();
+                          _changeDate(_selectedDate.subtract(const Duration(days: 1)));
                         },
                         child: Icon(Icons.arrow_back_ios, color: const Color(0xffD9D9D9), size: width * 0.04),
                       ),
@@ -442,10 +462,7 @@ class _LogFoodState extends State<LogFood> {
                         onTap: () {
                           final isCurrentToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
                           if (isCurrentToday) return; 
-                          setState(() {
-                            _selectedDate = _selectedDate.add(const Duration(days: 1));
-                          });
-                          _loadData();
+                          _changeDate(_selectedDate.add(const Duration(days: 1)));
                         },
                         child: Icon(
                           Icons.arrow_forward_ios,
@@ -460,7 +477,12 @@ class _LogFoodState extends State<LogFood> {
                     ],
                   ),
                   const SizedBox(height: 25),
-                  DaysOfWeekBar(selectedDate: _selectedDate, consumed: consumed, dailyCal: dailyCal),
+                  DaysOfWeekBar(
+                    selectedDate: _selectedDate,
+                    consumed: consumed,
+                    dailyCal: dailyCal,
+                    onDateSelected: _changeDate,
+                  ),
                   const SizedBox(height: 25),
                   _DailyProgressCard(
                     size: size,
@@ -728,12 +750,14 @@ class DaysOfWeekBar extends StatelessWidget {
   final DateTime selectedDate;
   final double consumed;
   final double dailyCal;
+  final Function(DateTime)? onDateSelected;
 
   const DaysOfWeekBar({
     super.key,
     required this.selectedDate,
     this.consumed = 0,
     this.dailyCal = 0,
+    this.onDateSelected,
   });
 
   Color _calorieDotColor() {
@@ -764,30 +788,37 @@ class DaysOfWeekBar extends StatelessWidget {
             bgColor = _calorieDotColor();
           }
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: bgColor,
-                child: Text(
-                  dates[index].toString(),
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+          return GestureDetector(
+            onTap: () {
+              if (onDateSelected != null) {
+                onDateSelected!(dateRange[index]);
+              }
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: bgColor,
+                  child: Text(
+                    dates[index].toString(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                days[index],
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Text(
+                  days[index],
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         }),
       ),
