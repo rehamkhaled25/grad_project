@@ -96,16 +96,16 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     if (_isAnalyzing) return;
     _popupTimer?.cancel();
 
-    if (!_hasPromptedForHidden) {
+    // If they haven't set any hidden ingredients (either because they didn't wait 10s, 
+    // or they dismissed the 10s idle dialog), prompt them now!
+    if (_hiddenIngredients == null) {
       _hasPromptedForHidden = true;
       final value = await showDialog<String>(
         context: context,
         barrierColor: Colors.black54,
         builder: (context) => const HiddenIngredientsPage(),
       );
-      if (value != null && value.isNotEmpty) {
-        _hiddenIngredients = value;
-      }
+      _hiddenIngredients = value ?? ""; // If they cancel, store empty string so we don't prompt again for this specific attempt
     }
 
     setState(() => _isAnalyzing = true);
@@ -124,14 +124,13 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       }
 
       // Step 2: Analyze the scanned food with hidden ingredients as context
-      final analyzeResult = await _foodService.analyzeFood(scanId, context: _hiddenIngredients);
+      // Send null if empty string so backend knows there are no hidden ingredients
+      final contextStr = _hiddenIngredients!.trim().isEmpty ? null : "Hidden ingredients: ${_hiddenIngredients!.trim()}";
+      final analyzeResult = await _foodService.analyzeFood(scanId, context: contextStr);
 
       // Step 3: Parse the nutrition data from the 'report' key
       final nutritionData = analyzeResult['report'] ?? analyzeResult;
       final report = NutritionReport.fromJson(nutritionData as Map<String, dynamic>);
-
-      // Extract scan_id from the ui block if available
-      final returnedScanId = analyzeResult['ui']?['scan_id']?.toString() ?? scanId;
 
       if (mounted) {
         _showResultsBottomSheet(report, scanId);
@@ -147,7 +146,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          // Reset hidden ingredients state for the next photo scan session
+          _hiddenIngredients = null;
+          _hasPromptedForHidden = false;
+        });
+      }
     }
   }
 
@@ -165,7 +171,12 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   Future<void> _pickFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 80,
+    );
     if (image != null) {
       _processImageForAI(image);
     }
@@ -485,7 +496,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             children: [
               _buildPresetChip('Nutella', '3017620422003'),
               _buildPresetChip('Coca Cola', '5449000000996'),
-              _buildPresetChip('USDA Product', '004800120120'),
             ],
           ),
           const SizedBox(height: 24),
@@ -581,6 +591,8 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
   bool _isReAnalyzing = false;
   final FoodService _foodService = FoodService();
   late NutritionReport _currentReport;
+  bool _showGiInfo = false;
+  bool _showGlInfo = false;
 
   @override
   void initState() {
@@ -888,7 +900,13 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         report.glycemicIndex <= 55
                             ? Colors.green
                             : (report.glycemicIndex <= 69 ? Colors.orange : Colors.red),
-                        tooltipMessage: "Glycemic Index (GI) measures how fast a food raises blood sugar.\n\n• Low GI (<=55): Digested slowly, stable energy.\n• Medium GI (56-69): Moderate response.\n• High GI (>=70): Rapid sugar spike.",
+                        hasInfoIcon: true,
+                        isInfoActive: _showGiInfo,
+                        onInfoTapped: () {
+                          setState(() {
+                            _showGiInfo = !_showGiInfo;
+                          });
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -902,7 +920,13 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                         report.glycemicLoad <= 10
                             ? Colors.green
                             : (report.glycemicLoad <= 19 ? Colors.orange : Colors.red),
-                        tooltipMessage: "Glycemic Load (GL) accounts for both the GI and carb portion size.\n\n• Low GL (<=10): Low blood sugar impact.\n• Medium GL (11-19): Moderate impact.\n• High GL (>=20): Heavy sugar load.",
+                        hasInfoIcon: true,
+                        isInfoActive: _showGlInfo,
+                        onInfoTapped: () {
+                          setState(() {
+                            _showGlInfo = !_showGlInfo;
+                          });
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -916,6 +940,100 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                     ),
                   ],
                 ),
+                if (_showGiInfo) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2F0FD),
+                      border: Border.all(color: Colors.blue.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info, color: Colors.blue, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Glycemic Index (GI)",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Measures how fast a food raises blood sugar.\n\n• Low GI (<=55): Digested slowly, stable energy.\n• Medium GI (56-69): Moderate response.\n• High GI (>=70): Rapid sugar spike.",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue.shade900,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _showGiInfo = false),
+                          child: const Icon(Icons.close, size: 16, color: Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (_showGlInfo) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2F0FD),
+                      border: Border.all(color: Colors.blue.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info, color: Colors.blue, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Glycemic Load (GL)",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Accounts for both the GI and carb portion size.\n\n• Low GL (<=10): Low blood sugar impact.\n• Medium GL (11-19): Moderate impact.\n• High GL (>=20): Heavy sugar load.",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue.shade900,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _showGlInfo = false),
+                          child: const Icon(Icons.close, size: 16, color: Colors.blue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Text(
                   report.glycemicIndex <= 55
@@ -1189,7 +1307,9 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
     String value,
     String subtitle,
     Color valueColor, {
-    String? tooltipMessage,
+    bool hasInfoIcon = false,
+    bool isInfoActive = false,
+    VoidCallback? onInfoTapped,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1214,24 +1334,15 @@ class _NutritionResultSheetState extends State<_NutritionResultSheet> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (tooltipMessage != null)
-                Tooltip(
-                  message: tooltipMessage,
-                  triggerMode: TooltipTriggerMode.tap,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  textStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                  preferBelow: false,
-                  child: const Padding(
-                    padding: EdgeInsets.only(left: 4),
+              if (hasInfoIcon)
+                GestureDetector(
+                  onTap: onInfoTapped,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
                     child: Icon(
-                      Icons.info_outline,
+                      isInfoActive ? Icons.info : Icons.info_outline,
                       size: 13,
-                      color: Colors.black54,
+                      color: isInfoActive ? Colors.blue : Colors.black54,
                     ),
                   ),
                 ),

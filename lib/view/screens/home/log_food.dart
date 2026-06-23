@@ -480,7 +480,7 @@ class _LogFoodState extends State<LogFood> {
                   DaysOfWeekBar(
                     selectedDate: _selectedDate,
                     consumed: consumed,
-                    dailyCal: dailyCal,
+                    dailyCal: dailyCal + _caloriesBurned,
                     onDateSelected: _changeDate,
                   ),
                   const SizedBox(height: 25),
@@ -555,17 +555,32 @@ class _DailyProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double budget = dailyCal + burned;
+    final double diff = budget > 0 ? (consumed - budget) / budget : 0.0;
+    final double absDiff = diff.abs();
+
     Color progressColor = Colors.grey.shade400;
-    if (budget > 0 && consumed > 0) {
-      final diff = ((consumed - budget) / budget).abs();
-      if (diff <= 0.05) {
+    String statusLabel = "In Progress";
+
+    if (consumed > 0 && budget > 0) {
+      if (absDiff <= 0.05) {
         progressColor = Colors.green;
-      } else if (diff <= 0.15) {
+        statusLabel = "Goal Reached";
+      } else if (absDiff <= 0.15) {
         progressColor = Colors.orange;
+        statusLabel = "Almost There";
       } else {
         progressColor = Colors.red;
+        if (diff > 0.15) {
+          statusLabel = "Goal Exceeded!";
+        } else {
+          statusLabel = "In Progress";
+        }
       }
     }
+
+    final Color statusColor = consumed == 0
+        ? Colors.grey
+        : progressColor;
 
     return Container(
       width: double.infinity,
@@ -581,8 +596,8 @@ class _DailyProgressCard extends StatelessWidget {
             children: [
               Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               Text(
-                progress >= 0.8 ? "Almost There" : progress >= 0.5 ? "On Track" : "In Progress",
-                style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 14),
+                statusLabel,
+                style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),

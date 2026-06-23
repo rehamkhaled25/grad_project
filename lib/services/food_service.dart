@@ -458,7 +458,40 @@ class FoodService {
 
       if (response.statusCode == 200) {
         final data = Map<String, dynamic>.from(jsonDecode(response.body));
-        final goalCalories = overrideCalories ?? (data['goal_calories'] ?? 2400).toDouble();
+        final baseGoalCalories = overrideCalories ?? (data['goal_calories'] ?? 2400).toDouble();
+        
+        // Calculate yesterday's date
+        final DateTime current = DateTime.parse(date);
+        final DateTime yesterday = current.subtract(const Duration(days: 1));
+        final String yesterdayStr = "${yesterday.year.toString().padLeft(4, '0')}-"
+            "${yesterday.month.toString().padLeft(2, '0')}-"
+            "${yesterday.day.toString().padLeft(2, '0')}";
+
+        double yesterdayConsumed = 0.0;
+        try {
+          final yesterdayHistory = await getFoodHistory(date: yesterdayStr);
+          final yesterdayTotals = yesterdayHistory['totals'] ?? {};
+          yesterdayConsumed = (yesterdayTotals['calories'] ?? 0).toDouble();
+        } catch (_) {}
+
+        double yesterdayBurned = 0.0;
+        try {
+          final workoutKey = '${prefix}workout_log_$yesterdayStr';
+          final workoutJson = prefs.getString(workoutKey);
+          if (workoutJson != null) {
+            final List decoded = jsonDecode(workoutJson) as List;
+            for (final w in decoded) {
+              yesterdayBurned += (w['burned'] as num).toDouble();
+            }
+          }
+        } catch (_) {}
+
+        double rollover = 0.0;
+        if (yesterdayConsumed > 0) {
+          rollover = (baseGoalCalories + yesterdayBurned) - yesterdayConsumed;
+        }
+
+        final goalCalories = baseGoalCalories + rollover;
         final consumed =
             (data['calories'] ?? data['total_calories'] ?? 0).toDouble();
         final hasData = consumed > 0 || data['has_data'] == true;
@@ -498,19 +531,53 @@ class FoodService {
     // ── Fallback: compose from existing endpoints ─────────────────────
     print("📅 [DAY PROGRESS]: Falling back to history + plan for $date");
 
+    // Calculate yesterday's date
+    final DateTime current = DateTime.parse(date);
+    final DateTime yesterday = current.subtract(const Duration(days: 1));
+    final String yesterdayStr = "${yesterday.year.toString().padLeft(4, '0')}-"
+        "${yesterday.month.toString().padLeft(2, '0')}-"
+        "${yesterday.day.toString().padLeft(2, '0')}";
+
     final results = await Future.wait([
       getFoodHistory(date: date).catchError((_) => <String, dynamic>{}),
       getCaloriePlan().catchError((_) => <String, dynamic>{}),
+      getFoodHistory(date: yesterdayStr).catchError((_) => <String, dynamic>{}),
     ]);
 
     final history = results[0] as Map<String, dynamic>;
     final plan = results[1] as Map<String, dynamic>;
+    final yesterdayHistory = results[2] as Map<String, dynamic>;
 
     final totals = history['totals'] is Map
         ? Map<String, dynamic>.from(history['totals'])
         : <String, dynamic>{};
 
-    final goalCalories = overrideCalories ?? (plan['calories'] ?? 2400).toDouble();
+    final double baseGoalCalories = overrideCalories ?? (plan['calories'] ?? 2400).toDouble();
+
+    // Fetch yesterday's consumed
+    final yesterdayTotals = yesterdayHistory['totals'] is Map ? yesterdayHistory['totals'] : {};
+    final yesterdayConsumed = (yesterdayTotals['calories'] ?? 0).toDouble();
+
+    // Fetch yesterday's burned
+    double yesterdayBurned = 0.0;
+    try {
+      final workoutKey = '${prefix}workout_log_$yesterdayStr';
+      final workoutJson = prefs.getString(workoutKey);
+      if (workoutJson != null) {
+        final List decoded = jsonDecode(workoutJson) as List;
+        for (final w in decoded) {
+          yesterdayBurned += (w['burned'] as num).toDouble();
+        }
+      }
+    } catch (_) {}
+
+    // Calculate rollover
+    double rollover = 0.0;
+    if (yesterdayConsumed > 0) {
+      rollover = (baseGoalCalories + yesterdayBurned) - yesterdayConsumed;
+    }
+
+    final goalCalories = baseGoalCalories + rollover;
     final goalProtein = overrideProtein ?? (plan['protein'] ?? 120).toDouble();
     final goalCarbs = overrideCarbs ?? (plan['carbs'] ?? 250).toDouble();
     final goalFats = overrideFats ?? (plan['fats'] ?? 60).toDouble();

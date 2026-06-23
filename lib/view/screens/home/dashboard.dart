@@ -505,6 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 selectedDate: _selectedDate,
                 weekFuture: _weekFuture,
                 onDateSelected: _onDaySelected,
+                todayBurned: _caloriesBurned,
               ),
 
               const SizedBox(height: 30),
@@ -829,12 +830,14 @@ class DaysOfWeekBar extends StatefulWidget {
   final Function(DateTime) onDateSelected;
   /// Optional pre-fetched week data from the parent.
   final Future<List<Map<String, dynamic>>>? weekFuture;
+  final double todayBurned;
  
   const DaysOfWeekBar({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
     this.weekFuture,
+    this.todayBurned = 0.0,
   });
  
   @override
@@ -851,22 +854,52 @@ class _DaysOfWeekBarState extends State<DaysOfWeekBar> {
     final now = DateTime.now();
     _dateRange =
         List.generate(8, (i) => now.subtract(Duration(days: 7 - i)));
-    _future = widget.weekFuture ?? _fetchWeek();
+    _initFuture();
   }
  
+  void _initFuture() {
+    final rawFuture = widget.weekFuture ?? _fetchWeek();
+    _future = rawFuture.then((list) => _enrichWeekWithWorkouts(list));
+  }
+
   @override
   void didUpdateWidget(covariant DaysOfWeekBar old) {
     super.didUpdateWidget(old);
-    if (widget.weekFuture != null &&
-        widget.weekFuture != old.weekFuture) {
+    if (widget.weekFuture != old.weekFuture || widget.todayBurned != old.todayBurned) {
       setState(() {
-        _future = widget.weekFuture!;
+        _initFuture();
       });
     }
   }
+
+  Future<List<Map<String, dynamic>>> _enrichWeekWithWorkouts(List<Map<String, dynamic>> rawList) async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = await ApiService().getCurrentUserEmail() ?? '';
+    final prefix = email.isNotEmpty ? '${email}_' : '';
+
+    return rawList.map((day) {
+      final dateStr = day['date']?.toString() ?? '';
+      if (dateStr.isEmpty) return day;
+
+      double dayBurned = 0.0;
+      try {
+        final workoutKey = '${prefix}workout_log_$dateStr';
+        final workoutJson = prefs.getString(workoutKey);
+        if (workoutJson != null) {
+          final List decoded = jsonDecode(workoutJson) as List;
+          for (final w in decoded) {
+            dayBurned += (w['burned'] as num).toDouble();
+          }
+        }
+      } catch (_) {}
+
+      final newDay = Map<String, dynamic>.from(day);
+      newDay['burned'] = dayBurned;
+      return newDay;
+    }).toList();
+  }
  
   Future<List<Map<String, dynamic>>> _fetchWeek() async {
-    // Implementation here
     return [];
   }
  
@@ -885,16 +918,20 @@ class _DaysOfWeekBarState extends State<DaysOfWeekBar> {
  
     final consumed = (dayData['calories'] ?? 0).toDouble();
     final goal = (dayData['goal_calories'] ?? 2400).toDouble();
-    if (goal <= 0) return Colors.grey.shade300;
+    final burned = (dayData['burned'] ?? 0.0).toDouble();
+    final budget = goal + burned;
+
+    if (budget <= 0) return Colors.grey.shade300;
  
     // Calculate difference percentage
-    final diff = ((consumed - goal) / goal).abs();
+    final diff = budget > 0 ? (consumed - budget) / budget : 0.0;
+    final absDiff = diff.abs();
     
-    // Green: ±5% of goal
-    if (diff <= 0.05) return Colors.green;
-    // Orange: ±5% to ±15% of goal
-    if (diff <= 0.15) return Colors.orange;
-    // Red: >±15% of goal
+    // Green: ±5% of budget
+    if (absDiff <= 0.05) return Colors.green;
+    // Orange: ±5% to ±15% of budget
+    if (absDiff <= 0.15) return Colors.orange;
+    // Red: >±15% of budget
     return Colors.red;
   }
  
@@ -1006,26 +1043,26 @@ class _DailyProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final double budget = dailyCal + burned;
     final bool isOver = consumed > budget;
-    // Label reflects over-goal state
-    final String statusLabel = consumed == 0
-        ? "No Data"
-        : isOver
-            ? "Goal Exceeded!"
-            : progress >= 0.8
-                ? "Almost There"
-                : progress >= 0.5
-                    ? "On Track"
-                    : "In Progress";
+    final double diff = budget > 0 ? (consumed - budget) / budget : 0.0;
+    final double absDiff = diff.abs();
 
     Color progressColor = Colors.grey.shade300;
+    String statusLabel = "In Progress";
+
     if (consumed > 0 && budget > 0) {
-      final diff = ((consumed - budget) / budget).abs();
-      if (diff <= 0.05) {
+      if (absDiff <= 0.05) {
         progressColor = Colors.green;
-      } else if (diff <= 0.15) {
+        statusLabel = "Goal Reached";
+      } else if (absDiff <= 0.15) {
         progressColor = Colors.orange;
+        statusLabel = "Almost There";
       } else {
         progressColor = Colors.red;
+        if (diff > 0.15) {
+          statusLabel = "Goal Exceeded!";
+        } else {
+          statusLabel = "In Progress";
+        }
       }
     }
 

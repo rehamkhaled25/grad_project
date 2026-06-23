@@ -66,7 +66,29 @@ class _AllergiesState extends State<Allergies> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const CustomAppbar(currentStep: 8, totalSteps: 9),
-                SizedBox(height: height * 0.02),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        UserModel updatedUser = (widget.userModel ?? UserModel()).copyWith(
+                          allergies: [],
+                        );
+                        context.push("/onboardingNotifications", extra: updatedUser);
+                      },
+                      child: const Text(
+                        "skip",
+                        style: TextStyle(
+                          fontSize: 14,
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: height * 0.01),
                 const Center(
                   child: Text(
                     "Got any allergies?",

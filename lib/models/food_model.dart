@@ -156,6 +156,29 @@ class NutritionReport {
           .toList();
     }
 
+    final vitC = _tryParseNullableDouble(json, 'vitamin_c_mg', 'vitamin_c');
+    String vitaminsStr = "";
+    if (json['vitamins_others'] is List) {
+      vitaminsStr = (json['vitamins_others'] as List).join(', ');
+    } else if (json['vitamins'] is List) {
+      vitaminsStr = (json['vitamins'] as List).join(', ');
+    } else {
+      vitaminsStr = json['vitamins_others']?.toString() ?? json['vitamins']?.toString() ?? "";
+    }
+
+    if (vitaminsStr == "[]") {
+      vitaminsStr = "";
+    }
+
+    if (vitC != null && vitC > 0) {
+      final vitCStr = "Vitamin C (${vitC.toStringAsFixed(0)}mg)";
+      vitaminsStr = vitaminsStr.isNotEmpty ? "$vitCStr, $vitaminsStr" : vitCStr;
+    }
+
+    if (vitaminsStr.isEmpty) {
+      vitaminsStr = "None";
+    }
+
     return NutritionReport(
       mealName: json['meal_name']?.toString() ?? "Unknown Meal",
       totalCalories:
@@ -172,7 +195,7 @@ class NutritionReport {
       magnesium: _tryParseNullableInt(json, 'magnesium_mg', 'magnesium'),
       calcium: _tryParseNullableInt(json, 'calcium_mg', 'calcium'),
       fiber: _tryParseNullableInt(json, 'fiber_g', 'fiber'),
-      vitamins: json['vitamins_others']?.toString() ?? json['vitamins']?.toString() ?? "",
+      vitamins: vitaminsStr,
       healthScore: (double.tryParse(json['health_score']?.toString() ?? "0") ?? 0.0).round(),
       healthTip: json['health_tip']?.toString() ?? "No tip provided.",
       warning: json['warning']?.toString() ?? json['metabolic_warning']?.toString() ?? "",

@@ -63,6 +63,7 @@ class NutritionReport(typing.TypedDict):
 MASTER_PROMPT = """Act as a Clinical Nutrition Scientist. Analyze this image with high precision.
 Context provided by user: {context}
 Calculate Macros vs DV%, Micros (Magnesium, Calcium, Sodium, Vit C), and Glycemic Index and Glycemic Load.
+Identify and list other vitamins present in the food inside the `vitamins_others` field (e.g., ["Vitamin A", "Vitamin B6", "Vitamin D"]), and other minerals inside `minerals_others`.
 Ensure mathematical consistency across the report.
 Return health_score as an integer from 0 to 10 only, not as a percentage.
 
@@ -176,6 +177,7 @@ Extra context: {context}
 
 Estimate the nutrition values as accurately as possible.
 Calculate calories, macros, daily value percentages, fiber, sugar, sodium, key micronutrients, glycemic index, glycemic load, and health score.
+Identify and list other vitamins present in the food inside the `vitamins_others` field (e.g., ["Vitamin A", "Vitamin B6", "Vitamin D"]), and other minerals inside `minerals_others`.
 
 Important rules:
 - Return valid JSON only.
