@@ -21,6 +21,7 @@ class _LogFoodState extends State<LogFood> {
   String? _profileImageUrl;
   DateTime _selectedDate = FoodService.globalSelectedDate;
   double _caloriesBurned = 0.0;
+  double _rolloverCalories = 0.0;
 
   static const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
@@ -68,11 +69,36 @@ class _LogFoodState extends State<LogFood> {
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       await _loadLocalData(_selectedDate);
+
+      final DateTime yesterday = _selectedDate.subtract(const Duration(days: 1));
+      final String yesterdayStr = DateFormat('yyyy-MM-dd').format(yesterday);
+
       final results = await Future.wait([
         FoodService().getFoodHistory(date: dateStr).catchError((_) => <String, dynamic>{}),
         FoodService().getCaloriePlan().catchError((_) => <String, dynamic>{}),
         ApiService().getProfile().catchError((_) => null),
+        FoodService().getFoodHistory(date: yesterdayStr).catchError((_) => <String, dynamic>{}),
       ]);
+
+      // Calculate yesterday's burned
+      final prefs = await SharedPreferences.getInstance();
+      final email = await ApiService().getCurrentUserEmail() ?? '';
+      final prefix = email.isNotEmpty ? '${email}_' : '';
+      final overrideCalories = prefs.getDouble('${prefix}plan_calories');
+
+      double yesterdayBurned = 0.0;
+      try {
+        final workoutKey = '${prefix}workout_log_$yesterdayStr';
+        final workoutJson = prefs.getString(workoutKey);
+        if (workoutJson != null) {
+          final List decoded = jsonDecode(workoutJson) as List;
+          for (final w in decoded) {
+            yesterdayBurned += (w['burned'] as num).toDouble();
+          }
+        }
+      } catch (e) {
+        print("Error parsing yesterday workouts in LogFood: $e");
+      }
 
       if (mounted) {
         setState(() {
@@ -82,6 +108,19 @@ class _LogFoodState extends State<LogFood> {
           if (profile != null) {
             _profileImageUrl = (profile as dynamic).profileImageUrl as String?;
           }
+
+          final yesterdayHistory = results[3] is Map ? Map<String, dynamic>.from(results[3] as Map) : null;
+          final yesterdayTotals = yesterdayHistory?['totals'] ?? {};
+          final yesterdayConsumed = (yesterdayTotals['calories'] ?? 0).toDouble();
+
+          final basePlanCalories = overrideCalories ?? (_planData?['calories'] ?? 2400).toDouble();
+
+          double rollover = 0.0;
+          if (yesterdayConsumed > 0) {
+            rollover = (basePlanCalories + yesterdayBurned) - yesterdayConsumed;
+          }
+          _rolloverCalories = rollover;
+
           _isLoading = false;
         });
       }
@@ -393,7 +432,7 @@ class _LogFoodState extends State<LogFood> {
 
     final totals = _historyData?['totals'] is Map ? Map<String, dynamic>.from(_historyData!['totals']) : <String, dynamic>{};
     final consumed = (totals['calories'] ?? 0).toDouble();
-    final dailyCal = (_planData?['calories'] ?? 2400).toDouble();
+    final dailyCal = (_planData?['calories'] ?? 2400).toDouble() + _rolloverCalories;
     final remaining = dailyCal - consumed + _caloriesBurned;
     final progress = (dailyCal + _caloriesBurned) > 0 ? consumed / (dailyCal + _caloriesBurned) : 0.0;
 
